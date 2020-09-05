@@ -8,7 +8,7 @@
 PLAT= linux
 
 CC= gcc
-CFLAGS= -O2 -Wall $(MYCFLAGS)
+CFLAGS= -O2 -Wall -ansi $(MYCFLAGS)
 AR= ar rcu
 RANLIB= ranlib
 RM= rm -f
