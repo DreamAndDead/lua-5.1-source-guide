@@ -4,3 +4,8 @@ src/lua
 src/luac
 
 local/
+
+
+GPATH
+GTAGS
+GRTAGS
