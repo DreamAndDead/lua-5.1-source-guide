@@ -41,3 +41,16 @@ If you're done before X-Mas and understood all of it, you're good. The informati
 
 https://github.com/italomaia/read-lua-source-code
  
+
+
+## questions
+
+- what is lua_State
+
+
+
+
+## idea
+
+
+阅读的顺序是重要的，提纲挈领
