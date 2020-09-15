@@ -54,3 +54,19 @@ https://github.com/italomaia/read-lua-source-code
 
 
 阅读的顺序是重要的，提纲挈领
+
+
+查看 bytecode 和 source code 的联系
+luac -l
+
+
+
+https://www.zhihu.com/question/20617406
+
+http://mosswang.com/tags/Lua/
+
+https://jin-yang.github.io/post/lua-sourcecode.html
+
+https://github.com/lichuang/Lua-Source-Internal
+
+https://blog.csdn.net/yuanlin2008/category_1307277.html
