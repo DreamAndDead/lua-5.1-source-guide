@@ -1,14 +1,3 @@
 #!/usr/bin/env bash
 
-
-usage() {
-    echo "$0"
-}
-
-usage
-
-pushd lua-5.1.5/
-
-make linux
-
-popd
+g++ -g -I$(pwd)/install/include -I$(pwd)/install/lib -llua -ldl -lm -o test.out test/test.cpp $(pwd)/install/lib/liblua.a

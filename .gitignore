@@ -1,11 +1,11 @@
 *.o
 *.a
+*.out
 
 lua-5.1.5/src/lua
 lua-5.1.5/src/luac
 
-local/
-
+install/
 
 GPATH
 GTAGS
