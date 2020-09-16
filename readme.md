@@ -80,7 +80,6 @@ https://github.com/mkottman/lua-gdb-helper
 https://stackoverflow.com/questions/8528503/how-can-i-get-the-lua-stack-trace-from-a-core-file-using-gdb
 
 
-
 ## how to debug
 
 CFLAGS -> -g -O0
