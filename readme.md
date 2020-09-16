@@ -91,3 +91,6 @@ make echo check
 https://stackoverflow.com/questions/8528503/how-can-i-get-the-lua-stack-trace-from-a-core-file-using-gdb
 
 https://zeux.io/2010/11/07/lua-callstack-with-c-debugger/
+
+
+http://lua-users.org/wiki/SimpleLuaApiExample
