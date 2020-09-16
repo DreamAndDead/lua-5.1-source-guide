@@ -1,7 +1,8 @@
 *.o
 *.a
-src/lua
-src/luac
+
+lua-5.1.5/src/lua
+lua-5.1.5/src/luac
 
 local/
 
