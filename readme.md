@@ -96,6 +96,7 @@ http://lua-users.org/wiki/SimpleLuaApiExample
 
 ## step
 
+- luaState
 - basic data structure
 - parse -> compile -> bytecode -> vm run
 - gc
