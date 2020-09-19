@@ -51,7 +51,6 @@ main(void)
 
     luaL_openlibs(L); /* Load Lua libraries */
 
-    /* Load the file containing the script we are going to run */
     status = luaL_loadfile(L, "script.lua");
     if (status) {
         /* If something went wrong, error message is at the top of */
@@ -104,6 +103,8 @@ main(void)
     printf("Script returned: %.0f\n", sum);
 
     lua_pop(L, 1);  /* Take the returned value out of the stack */
+
+
     lua_close(L);   /* Cya, Lua */
 
     return 0;
