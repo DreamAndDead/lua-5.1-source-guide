@@ -45,10 +45,6 @@ https://github.com/italomaia/read-lua-source-code
 
 ## questions
 
-- what is lua_State
-
-
-
 
 ## idea
 
@@ -73,6 +69,9 @@ https://blog.csdn.net/yuanlin2008/category_1307277.html
 
 
 
+
+
+
 tools
 
 https://github.com/mkottman/lua-gdb-helper
@@ -85,7 +84,6 @@ https://stackoverflow.com/questions/8528503/how-can-i-get-the-lua-stack-trace-fr
 CFLAGS -> -g -O0
 make echo check
 
-
 https://stackoverflow.com/questions/8528503/how-can-i-get-the-lua-stack-trace-from-a-core-file-using-gdb
 
 https://zeux.io/2010/11/07/lua-callstack-with-c-debugger/
@@ -94,7 +92,23 @@ http://lua-users.org/wiki/SimpleLuaApiExample
 
 
 
+
+```
+$ ./install/bin/luac -l test/test.lua
+
+main <test/test.lua:0,0> (5 instructions, 20 bytes at 0x556a47004860)
+0+ params, 3 slots, 0 upvalues, 1 local, 2 constants, 0 functions
+        1       [1]     LOADK           0 -1    ; 1
+        2       [2]     GETGLOBAL       1 -2    ; print
+        3       [2]     MOVE            2 0
+        4       [2]     CALL            1 2 1
+        5       [2]     RETURN          0 1
+```
+
+
 ## step
+
+
 
 - luaState
 - basic data structure
@@ -102,3 +116,14 @@ http://lua-users.org/wiki/SimpleLuaApiExample
 - gc
 - debug
 - c api
+
+
+## framework
+
+
+    parse      execute
+source -> bytecode -> vm
+
+
+
+
