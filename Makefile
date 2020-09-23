@@ -6,4 +6,8 @@ test:
 spy:
 	$(CURDIR)/install/bin/lua $(CURDIR)/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --interact
 
+
+lua:
+	(cd lua-5.1.5; make linux clean; make linux; make install; cd ..)
+
 .PHONY:	test
