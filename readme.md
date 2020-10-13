@@ -108,11 +108,11 @@ main <test/test.lua:0,0> (5 instructions, 20 bytes at 0x556a47004860)
 
 ## step
 
+- parse -> compile -> bytecode -> vm run
 
 
 - luaState
 - basic data structure
-- parse -> compile -> bytecode -> vm run
 - gc
 - debug
 - c api
