@@ -9,7 +9,7 @@ lua:
 	(cd lua-5.1.5; make linux clean; make linux; make install; cd ..)
 
 tags:
-	gtags .
+	gtags -C lua-5.1.5/ .
 
 hex:
 	xxd luac.out
