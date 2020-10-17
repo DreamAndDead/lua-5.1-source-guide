@@ -79,9 +79,16 @@ https://github.com/mkottman/lua-gdb-helper
 https://stackoverflow.com/questions/8528503/how-can-i-get-the-lua-stack-trace-from-a-core-file-using-gdb
 
 
+
+lua lexical analyzer
+
+https://github.com/LoganDark/lua-lexer
+
+
 ## how to debug
 
-CFLAGS -> -g -O0
+CFLAGS -> -ggdb3 -O0  (debug macros)
+
 make echo check
 
 https://stackoverflow.com/questions/8528503/how-can-i-get-the-lua-stack-trace-from-a-core-file-using-gdb
@@ -115,7 +122,13 @@ main <test/test.lua:0,0> (5 instructions, 20 bytes at 0x556a47004860)
 - basic data structure
 - gc
 - debug
-- c api
+- how to integrate with c
+
+
+|prefix|module|
+|:-:|:-:|
+|luaX|lex|
+
 
 
 ## framework
@@ -123,6 +136,9 @@ main <test/test.lua:0,0> (5 instructions, 20 bytes at 0x556a47004860)
 
     parse      execute
 source -> bytecode -> vm
+
+
+
 
 
 
