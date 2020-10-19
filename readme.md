@@ -80,9 +80,20 @@ https://stackoverflow.com/questions/8528503/how-can-i-get-the-lua-stack-trace-fr
 
 
 
-lua lexical analyzer
+### lua lexical analyzer
 
 https://github.com/LoganDark/lua-lexer
+
+how to use lua internal func to build a lexer?
+
+how to use flex to parse lua token?
+
+
+### parser
+
+EBNF 语法描述
+
+描述全都写在 lparser.c 的 function comment 中，after luaY_parser ?
 
 
 ## how to debug
