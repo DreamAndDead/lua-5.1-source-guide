@@ -1,8 +1,3 @@
-/*
-* lua.l - flex lexer for Lua 5.1
-* Copyright: Same as Lua
-*/
-
 %{
 #include "y.tab.h"
 %}
@@ -131,7 +126,7 @@ while          return TK_WHILE;
 
 <XLONGCOMMENT>
 {
-  "]]--"      BEGIN(0); return TK_LONGCOMMENT;
+  "--]]"      BEGIN(0); return TK_LONGCOMMENT;
   \n          yymore();
   \r          yymore();
   .           yymore();
@@ -144,7 +139,7 @@ int yywrap( ){return 1;}
 #ifdef YYMAIN
 
 #include <stdio.h>
-extern FILE*yyin,*yyout;
+extern FILE*yyin, *yyout;
 
 char* TokenName(int t)
 {
@@ -212,11 +207,11 @@ int main( int argc, char ** argv )
      if( tok == TK_WHITESPACE ) continue;
      fprintf( yyout, "%03d %-13.13s: %s\n", tok, TokenName(tok), yytext );
   }
-  if(yyin!=stdin)fclose(yyin);
-  if(yyout!=stdout)fclose(stdout);
+  if(yyin!=stdin) fclose(yyin);
+  if(yyout!=stdout) fclose(stdout);
+  
   return 0;
 }
 
 #endif
 
-/**/
