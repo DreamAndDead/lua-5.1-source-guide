@@ -96,6 +96,11 @@ EBNF 语法描述
 描述全都写在 lparser.c 的 function comment 中，after luaY_parser ?
 
 
+```
+chunk -> { stat [;] }
+stat -> 
+```
+
 ## how to debug
 
 CFLAGS -> -ggdb3 -O0  (debug macros)
@@ -139,7 +144,7 @@ main <test/test.lua:0,0> (5 instructions, 20 bytes at 0x556a47004860)
 |prefix|module|
 |:-:|:-:|
 |luaX|lex|
-
+|luaK|code|
 
 
 ## framework
