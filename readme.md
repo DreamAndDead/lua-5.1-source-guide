@@ -1,6 +1,5 @@
 # read lua source code
 
-
 https://www.reddit.com/r/programming/comments/63hth/ask_reddit_which_oss_codebases_out_there_are_so/c02pxbp/
 
 Recommended reading order:
@@ -48,14 +47,7 @@ https://github.com/italomaia/read-lua-source-code
 
 ## idea
 
-
 阅读的顺序是重要的，提纲挈领
-
-
-查看 bytecode 和 source code 的联系
-luac -l
-
-
 
 https://www.zhihu.com/question/20617406
 
@@ -66,8 +58,6 @@ https://jin-yang.github.io/post/lua-sourcecode.html
 https://github.com/lichuang/Lua-Source-Internal
 
 https://blog.csdn.net/yuanlin2008/category_1307277.html
-
-
 
 
 
@@ -115,7 +105,6 @@ http://lua-users.org/wiki/SimpleLuaApiExample
 
 
 
-
 ```
 $ ./install/bin/luac -l test/test.lua
 
@@ -131,30 +120,62 @@ main <test/test.lua:0,0> (5 instructions, 20 bytes at 0x556a47004860)
 
 ## step
 
-- parse -> compile -> bytecode -> vm run
-
-
-- luaState
-- basic data structure
+- lex -> parse -> bytecode -> vm run
+  - every feature
+  - every bytecode instruction
+  - how internal data structure support that
+  
 - gc
 - debug
 - how to integrate with c
+- module
 
+
+
+
+## features
+
+- 8 basic types
+  - nil
+  - bool
+  - number
+  - string
+  - function
+  - table
+    - metatable
+  - thread
+  - userdata
+
+- function def
+- function call
+  - lexical scoping? static or dynamic?
+  - closure and upvalue
+  
+- coroutine
+  - semi or symmetric
+  
+- if else
+- while
+- for
+
+- local
+- global
+
+- assignment
+- uniop
+- binop
+
+
+- dofile, loadfile, load
+
+
+
+## prefix
 
 |prefix|module|
 |:-:|:-:|
 |luaX|lex|
 |luaK|code|
-
-
-## framework
-
-
-    parse      execute
-source -> bytecode -> vm
-
-
-
 
 
 
