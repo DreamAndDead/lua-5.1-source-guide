@@ -1631,8 +1631,8 @@ function ChunkSpy(chunk_name, chunk)
     FormatLine(1, "numparams ("..func.numparams..")", pos + 1)
     FormatLine(1, "is_vararg ("..func.is_vararg..")", pos + 2)
     FormatLine(1, "maxstacksize ("..func.maxstacksize..")", pos + 3)
-    BriefLine(string.format("; %d upvalues, %d params, %d stacks",
-      func.nups, func.numparams, func.maxstacksize))
+    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",
+      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
     BriefLine(string.format(".function%s%d %d %d %d", config.DISPLAY_SEP,
       func.nups, func.numparams, func.is_vararg, func.maxstacksize))
 

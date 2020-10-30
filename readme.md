@@ -118,20 +118,116 @@ main <test/test.lua:0,0> (5 instructions, 20 bytes at 0x556a47004860)
 ```
 
 
+
+
+## modify
+
+makefile -m32
+
+
+chunkspy, add is_vararg
+
+```
++    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",
++      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+```
+
 ## step
 
-- lex -> parse -> bytecode -> vm run
-  - every feature
-  - every bytecode instruction
-  - how internal data structure support that
-  
+- front end
+  - lex -> parse -> bytecode
+- back end
+  - vm run
+  - c api
+
 - gc
 - debug
-- how to integrate with c
-- module
 
 
 
+### data structure
+
+```c
+struct LexState {
+    int current;              // 当前 token 之后，在代码中，下一个即将读入的字符
+    int linenumber;           // 当前 token 所处的源代码行号
+    int lastline;             // 上一个 token 所处的源代码行号
+    Token t;                  // 当前 token
+    Token lookahead;          // 下一个 token
+    struct FuncState *fs;     // 当前的 FuncState
+    struct lua_State *L;      // 当前 lua_State
+    ZIO *z;                   // 源代码输入流的封装
+    Mbuffer *buff;            // 临时存储 token 的地方？
+    TString *source;          // 源代码的文件名
+    char decpoint;            // 小数点的格式？国际化？
+}
+```
+
+
+
+### frontend
+
+global assignment
+
+```lua
+a = 1
+```
+
+```
+; source chunk: (interactive mode)
+; x86 standard (32-bit, little endian, doubles)
+
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.const  "a"  ; 0
+.const  4  ; 1
+[1] loadk      0   1        ; 4
+[2] setglobal  0   0        ; a
+[3] return     0   1      
+; end of function
+```
+
+```
+#0  singlevar (ls=0xffffab64, var=0xffffaab8) at lparser.c:249
+#1  0x56564e50 in prefixexp (ls=0xffffab64, v=0xffffaab8) at lparser.c:679
+#2  0x56564eab in primaryexp (ls=0xffffab64, v=0xffffaab8) at lparser.c:694
+#3  0x565665a1 in exprstat (ls=0xffffab64) at lparser.c:1228
+#4  0x565668f1 in statement (ls=0xffffab64) at lparser.c:1318
+#5  0x5656692d in chunk (ls=0xffffab64) at lparser.c:1330
+```
+
+
+ref global
+
+
+local assignment
+
+
+ref local
+
+
+8 basic type
+nil
+bool
+number
+string
+table
+function
+thread
+userdata
+
+
+multi var assignment
+
+```lua
+```
+
+```lua
+```
+
+
+### backend
 
 ## features
 
