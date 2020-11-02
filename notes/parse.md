@@ -242,14 +242,27 @@ from fs->nactvar -> 0，对比 varname
 local a = 10
 ```
 
-将 10 存入 k 表，将 "a" 存入 k 表，locvars 表中。（10 是值，可以直接引用；a 是符号，需要一层解析，才可得到值）
+将 10 存入 k 表，将 a 存入 locvars 表中（其中存储了名字 "a"）。
 使用 loadk 指令，将 k 中的 10 加载入 reg 中。
+
+
+
+如果是
+
+```lua
+a = 1
+```
+
+则直接将名字 "a" 和 1 都保存在 k 表。
+
+需要通过 "a" 来索引全局变量。这一点和 local var 完全不同。
+
 
 
 
 通过 numberK 和 stringK 方法
 
-
+每个 function 都有一个 k 表，而且可以去重存储。
 
 
 

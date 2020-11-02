@@ -5,16 +5,16 @@ test:
 spy:
 	$(CURDIR)/install/bin/lua $(CURDIR)/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --interact
 
+inspect:
+	$(CURDIR)/install/bin/lua $(CURDIR)/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --brief --source $(source)
+
 lua:
 	(cd lua-5.1.5; make linux clean; make linux; make install; cd ..)
 
+compile:
+	$(CURDIR)/install/bin/luac $(source)
+
 hex:
 	xxd luac.out
-
-compile:
-	$(CURDIR)/install/bin/luac test/compile.lua
-
-inspect:
-	$(CURDIR)/install/bin/lua $(CURDIR)/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --source test/compile.lua
 
 .PHONY:	test
