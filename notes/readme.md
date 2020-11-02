@@ -1,5 +1,22 @@
 # read lua source code
 
+
+## 目标
+
+这本书的目标是
+- 将 lua 的内部过程完全讲清楚，清晰且易懂
+  - 核心以图解的方式
+  - 关键数据结构
+  - 表格罗列所有情况，比如 token 值
+
+
+
+
+
+
+
+## suggestion
+
 https://www.reddit.com/r/programming/comments/63hth/ask_reddit_which_oss_codebases_out_there_are_so/c02pxbp/
 
 Recommended reading order:
@@ -145,86 +162,7 @@ chunkspy, add is_vararg
 
 
 
-### data structure
 
-```c
-struct LexState {
-    int current;              // 当前 token 之后，在代码中，下一个即将读入的字符
-    int linenumber;           // 当前 token 所处的源代码行号
-    int lastline;             // 上一个 token 所处的源代码行号
-    Token t;                  // 当前 token
-    Token lookahead;          // 下一个 token
-    struct FuncState *fs;     // 当前的 FuncState
-    struct lua_State *L;      // 当前 lua_State
-    ZIO *z;                   // 源代码输入流的封装
-    Mbuffer *buff;            // 临时存储 token 的地方？
-    TString *source;          // 源代码的文件名
-    char decpoint;            // 小数点的格式？国际化？
-}
-```
-
-
-
-### frontend
-
-global assignment
-
-```lua
-a = 1
-```
-
-```
-; source chunk: (interactive mode)
-; x86 standard (32-bit, little endian, doubles)
-
-; function [0] definition (level 1)
-; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
-.function  0 0 2 2
-.const  "a"  ; 0
-.const  4  ; 1
-[1] loadk      0   1        ; 4
-[2] setglobal  0   0        ; a
-[3] return     0   1      
-; end of function
-```
-
-```
-#0  singlevar (ls=0xffffab64, var=0xffffaab8) at lparser.c:249
-#1  0x56564e50 in prefixexp (ls=0xffffab64, v=0xffffaab8) at lparser.c:679
-#2  0x56564eab in primaryexp (ls=0xffffab64, v=0xffffaab8) at lparser.c:694
-#3  0x565665a1 in exprstat (ls=0xffffab64) at lparser.c:1228
-#4  0x565668f1 in statement (ls=0xffffab64) at lparser.c:1318
-#5  0x5656692d in chunk (ls=0xffffab64) at lparser.c:1330
-```
-
-
-ref global
-
-
-local assignment
-
-
-ref local
-
-
-8 basic type
-nil
-bool
-number
-string
-table
-function
-thread
-userdata
-
-
-multi var assignment
-
-```lua
-```
-
-```lua
-```
 
 
 ### backend
