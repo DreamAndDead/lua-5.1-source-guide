@@ -1,21 +1,29 @@
+# debug lua source helpers
 
-define test
-  if $argc == 0
-    help test
+
+
+
+
+define llexstate
+  if $argc > 1
+    help lexstate
+  elseif $argc == 1
+    set $ls = $arg0
   else
-    if $argc == 1
-      set $o = $arg1
-    end
-
-    printf "$o"
-
+    set $ls = ls
   end
+
+  printf "current: '%c'\n", $ls->current
+  printf "linenumber: %d\n", $ls->linenumber
+  printf "lastline: %d\n", $ls->lastline
 end
 
-document test
-test
-just output test things
+document llexstate
+lexstate [ls]
+output lexstate in human readable way
 end
+
+
 
 define luaprinttable
 	if $argc != 1
