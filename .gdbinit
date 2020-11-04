@@ -1,24 +1,20 @@
-# Lua GDB Helpers
-# Copyright (c) 2010 Michal Kottman
-# License: MIT
 
-define luavalue
-	if $argc == 0
-		help luavalue
-	else
-		if $argc == 2
-			set $L = $arg1
-		else
-			set $L = L
-		end
-		set $obj = index2adr($L, $arg0)
-	end
+define test
+  if $argc == 0
+    help test
+  else
+    if $argc == 1
+      set $o = $arg1
+    end
+
+    printf "$o"
+
+  end
 end
-document luavalue
-	luavalue <index> [L]
-	Provides a pointer to a TValue from a stack index. By default, uses the current variable
-	L as a lua_State pointer, but can be specified as the second argument. The return value
-	is passed in variable $obj.
+
+document test
+test
+just output test things
 end
 
 define luaprinttable
