@@ -1,10 +1,16 @@
+set script-extension soft
 set print pretty on
 set print array on
 
-source helper.gdbs
 
-break chunk
 
-run
+# source helper.gdbs
+
+source helper.py
+
+break assignment
+
+run opcode/move.lua
 
 list
+

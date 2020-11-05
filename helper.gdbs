@@ -1,5 +1,16 @@
 # debug lua source helpers
 
+define now
+  where
+  info args
+  info locals
+end
+
+document now
+now
+where are you now
+end
+
 
 define llexstate
   if $argc > 1
@@ -95,6 +106,26 @@ end
 
 document lfuncstate
 lfuncstate
+end
+
+
+
+define lproto
+  if $argc != 1
+    help lproto
+  else
+    # commonHeader
+    # code
+    # **p
+    # lineinfo
+    # locvars
+    
+  end
+  
+end
+
+document lproto
+lproto
 end
 
 
