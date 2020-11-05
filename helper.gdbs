@@ -11,11 +11,11 @@ define llexstate
       set $ls = ls
     end
 
-    printf "current\t\t'%c'\n", $ls->current
-    printf "linenumber\t%d\n", $ls->linenumber
-    printf "lastline\t%d\n", $ls->lastline
+    printf "%-20s '%c'\n", "current", $ls->current
+    printf "%-20s %d\n", "linenumber", $ls->linenumber
+    printf "%-20s %d\n", "lastline", $ls->lastline
 
-    ltoken $ls $ls->t "t\t"
+    ltoken $ls $ls->t "t"
     ltoken $ls $ls->lookahead "lookahead"
 
     # fs
@@ -23,8 +23,8 @@ define llexstate
     # zio z
     # mbuffer buff
 
-    printf "source\t\t%s\n", getstr($ls->source)
-    printf "decpoint\t'%c'\n", $ls->decpoint
+    printf "%-20s %s\n", "source", getstr($ls->source)
+    printf "%-20s '%c'\n", "decpoint", $ls->decpoint
   end
 end
 
@@ -45,7 +45,7 @@ define ltoken
 
     set $i = $t.token - FIRST_RESERVED
 
-    printf "%s\t%s ", $key, luaX_token2str($ls, $t.token)
+    printf "%-20s %s ", $key, luaX_token2str($ls, $t.token)
 
     if $t.token == TK_NAME || $t.token == TK_STRING
       printf "%s", getstr($t.seminfo.ts)
@@ -69,24 +69,25 @@ define lfuncstate
   if $argc != 1
     help lfuncstate
   else
-    set $fs = $arg0
+    set $funcstate = $arg0
 
     # proto f
     # table h
+    
     # prev
     # ls
     # L
     # blockcnt bl
 
-    # pc
-    
-    # lasttarget
-    # jpc
-    # freereg
-    # nk
-    # np
-    # nlocvars
-    # nactvar
+    printf "%-20s %d\n", "pc", $funcstate->pc
+    printf "%-20s %d\n", "lasttarget", $funcstate->lasttarget
+    printf "%-20s %d\n", "jpc", $funcstate->jpc
+    printf "%-20s %d\n", "nk", $funcstate->nk
+    printf "%-20s %d\n", "np", $funcstate->np
+    printf "%-20s %d\n", "nlocvars", $funcstate->nlocvars
+    printf "%-20s %d\n", "nactvar", $funcstate->nactvar
+
+    # loop print these
     # upvalues
     # actvar
   end
