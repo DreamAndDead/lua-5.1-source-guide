@@ -17,21 +17,39 @@ class LexStatePrinter:
         self.ls = val
         self.ls_ref = val.address.cast(val.type.pointer())
 
+    def get_current(self, cur):
+        if cur == -1:
+            return 'EOF'
+        else:
+            return f"'{chr(cur)}'"
+
+    def get_tstring(self, ts):
+        const_char_ptr = gdb.lookup_type("char").const().pointer()
+        return (ts + 1).cast(const_char_ptr).string()
+
     def get_token(self, token):
         token2str = gdb.parse_and_eval('luaX_token2str')
+        indicator = token2str(self.ls_ref, token['token']).string()
 
-        print(self.ls_ref, token)
+        TK_NAME = gdb.parse_and_eval('TK_NAME')
+        TK_STRING = gdb.parse_and_eval('TK_STRING')
+        TK_NUMBER = gdb.parse_and_eval('TK_NUMBER')
+        getstr = gdb.parse_and_eval('getstr')
+
+        content = ''
+        if token['token'] == TK_NAME or token['token'] == TK_STRING:
+            content = self.get_tstring(token['seminfo']['ts'])
+        elif token['token'] == TK_NUMBER:
+            content = str(token['seminfo']['r'])
         
-        t = token2str(self.ls_ref, token['token'])
-
-        return t.string()
+        return indicator + ' ' + content
 
     def to_string(self):
         table = []
         table.append(['key', 'val', 'desc'])
 
         table.append(['current',
-                      f"\'{chr(self.ls['current'])}\'",
+                      self.get_current(self.ls['current']),
                       'next char after current token'])
         
         table.append(['linenumber',
@@ -42,10 +60,13 @@ class LexStatePrinter:
                       self.ls['lastline'],
                       'line number where last token lives'])
 
-
         table.append(['t',
                       self.get_token(self.ls['t']),
                       'current token'])
+        
+        table.append(['lookahead',
+                      self.get_token(self.ls['lookahead']),
+                      'next token'])
         
         return "LexState \n" + tabulate(table, headers='firstrow', tablefmt='fancy_grid')
 

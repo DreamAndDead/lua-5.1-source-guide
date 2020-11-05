@@ -8,7 +8,7 @@ set print array on
 
 source helper.py
 
-break assignment
+break statement
 
 run opcode/move.lua
 
