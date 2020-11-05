@@ -18,4 +18,7 @@ compile:
 hex:
 	xxd luac.out
 
+debug:
+	gdb -x init.gdbs --args ./lua-5.1.5/src/lua opcode/move.lua
+
 .PHONY:	test

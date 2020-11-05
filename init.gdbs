@@ -1,0 +1,10 @@
+set print pretty on
+set print array on
+
+source helper.gdbs
+
+break chunk
+
+run
+
+list
