@@ -10,7 +10,9 @@ source helper.py
 
 break statement
 
-run opcode/move.lua
+# run opcode/move.lua
+
+run opcode/add.lua
 
 list
 
