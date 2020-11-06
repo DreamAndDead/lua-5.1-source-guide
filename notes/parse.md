@@ -182,6 +182,16 @@ lexical scoping 和 syntax scoping 的区别？
 
 
 
+fs->f->sizek 和 fs->nk 是有区别的
+
+nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
+
+如 length 和 capacity 的区别
+
+当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
+
+
+
 
 
 
