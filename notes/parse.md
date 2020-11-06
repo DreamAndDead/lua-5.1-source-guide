@@ -84,7 +84,7 @@ move a b
 ```c
 typedef struct FuncState {
   Proto *f;                              // 存储生成的 bytecode
-  Table *h;                              // k 表？
+  Table *h;                              // global 表？
   struct FuncState *prev;                // 函数闭包的上层，同为 FuncState，仅在编译期存在
   struct LexState *ls;                   // 指向 LexState，获取 token
   struct lua_State *L;                   // lua_State，作用？
