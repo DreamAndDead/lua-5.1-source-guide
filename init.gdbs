@@ -4,8 +4,21 @@ set print pretty on
 set print array on
 
 
+define now
+  where
+  info args
+  info locals
+end
 
-# source helper.gdbs
+document now
+now
+where are you now
+end
+
+
+
+
+
 
 source helper.py
 
@@ -14,6 +27,4 @@ break statement
 # run opcode/move.lua
 
 run opcode/add.lua
-
-list
 

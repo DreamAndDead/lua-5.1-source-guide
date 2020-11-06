@@ -4,6 +4,8 @@ from gdb.printing import register_pretty_printer
 import gdb
 from tabulate import tabulate
 
+TABLE_STYLE = 'rst'
+
 
 class TStringPrinter:
     def __init__(self, val_ref):
@@ -43,7 +45,7 @@ class ProtoPrinter:
             ['lastlinedefined', self.f['lastlinedefined'], 'line end'],
         ]
         return f"Proto {self.f_ref} \n" + \
-            tabulate(table, headers="firstrow", tablefmt='fancy_grid')
+            tabulate(table, tablefmt=TABLE_STYLE)
 
 
 class FuncStatePrinter:
@@ -82,7 +84,7 @@ class FuncStatePrinter:
             ['upvalues', '[]', 'upvalues? empty for now'],
         ]
 
-        return f"FuncState {self.fs_ref} \n" + tabulate(table, headers='firstrow', tablefmt='fancy_grid')
+        return f"FuncState {self.fs_ref} \n" + tabulate(table, tablefmt=TABLE_STYLE)
 
 
 class LexStatePrinter:
@@ -145,8 +147,7 @@ class LexStatePrinter:
             #  'locale decimal point'],
         ]
 
-        return f"LexState {self.ls.address}\n" + \
-            tabulate(table, headers='firstrow', tablefmt='fancy_grid')
+        return f"LexState {self.ls.address}\n" + tabulate(table, tablefmt=TABLE_STYLE)
 
 
 class CustomPrettyPrinterLocator(PrettyPrinter):
