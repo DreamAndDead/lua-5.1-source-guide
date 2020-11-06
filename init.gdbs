@@ -22,9 +22,7 @@ end
 
 source helper.py
 
-break statement
+break localstat
 
-# run opcode/move.lua
-
-run opcode/add.lua
+run opcode/move.lua
 

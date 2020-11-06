@@ -3,6 +3,9 @@
 
 
 
+
+
+
 lua 中的 parse 过程使用 lazy 加载 token 的方式
 
 
@@ -194,8 +197,27 @@ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是�
 
 
 
+EBNF
 
-### frontend
+```
+chunk -> { stat [ `;' ] }
+stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat
+
+
+
+
+
+localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
+```
+
+
+
+
+## opcode
+
+### move
+
+### ...
 
 #### global assignment
 

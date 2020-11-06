@@ -19,6 +19,6 @@ hex:
 	xxd luac.out
 
 debug:
-	cgdb -x init.gdbs ./lua-5.1.5/src/lua
+	gdb -x init.gdbs ./lua-5.1.5/src/lua
 
 .PHONY:	test

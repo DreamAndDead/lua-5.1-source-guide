@@ -20,24 +20,41 @@ class ProtoPrinter:
     def __init__(self, val):
         self.f = val
         self.f_ref = val.address
+        self.fs = None
+        self.fs_ref = None
+
+    def set_fs(self, fs):
+        self.fs = fs
+        self.fs_ref = fs.address
+        return self
+
+    def get_locvars(self):
+        locvars = self.f['locvars']
+        n = self.fs['nlocvars'] if self.fs else self.f['sizelocvars']
+
+        res = ""
+        for i in range(n):
+            res += TStringPrinter(locvars[i]['varname']).to_string() + ', '
+
+        return res
 
     def to_string(self):
         table = [
-            ['sizek', self.f['sizek'], 'size k'],
+            # ['sizek', self.f['sizek'], 'size k'],
             ['k', str(self.f['k']), 'k table'],
-            ['sizecode', self.f['sizecode'], 'size code'],
+            # ['sizecode', self.f['sizecode'], 'size code'],
             ['code', str(self.f['code']), 'code'],
-            ['sizep', self.f['sizep'], 'size p'],
+            # ['sizep', self.f['sizep'], 'size p'],
             ['p', str(self.f['p']), 'proto of closure functions'],
-            ['sizelineinfo', self.f['sizelineinfo'], 'size lineinfo'],
+            # ['sizelineinfo', self.f['sizelineinfo'], 'size lineinfo'],
             ['lineinfo', str(self.f['lineinfo']), 'opcode -> lineno map'],
-            ['sizelocvars', self.f['sizelocvars'], 'size locvars'],
-            ['locvars', str(self.f['locvars']), 'local vars'],
-            ['sizeupvalues', self.f['sizeupvalues'], 'size upvalues? vs nups?'],
+            # ['sizelocvars', self.f['sizelocvars'], 'size locvars'],
+            ['locvars', self.get_locvars(), 'local vars'],
+            # ['sizeupvalues', self.f['sizeupvalues'], 'size upvalues'],
             ['upvalues', str(self.f['upvalues']), 'upvalue names?'],
+            ['nups', self.f['nups'], 'upvalues number'],
             # ['source', TStringPrinter(self.f['source']).to_string(), 'source name'],
             # ['gclist', str(self.f['gclist']), 'gc list start'],
-            ['nups', self.f['nups'], 'upvalues number'],
             ['numparams', self.f['numparams'], 'param number'],
             ['is_vararg', self.f['is_vararg'], 'is vararg?'],
             ['maxstacksize', self.f['maxstacksize'], 'max stack size'],
@@ -65,7 +82,6 @@ class FuncStatePrinter:
 
     def to_string(self):
         table = [
-            ['f', str(self.fs['f']), 'proto pointer'],
             ['h', str(self.fs['h']), 'global table?'],
             ['prev', str(self.fs['prev']), 'enclosing FuncState *'],
             ['ls', str(self.fs['ls']), 'LexState *'],
@@ -84,7 +100,10 @@ class FuncStatePrinter:
             ['upvalues', '[]', 'upvalues? empty for now'],
         ]
 
-        return f"FuncState {self.fs_ref} \n" + tabulate(table, tablefmt=TABLE_STYLE)
+        f = ProtoPrinter(self.fs['f']).set_fs(self.fs).to_string()
+
+        return f"FuncState {self.fs_ref} \n" +\
+            tabulate(table, tablefmt=TABLE_STYLE) + "\n" + f
 
 
 class LexStatePrinter:
@@ -147,7 +166,8 @@ class LexStatePrinter:
             #  'locale decimal point'],
         ]
 
-        return f"LexState {self.ls.address}\n" + tabulate(table, tablefmt=TABLE_STYLE)
+        return f"LexState {self.ls.address}\n" +\
+            tabulate(table, tablefmt=TABLE_STYLE)
 
 
 class CustomPrettyPrinterLocator(PrettyPrinter):
@@ -157,10 +177,13 @@ class CustomPrettyPrinterLocator(PrettyPrinter):
         )
 
     def __call__(self, val):
-        typename = gdb.types.get_basic_type(val.type).tag
+        typename = val.type.tag
 
         if typename is None:
             typename = val.type.name
+
+        if typename is None:
+            typename = str(val.type)
 
         if typename == "LexState":
             return LexStatePrinter(val)
@@ -168,6 +191,8 @@ class CustomPrettyPrinterLocator(PrettyPrinter):
             return FuncStatePrinter(val)
         elif typename == "Proto":
             return ProtoPrinter(val)
+        elif typename == "TString *":
+            return TStringPrinter(val)
 
 
 register_pretty_printer(None, CustomPrettyPrinterLocator(), replace=True)
