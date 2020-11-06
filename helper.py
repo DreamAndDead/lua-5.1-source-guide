@@ -82,6 +82,7 @@ class FuncStatePrinter:
 
     def to_string(self):
         table = [
+            # ['f', str(self.fs['f']), 'proto pointer'],
             ['h', str(self.fs['h']), 'global table?'],
             ['prev', str(self.fs['prev']), 'enclosing FuncState *'],
             ['ls', str(self.fs['ls']), 'LexState *'],
@@ -100,7 +101,7 @@ class FuncStatePrinter:
             ['upvalues', '[]', 'upvalues? empty for now'],
         ]
 
-        f = ProtoPrinter(self.fs['f']).set_fs(self.fs).to_string()
+        f = ProtoPrinter(self.fs['f'].dereference()).set_fs(self.fs).to_string()
 
         return f"FuncState {self.fs_ref} \n" +\
             tabulate(table, tablefmt=TABLE_STYLE) + "\n" + f
@@ -144,18 +145,12 @@ class LexStatePrinter:
             ['lastline',
              self.ls['lastline'],
              'line number where last token lives'],
-            ['t',
-             self.get_token(self.ls['t']),
-             'current token'],
+            ['t', self.get_token(self.ls['t']), 'current token'],
             ['lookahead',
              self.get_token(self.ls['lookahead']),
              'next token'],
-            ['fs',
-             str(self.ls['fs']),
-             'pointer to current FuncState'],
-            ['L',
-             str(self.ls['L']),
-             'pointer to lua_State'],
+            # ['fs', str(self.ls['fs']), 'pointer to current FuncState'],
+            ['L', str(self.ls['L']), 'pointer to lua_State'],
             # ['z', str(self.ls['z']), 'pointer to ZIO input stream'],
             # ['buff', str(self.ls['buff']), 'buffer for token'],
             # ['source',
@@ -167,7 +162,8 @@ class LexStatePrinter:
         ]
 
         return f"LexState {self.ls.address}\n" +\
-            tabulate(table, tablefmt=TABLE_STYLE)
+            tabulate(table, tablefmt=TABLE_STYLE) + "\n" +\
+            FuncStatePrinter(self.ls['fs'].dereference()).to_string()
 
 
 class CustomPrettyPrinterLocator(PrettyPrinter):
