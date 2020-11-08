@@ -205,9 +205,10 @@ stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localsta
 
 
 
-
-
 localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
+
+
+
 ```
 
 
