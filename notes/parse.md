@@ -175,7 +175,6 @@ a = 1
 
 
 
-
 lexical scoping 和 syntax scoping 的区别？
 影响闭包的实现。
 
@@ -197,6 +196,72 @@ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是�
 
 
 
+
+官方的描述
+
+ Here is the complete syntax of Lua in extended BNF. (It does not describe operator precedences.)
+
+```
+	chunk ::= {stat [`;´]} [laststat [`;´]]
+
+	block ::= chunk
+
+	stat ::=  varlist `=´ explist | 
+		 functioncall | 
+		 do block end | 
+		 while exp do block end | 
+		 repeat block until exp | 
+		 if exp then block {elseif exp then block} [else block] end | 
+		 for Name `=´ exp `,´ exp [`,´ exp] do block end | 
+		 for namelist in explist do block end | 
+		 function funcname funcbody | 
+		 local function Name funcbody | 
+		 local namelist [`=´ explist] 
+
+	laststat ::= return [explist] | break
+
+	funcname ::= Name {`.´ Name} [`:´ Name]
+
+	varlist ::= var {`,´ var}
+
+	var ::=  Name | prefixexp `[´ exp `]´ | prefixexp `.´ Name 
+
+	namelist ::= Name {`,´ Name}
+
+	explist ::= {exp `,´} exp
+
+	exp ::=  nil | false | true | Number | String | `...´ | function | 
+		 prefixexp | tableconstructor | exp binop exp | unop exp 
+
+	prefixexp ::= var | functioncall | `(´ exp `)´
+
+	functioncall ::=  prefixexp args | prefixexp `:´ Name args 
+
+	args ::=  `(´ [explist] `)´ | tableconstructor | String 
+
+	function ::= function funcbody
+
+	funcbody ::= `(´ [parlist] `)´ block end
+
+	parlist ::= namelist [`,´ `...´] | `...´
+
+	tableconstructor ::= `{´ [fieldlist] `}´
+
+	fieldlist ::= field {fieldsep field} [fieldsep]
+
+	field ::= `[´ exp `]´ `=´ exp | Name `=´ exp | exp
+
+	fieldsep ::= `,´ | `;´
+
+	binop ::= `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ | 
+		 `<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
+		 and | or
+
+	unop ::= `-´ | not | `#´
+```
+
+
+
 EBNF
 
 ```
@@ -208,6 +273,32 @@ stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localsta
 
 
 localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
+
+
+
+# exprstat -> primaryexp
+# primaryexp -> prefixexp {`.' NAME | `[' expr `]' | : NAME funcargs | funcargs }
+
+
+
+exprstat -> primaryexp
+primaryexp -> functioncall | assignstat
+functioncall -> prefixexp {: NAME funcargs | funcargs }
+assignstat -> prefixexp {`.' NAME | `[' expr `]'} assignment
+
+
+prefixexp -> NAME | `(' expr `)'
+
+assignment -> `,' primaryexp assignment | `=' explist1
+
+
+explist1 -> expr {`,' expr}
+expr -> subexpr
+subexpr -> (simpleexp | unop subexpr) {binop subexpr}
+simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
+
+
+
 ```
 
 
@@ -217,7 +308,33 @@ localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
 
 ### move
 
-### ...
+move code 发生在 assignment 环节
+
+在这里要进行值的迁移
+
+
+luaK_storevar 生成了 move 指令
+
+exp2reg?
+
+对于赋值，= 后是 exp，前是存储空间
+
+后面的 exp 要经过解析，才能向前赋值
+
+
+### loadnil
+
+luaK_nil
+
+
+### loadk
+
+
+
+### loadbool
+
+
+
 
 #### global assignment
 

@@ -4,25 +4,10 @@ set print pretty on
 set print array on
 
 
-define now
-  where
-  info args
-  info locals
-end
-
-document now
-now
-where are you now
-end
-
-
-
-
-
 
 source helper.py
 
-break localstat
+break statement
 
-run opcode/move.lua
+run opcode/loadbool.lua
 

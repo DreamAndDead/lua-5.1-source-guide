@@ -1,4 +1,4 @@
 -- loadk A Bx
 -- R(A) := Kst[Bx]
 
-local a, b = 10, 10
+local a, b = 10, 20
