@@ -272,6 +272,7 @@ stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localsta
 
 
 
+
 localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
 
 
@@ -296,8 +297,6 @@ explist1 -> expr {`,' expr}
 expr -> subexpr
 subexpr -> (simpleexp | unop subexpr) {binop subexpr}
 simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
-
-
 
 ```
 
