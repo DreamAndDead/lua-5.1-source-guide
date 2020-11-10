@@ -9,5 +9,5 @@ source helper.py
 
 break statement
 
-run opcode/move.lua
+run opcode/settable.lua
 

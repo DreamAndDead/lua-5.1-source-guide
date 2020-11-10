@@ -268,19 +268,7 @@ EBNF
 chunk -> { stat [ `;' ] }
 stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat
 
-
-
-
-
-
 localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
-
-
-
-# exprstat -> primaryexp
-# primaryexp -> prefixexp {`.' NAME | `[' expr `]' | : NAME funcargs | funcargs }
-
-
 
 exprstat -> primaryexp
 primaryexp -> functioncall | assignstat
@@ -297,6 +285,18 @@ explist1 -> expr {`,' expr}
 expr -> subexpr
 subexpr -> (simpleexp | unop subexpr) {binop subexpr}
 simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
+
+
+constructor -> `{' [fieldlist] `}'
+fieldlist -> field {fieldsep field} [fieldsep]
+field -> `[' exp `]' `=' exp | name `=' exp | exp
+fieldsep -> `,' | `;'
+
+
+
+
+funcstat -> FUNCTION funcname body
+
 
 ```
 
