@@ -1,10 +1,32 @@
 from gdb.printing import PrettyPrinter
 from gdb.printing import register_pretty_printer
-
 import gdb
 from tabulate import tabulate
 
-TABLE_STYLE = 'rst'
+
+TABLE_STYLE = 'simple'
+
+
+class TValuePrinter:
+    def __init__(self, val):
+        self.val = val
+        self.val_ref = val.address
+
+    def to_string(self):
+        t = self.val['tt']
+        v = self.val['value']
+
+        if t == gdb.parse_and_eval("LUA_TNIL"):
+            return "nil"
+        elif t == gdb.parse_and_eval("LUA_TNUMBER"):
+            return f"{v['n']}"
+        elif t == gdb.parse_and_eval("LUA_TSTRING"):
+            return TStringPrinter(v['gc']['ts'].address).to_string()
+        elif t == gdb.parse_and_eval("LUA_TBOOLEAN"):
+            return "true" if v['b'] > 0 else "false"
+
+        # todo: the rest type
+        return "*"
 
 
 class TStringPrinter:
@@ -28,6 +50,16 @@ class ProtoPrinter:
         self.fs_ref = fs.address
         return self
 
+    def get_k(self):
+        k = self.f['k']
+        nk = self.fs['nk'] if self.fs else self.f['sizek']
+
+        res = ""
+        for i in range(nk):
+            res += TValuePrinter(k[i]).to_string() + ', '
+
+        return res
+
     def get_locvars(self):
         locvars = self.f['locvars']
         n = self.fs['nlocvars'] if self.fs else self.f['sizelocvars']
@@ -41,7 +73,7 @@ class ProtoPrinter:
     def to_string(self):
         table = [
             # ['sizek', self.f['sizek'], 'size k'],
-            ['k', str(self.f['k']), 'k table'],
+            ['k', self.get_k(), 'k table'],
             # ['sizecode', self.f['sizecode'], 'size code'],
             ['code', str(self.f['code']), 'code'],
             # ['sizep', self.f['sizep'], 'size p'],
@@ -192,3 +224,35 @@ class CustomPrettyPrinterLocator(PrettyPrinter):
 
 
 register_pretty_printer(None, CustomPrettyPrinterLocator(), replace=True)
+
+
+class LexStateCmd(gdb.Command):
+    def __init__(self):
+        super(LexStateCmd, self).__init__("llex", gdb.COMMAND_USER)
+
+    def complete(self, text, word):
+        return gdb.COMPLETE_SYMBOL
+
+    def invoke(self, args, from_tty):
+        gdb.execute("print *ls", from_tty, False)
+        print("Proto->code")
+        gdb.execute("call PrintCode(ls->fs->f)", from_tty, False)
+
+
+LexStateCmd()
+
+
+class FuncStateCmd(gdb.Command):
+    def __init__(self):
+        super(FuncStateCmd, self).__init__("lfunc", gdb.COMMAND_USER)
+
+    def complete(self, text, word):
+        return gdb.COMPLETE_SYMBOL
+
+    def invoke(self, args, from_tty):
+        gdb.execute("print *fs", from_tty, False)
+        print("Proto->code")
+        gdb.execute("call PrintCode(fs->f)", from_tty, False)
+
+
+FuncStateCmd()

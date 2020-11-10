@@ -30,7 +30,7 @@ LIB_O=	lauxlib.o lbaselib.o ldblib.o liolib.o lmathlib.o loslib.o ltablib.o \
 	lstrlib.o loadlib.o linit.o
 
 LUA_T=	lua
-LUA_O=	lua.o
+LUA_O=	lua.o print.o
 
 LUAC_T=	luac
 LUAC_O=	luac.o print.o

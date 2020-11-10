@@ -7,7 +7,9 @@ set print array on
 
 source helper.py
 
-break statement
+# break statement
+
+b lparser.c:1336
 
 run opcode/loadbool.lua
 

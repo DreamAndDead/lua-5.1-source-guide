@@ -332,6 +332,10 @@ luaK_nil
 
 ### loadbool
 
+对于 jmp 的生成过程还有疑问
+
+回填？ t f？
+
 
 
 
