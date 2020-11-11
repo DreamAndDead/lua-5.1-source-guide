@@ -7,9 +7,7 @@ set print array on
 
 source helper.py
 
-break statement
+break ifstat
 
-# run opcode/settable.lua
-
-run statement/if.lua
+run statement/ifelse.lua
 

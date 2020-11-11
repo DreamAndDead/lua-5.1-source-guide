@@ -234,9 +234,9 @@ class LexStateCmd(gdb.Command):
         return gdb.COMPLETE_SYMBOL
 
     def invoke(self, args, from_tty):
-        gdb.execute("print *ls", from_tty, False)
+        print(gdb.execute("print *ls", from_tty, True))
         print("Proto->code")
-        gdb.execute("call PrintCode(ls->fs->f)", from_tty, False)
+        print(gdb.execute("call PrintCode(ls->fs->f)", from_tty, True))
 
 
 LexStateCmd()
@@ -250,9 +250,9 @@ class FuncStateCmd(gdb.Command):
         return gdb.COMPLETE_SYMBOL
 
     def invoke(self, args, from_tty):
-        gdb.execute("print *fs", from_tty, False)
+        print(gdb.execute("print *fs", from_tty, True))
         print("Proto->code")
-        gdb.execute("call PrintCode(fs->f)", from_tty, False)
+        print(gdb.execute("call PrintCode(fs->f)", from_tty, True))
 
 
 FuncStateCmd()
