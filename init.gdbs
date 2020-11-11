@@ -9,5 +9,7 @@ source helper.py
 
 break statement
 
-run opcode/settable.lua
+# run opcode/settable.lua
+
+run statement/if.lua
 
