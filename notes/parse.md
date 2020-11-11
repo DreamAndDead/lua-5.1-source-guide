@@ -264,40 +264,73 @@ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是�
 
 EBNF
 
+
+
 ```
+{ a } 表示 a*，0 个或多个
+[ a ] 表示 a?，0 个或一个
+( a ) 表示一个
+| 表示或
+
+
 chunk -> { stat [ `;' ] }
+
 stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat
+
+ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+cond -> expr
+block -> chunk
+
+whilestat -> WHILE cond DO block END
+
+dostat -> DO block END
+
+forstat -> FOR (fornum | forlist) END
+fornum -> NAME = expr, expr[, expr] forbody
+forlist -> NAME {, NAME} IN explist1 forbody
+forbody -> DO block
+
+repeatstat -> REPEAT block UNTIL cond
+
+funcstat -> FUNCTION funcname body
+funcname -> NAME {field} [`:' NAME]
+body -> `(' parlist `)' chunk END
+parlist -> [ param {`,' param} ]
+param -> NAME | `...'
 
 localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
 
+retstat -> RETURN [explist1]
+
+breakstat -> BREAK
+
 exprstat -> primaryexp
 primaryexp -> functioncall | assignstat
-functioncall -> prefixexp {: NAME funcargs | funcargs }
-assignstat -> prefixexp {`.' NAME | `[' expr `]'} assignment
 
+functioncall -> prefixexp {`:' NAME funcargs | funcargs }         ?
+funcargs -> `(' explist1 `)' | constructor | STRING
 
+assignstat -> prefixexp {`.' NAME | `[' expr `]'} assignment      ?
 prefixexp -> NAME | `(' expr `)'
-
 assignment -> `,' primaryexp assignment | `=' explist1
 
 
 explist1 -> expr {`,' expr}
 expr -> subexpr
 subexpr -> (simpleexp | unop subexpr) {binop subexpr}
+
 simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
+binop -> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ | 
+	`<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
+	and | or
+unop -> `-´ | not | `#´
+
 
 
 constructor -> `{' [fieldlist] `}'
 fieldlist -> field {fieldsep field} [fieldsep]
 field -> `[' exp `]' `=' exp | name `=' exp | exp
 fieldsep -> `,' | `;'
-
-
-
-
-funcstat -> FUNCTION funcname body
-
-
 ```
 
 
