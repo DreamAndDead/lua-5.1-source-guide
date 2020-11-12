@@ -9,5 +9,5 @@ source helper.py
 
 break ifstat
 
-run statement/ifelse.lua
+run statement/ifelseif.lua
 

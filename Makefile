@@ -6,7 +6,7 @@ spy:
 	$(CURDIR)/install/bin/lua $(CURDIR)/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --interact
 
 inspect:
-	bat $(source)
+	cat -n $(source)
 	$(CURDIR)/install/bin/lua $(CURDIR)/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --brief --source $(source)
 
 lua:
