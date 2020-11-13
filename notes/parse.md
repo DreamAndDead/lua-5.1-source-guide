@@ -294,6 +294,7 @@ repeatstat -> REPEAT block UNTIL cond
 
 funcstat -> FUNCTION funcname body
 funcname -> NAME {field} [`:' NAME]
+field -> [`.' | `:'] NAME          # . can not appear after :
 body -> `(' parlist `)' chunk END
 parlist -> [ param {`,' param} ]
 param -> NAME | `...'

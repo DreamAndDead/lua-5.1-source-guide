@@ -58,7 +58,7 @@ class ProtoPrinter:
         for i in range(nk):
             res += TValuePrinter(k[i]).to_string() + ', '
 
-        return res
+        return f"[{res}]"
 
     def get_locvars(self):
         locvars = self.f['locvars']
@@ -68,6 +68,28 @@ class ProtoPrinter:
         for i in range(n):
             res += TStringPrinter(locvars[i]['varname']).to_string() + ', '
 
+        return f"[{res}]"
+
+    def get_upval(self):
+        arr = self.f['upvalues']
+        n = self.f['nups']
+
+        res = ""
+        for i in range(n):
+            e = arr[i]
+            res += TStringPrinter(e).to_string() + ', '
+
+        return f"[{res}]"
+
+    def get_p(self):
+        n = self.fs['np'] if self.fs else self.f['sizep']
+        arr = self.f['p']
+
+        res = ""
+        for i in range(n):
+            e = arr[i]
+            res += ProtoPrinter(e).to_string() + '\n\n'
+
         return res
 
     def to_string(self):
@@ -75,26 +97,27 @@ class ProtoPrinter:
             # ['sizek', self.f['sizek'], 'size k'],
             ['k', self.get_k(), 'k table'],
             # ['sizecode', self.f['sizecode'], 'size code'],
-            ['code', str(self.f['code']), 'code'],
+            # ['code', str(self.f['code']), 'code'],
             # ['sizep', self.f['sizep'], 'size p'],
-            ['p', str(self.f['p']), 'proto of closure functions'],
+            # ['p', str(self.f['p']), 'proto of closure functions'],
             # ['sizelineinfo', self.f['sizelineinfo'], 'size lineinfo'],
-            ['lineinfo', str(self.f['lineinfo']), 'opcode -> lineno map'],
+            # ['lineinfo', str(self.f['lineinfo']), 'opcode -> lineno map'],
             # ['sizelocvars', self.f['sizelocvars'], 'size locvars'],
             ['locvars', self.get_locvars(), 'local vars'],
             # ['sizeupvalues', self.f['sizeupvalues'], 'size upvalues'],
-            ['upvalues', str(self.f['upvalues']), 'upvalue names?'],
-            ['nups', self.f['nups'], 'upvalues number'],
+            ['upvalues', self.get_upval(), 'upvalue names'],
+            ['nups', int(self.f['nups']), 'upvalue number'],
             # ['source', TStringPrinter(self.f['source']).to_string(), 'source name'],
             # ['gclist', str(self.f['gclist']), 'gc list start'],
-            ['numparams', self.f['numparams'], 'param number'],
-            ['is_vararg', self.f['is_vararg'], 'is vararg?'],
-            ['maxstacksize', self.f['maxstacksize'], 'max stack size'],
-            ['linedefined', self.f['linedefined'], 'line start'],
-            ['lastlinedefined', self.f['lastlinedefined'], 'line end'],
+            ['numparams', int(self.f['numparams']), 'param number'],
+            ['is_vararg', int(self.f['is_vararg']), 'is vararg?'],
+            # ['maxstacksize', self.f['maxstacksize'], 'max stack size'],
+            # ['linedefined', self.f['linedefined'], 'line start'],
+            # ['lastlinedefined', self.f['lastlinedefined'], 'line end'],
         ]
         return f"Proto {self.f_ref} \n" + \
-            tabulate(table, tablefmt=TABLE_STYLE)
+            tabulate(table, tablefmt=TABLE_STYLE) + "\n" + \
+            "Proto->p \n" + self.get_p()
 
 
 class FuncStatePrinter:
@@ -112,25 +135,43 @@ class FuncStatePrinter:
 
         return f"[{res}]"
 
+    def get_upval(self):
+        n = self.fs['f'].dereference()['nups']
+        arr = self.fs['upvalues']
+
+        res = ""
+        for i in range(n):
+            e = arr[i]
+            k = e['k']
+
+            kind = 'unknown'
+            if k == gdb.parse_and_eval('VUPVAL'):
+                kind = 'upval'
+            elif k == gdb.parse_and_eval('VLOCAL'):
+                kind = 'local'
+
+            res += f"{kind} {int(e['info'])}" + ', '
+
+        return f"[{res}]"
+
     def to_string(self):
         table = [
             # ['f', str(self.fs['f']), 'proto pointer'],
-            ['h', str(self.fs['h']), 'global table?'],
+            # ['h', str(self.fs['h']), 'global table?'],
             ['prev', str(self.fs['prev']), 'enclosing FuncState *'],
-            ['ls', str(self.fs['ls']), 'LexState *'],
-            ['L', str(self.fs['L']), 'lua_State *'],
+            # ['ls', str(self.fs['ls']), 'LexState *'],
+            # ['L', str(self.fs['L']), 'lua_State *'],
             ['BlockCnt', str(self.fs['bl']), 'chain of blocks?'],
             ['pc', self.fs['pc'], 'next pos to save code (= ncode)'],
-            ['lasttarget', self.fs['lasttarget'], 'pc of last jump target'],
-            ['jpc', self.fs['jpc'], 'list of pendding jumps?'],
+            ['lasttarget', self.fs['lasttarget'], 'pc of last jump target?'],
+            ['jpc', self.fs['jpc'], 'list of pendding jumps'],
             ['freereg', self.fs['freereg'], 'first free register'],
             ['nk', self.fs['nk'], 'len fs->f->k'],
             ['np', self.fs['np'], 'len fs->f->p'],
             ['nlocvars', self.fs['nlocvars'], 'len fs->f->locvars'],
-            ['nactvar', self.fs['nactvar'], 'len fs->actvar'],
+            ['nactvar', int(self.fs['nactvar']), 'len fs->actvar'],
             ['actvar', self.get_actvar(), 'active local vars, save index to fs->f->locvars'],
-            # ['upvalues', str(self.fs['upvalues']), 'upvalues? empty for now'],
-            ['upvalues', '[]', 'upvalues? empty for now'],
+            ['upvalues', self.get_upval(), 'upvalue desc'],
         ]
 
         f = ProtoPrinter(self.fs['f'].dereference()).set_fs(self.fs).to_string()
@@ -250,9 +291,10 @@ class FuncStateCmd(gdb.Command):
         return gdb.COMPLETE_SYMBOL
 
     def invoke(self, args, from_tty):
-        print(gdb.execute("print *fs", from_tty, True))
+        fs = args if args else 'fs'
+        print(gdb.execute(f"print *({fs})", from_tty, True))
         print("Proto->code")
-        print(gdb.execute("call PrintCode(fs->f)", from_tty, True))
+        print(gdb.execute(f"call PrintCode(({fs})->f)", from_tty, True))
 
 
 FuncStateCmd()
