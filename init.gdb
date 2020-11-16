@@ -7,7 +7,7 @@ set print array on
 
 source helper.py
 
-b lparser.c:1273 if line == 9
+b statement
 
-run statement/upvalue.lua
+run statement/repeat.lua
 

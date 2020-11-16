@@ -275,9 +275,10 @@ class LexStateCmd(gdb.Command):
         return gdb.COMPLETE_SYMBOL
 
     def invoke(self, args, from_tty):
-        print(gdb.execute("print *ls", from_tty, True))
+        ls = args if args else 'ls'
+        print(gdb.execute(f"print *({ls})", from_tty, True))
         print("Proto->code")
-        print(gdb.execute("call PrintCode(ls->fs->f)", from_tty, True))
+        print(gdb.execute(f"call PrintCode({ls}->fs->f)", from_tty, True))
 
 
 LexStateCmd()
