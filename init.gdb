@@ -7,7 +7,7 @@ set print array on
 
 source helper.py
 
-b funcstat
+b statement
 
-run statement/func.lua
+run statement/expr.lua
 

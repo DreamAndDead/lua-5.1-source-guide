@@ -287,7 +287,7 @@ dostat -> DO block END
 
 forstat -> FOR (fornum | forlist) END
 fornum -> NAME = expr, expr[, expr] forbody
-forlist -> NAME {, NAME} IN explist1 forbody
+forlist -> NAME {, NAME} IN explist forbody
 forbody -> DO block
 
 repeatstat -> REPEAT block UNTIL cond
@@ -297,28 +297,30 @@ funcname -> NAME {`.' NAME} [`:' NAME]
 body -> `(' parlist `)' chunk END
 parlist -> [ NAME {`,' NAME} [ `...' ] ]
 
-localstat -> LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist1]
+localstat -> LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist]
 
-retstat -> RETURN [explist1]
+retstat -> RETURN [explist]
 
 breakstat -> BREAK
 
-exprstat -> primaryexp
-primaryexp -> functioncall | assignstat
-
-functioncall -> prefixexp {`:' NAME funcargs | funcargs }         ?
-funcargs -> `(' explist1 `)' | constructor | STRING
-
-assignstat -> prefixexp {`.' NAME | `[' expr `]'} assignment      ?
+exprstat -> prefixexp (funccallstat | assignstat)
 prefixexp -> NAME | `(' expr `)'
-assignment -> `,' primaryexp assignment | `=' explist1
+
+funccallstat -> primaryexp (`:' NAME funcargs | funcargs)
+funcargs -> `(' [ explist ] `)' | constructor | STRING
+
+assignstat -> primaryexp (`.' NAME | `[' expr `]') assignment
+assignment -> `,' assignstat | `=' explist
+
+primaryexp -> {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
 
 
-explist1 -> expr {`,' expr}
-expr -> subexpr
+explist -> expr {`,' expr}
+expr -> subexpr      # 在 subexpr 中进行了比较级的限制（唉，EBNF）
 subexpr -> (simpleexp | unop subexpr) {binop subexpr}
 
 simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
+
 binop -> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ | 
 	`<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
 	and | or
@@ -327,9 +329,13 @@ unop -> `-´ | not | `#´
 
 constructor -> `{' [fieldlist] `}'
 fieldlist -> field {fieldsep field} [fieldsep]
-field -> `[' exp `]' `=' exp | name `=' exp | exp
+field -> `[' expr `]' `=' expr | name `=' expr | expr
 fieldsep -> `,' | `;'
 ```
+
+ENBF 语法并没有给出完全的限制
+
+虽然是递归下降，但是各个名称和 函数名称不一定是对应的
 
 
 
