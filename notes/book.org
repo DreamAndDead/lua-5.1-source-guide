@@ -1,0 +1,9 @@
+#+AUTHOR: DreamAndDead
+#+TITLE: lua internals
+
+
+* TODO outline
+
+- 使用 总 - 分 - 总 的方式
+- 重点在于图解，关键的数据结构与实现过程
+- 
