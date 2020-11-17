@@ -293,13 +293,11 @@ forbody -> DO block
 repeatstat -> REPEAT block UNTIL cond
 
 funcstat -> FUNCTION funcname body
-funcname -> NAME {field} [`:' NAME]
-field -> [`.' | `:'] NAME          # . can not appear after :
+funcname -> NAME {`.' NAME} [`:' NAME]
 body -> `(' parlist `)' chunk END
-parlist -> [ param {`,' param} ]
-param -> NAME | `...'
+parlist -> [ NAME {`,' NAME} [ `...' ] ]
 
-localstat -> LOCAL FUNCTION NAME funcbody | LOCAL NAME {`,' NAME} [`=' explist1]
+localstat -> LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist1]
 
 retstat -> RETURN [explist1]
 
@@ -325,7 +323,6 @@ binop -> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ |
 	`<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
 	and | or
 unop -> `-´ | not | `#´
-
 
 
 constructor -> `{' [fieldlist] `}'
