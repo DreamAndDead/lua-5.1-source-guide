@@ -1,9 +1,107 @@
 #+AUTHOR: DreamAndDead
-#+TITLE: lua internals
+#+TITLE: lua internals guide?
+#+SEQ_TODO: NEXT(n) TODO(t) WAITING(w) SOMEDAY(s) | DONE(d) CANCELLED(c)
 
+#+STARTUP: hidestars
+
+#+TAGS: PC(p) ANDROID(a)
 
 * TODO outline
 
 - 使用 总 - 分 - 总 的方式
-- 重点在于图解，关键的数据结构与实现过程
-- 
+- 重点在于图解，关键的数据结构
+  - string
+  - table
+- 依附于数据结构的实现过程
+- protected call? longjump?
+  
+- 提供阅读工具与路径，及材料，每章布置可深入阅读的任务
+- lua C api 的使用及原理
+
+
+
+把编程语言也看作一个程序，一个 program
+看底层如何实现它的功能
+
+观察不同 snippet 生成代码的不同，再寻找关键点
+
+
+** api name method
+
+
+
+** tool chapter
+
+
+
+
+
+
+
+
+
+** k
+
+   
+
+* test headline
+
+** jkj
+
+
+ 8
+   
+ |   | ajfkll | jkaf |
+ |   |        | jkaf |
+ |   |        | jkaf |
+ |   |        | jkaf |
+ |   |        | jkaf |
+ |   |        | jkaf |
+
+** TODO jk
+
+
+** TODO ij
+   SCHEDULED: <2020-11-19 四>
+
+ jklfajklfa
+
+*** NEXT heflkfjklwjfjkll
+    SCHEDULED: <2020-11-17 二 18:00-20:00> DEADLINE: <2020-12-21 一>
+
+    
+*** jaklfjaklf
+    SCHEDULED: <2020-12-16 三 .+4w>
+    :PROPERTIES:
+    :LAST_REPEAT: [2020-11-18 三 16:58]
+    :END:
+
+
+
+    - State "DONE"       from ""           [2020-11-18 三 16:58]
+
+* checklist
+
+  
+- [ ] fruit
+- [X] done
+- [ ] new
+- [2/3] end
+  - [X] 1
+  - [ ] 2
+  - [X] 3
+  
+- title [50%]
+  - [X] end
+  - [ ] aha
+    
+- [ ] liz  
+
+
+
+* tags
+
+** game                                                          :PC:ANDROID:
+
+** editor
+
