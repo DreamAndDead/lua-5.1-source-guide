@@ -1,23 +1,41 @@
 #+AUTHOR: DreamAndDead
 #+TITLE: lua internals guide
 
+#+LATEX_CLASS: book
+
 * overview
 
-overview graph
-
-from source code to result
-
-把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
-
-- 使用 总 - 分 - 总 的方式
+章节内容
+- 模块的实现原理
 - 图解关键数据结构
 - 图解关键实现过程
-- 提供阅读工具，文档与方法
-- 非核心部分作为每章阅读任务
+- 非核心部分作为章节阅读任务
+
+#+INCLUDE: "./overview.org"
+  
+* a small example
+
+把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
+from source code to result
+
+graph it!
+
+sample code
+
+from start to result
+
+the whole process
 
 * how to read
 
 ** source structure
+
+lua source itself
+
+reading project how to use
+
+where I modified the source code
+
 
 ** toolchain
 
@@ -41,11 +59,29 @@ lua 基础的 8 种数据类型
 
 ** table
 
+hash
+array
+
+metatable
+
 ** function
+
+c func
+
+lua func (closure?)
 
 ** userdata
 
+c memory
+
+
+light
+
+heavy
+
 ** thread
+
+later
 
 * compiler
 
@@ -55,6 +91,16 @@ lua 基础的 8 种数据类型
 
 *** regex & DFA & NFA
 
+*** lexstate
+
+zio
+
+mbuffer
+
+lexstate
+
+*** token with gdb script (practice)
+
 ** parser
 
 *** EBNF
@@ -63,30 +109,56 @@ lua 基础的 8 种数据类型
 
 *** caveats
 
+binop 优先级
+
+没有按照 EBNF 来命名
+
 ** bytecode
 
 opcode and oprand
 
-** dump & undump (optional)
+*** proto
+
+*** dump & undump
 
 ** generate
 
 *** opcode detail
 
+*** var type (local upval global)
+
+*** allocate stack for local var
+
 *** key statement insight
+
+**** for
+     
+blockCnt
+
+do end block and break
+
+chunk is not block
+    
+**** function
+
+upval
 
 
 * interprete
 
 ** vm
 
-exec progress
+*** closure
 
 *** lua_State
 
 *** callinfo
 
 *** stack
+
+*** upval
+
+open and close
 
 ** thread (coroutine)
 
@@ -118,6 +190,8 @@ hooks
 
 - protected call
 - longjump
+
+
 
 
 
