@@ -1,7 +1,10 @@
-#+AUTHOR: DreamAndDead
 #+TITLE: lua internals guide
+#+AUTHOR: DreamAndDead
+#+DESCRIPTION: a guide for reading lua source code
+#+DATE: 2020-11-19
 
 #+LATEX_CLASS: book
+
 
 * overview
 
@@ -47,6 +50,8 @@ gdb script
 
 * object
 
+lobject.c
+
 lua 基础的 8 种数据类型
 
 ** nil
@@ -57,7 +62,12 @@ lua 基础的 8 种数据类型
 
 ** string
 
+lstring.c
+
 ** table
+
+ltable.c
+ltm.c
 
 hash
 array
@@ -65,6 +75,8 @@ array
 metatable
 
 ** function
+
+lfunc.c
 
 c func
 
@@ -83,15 +95,23 @@ heavy
 
 later
 
+* memory
+
+lmem.c
+
 * compiler
 
 ** lexer
+
+llex.c
 
 *** token
 
 *** regex & DFA & NFA
 
 *** lexstate
+
+zio.c
 
 zio
 
@@ -102,6 +122,8 @@ lexstate
 *** token with gdb script (practice)
 
 ** parser
+
+lparser.c
 
 *** EBNF
 
@@ -115,13 +137,20 @@ binop 优先级
 
 ** bytecode
 
+lopcodes.c
+
 opcode and oprand
 
 *** proto
 
 *** dump & undump
 
+ldump.c
+lundump.c
+
 ** generate
+
+lcode.c
 
 *** opcode detail
 
@@ -148,6 +177,9 @@ upval
 
 ** vm
 
+lstate.c
+lvm.c
+
 *** closure
 
 *** lua_State
@@ -164,6 +196,8 @@ open and close
 
 ** c api
 
+lapi.c
+
 c <-> stack <-> lua
 
 *** c & stack
@@ -172,21 +206,47 @@ c <-> stack <-> lua
 
 * gc
 
+lgc.c
+
 ** gc object
 
 ** algorithm
 
 * debug
 
+ldebug.c
+
 hooks
 
 * package module
 
-- std lib
-- dynamic load
+lauxlib.c
+linit.c
+
+** std lib
+
+lbaselib.c
+
+ldblib.c
+
+liolib.c
+lmathlib.c
+loslib.c
+lstrlib.c
+
+ltablib.c
+
+
+** dynamic load
+
+loadlib.c
 
 
 * error handling
+
+
+ldo.c
+
 
 - protected call
 - longjump
@@ -195,3 +255,17 @@ hooks
 
 
 
+* conf
+
+llimits.c
+
+luaconf.c
+
+* lua standalone interpreter
+
+lua.c
+
+* lua compiler
+
+luac.c
+print.c
