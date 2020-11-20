@@ -71,7 +71,7 @@ just allocate memory and free them
 
 * string
 
-lstring.c
+#+INCLUDE: "./string.org"
 
 
 * table
