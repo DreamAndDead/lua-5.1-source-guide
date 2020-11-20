@@ -337,17 +337,28 @@ ldo.c
 - longjump
 
 
-* conf
 
-llimits.c
-luaconf.c
+* work with lua
 
-* lua standalone interpreter
+** conf
 
-lua.c
+ llimits.c
+ luaconf.c
 
-* lua compiler
+** lua standalone interpreter
 
-luac.c
-print.c
+ lua.c
+
+** lua compiler
+
+ luac.c
+ print.c
+
+** compile with lua 
+
+c api
+
+liblua.a
+
+
 

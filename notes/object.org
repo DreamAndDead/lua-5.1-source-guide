@@ -1,24 +1,101 @@
-* object
+* basic object
 
+涉及代码文件
+
+lua.h
+lobject.h
 lobject.c
+lstate.h
 
-lua 基础的 8 种数据类型
 
-数据结构组织形式
 
-相对简单，对于 lua source 的风格有一个基础印象
+lua 是一种动态语言，即数据的类型不存在于变量中，而存在于数据本身。
 
-相应对象也是内部实现的关键结构
+语言本身定义了 8 种数据类型
+- nil
+- bool
+- number
+- string
+- table
+- function
+- userdata
+- thread
 
-和 gc 的关联
+想必了解 lua 的人都不陌生，几乎是所有 lua 书/教程最先讲到的。
+
+抽象来说，“数据”本身的概念可以用一个结构来表示，内部可以细分为
+- 数据类型
+- 数据内容
+
+在 lua 中，这一结构是 TValue
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "67-76"
+
+tt 表示数据的类型，value 表示数据的内容。
+
+类型只是简单的用数字来标识，可以看到其基础类型的宏定义
+
+#+INCLUDE: ../lua-5.1.5/src/lua.h src c :lines "69-83"
+
+完全对应上面提到的 8 种数据类型（TODO light userdata 后面再细说）
+
+至于 value，数据的内容，用一个 union 结构来表示，有效利用内存空间。
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "56-65"
+
+不同类型的数据使用不同的键值来存取。
 
 ** nil
 
+准确的说，nil 是一个单例对象，代表没有。
+
+只需要用 tt 表示类型即可，不需要用 value 记录内容。
+
 ** bool
+
+lua 中的 bool 值是 true/false
+
+tt 记录类型之后，用 int b = 1/0 表示 true/false。
+
+** light userdata
+
+light userdata 表示 c 和 lua 协同的时候，由 c 语言一方表示的数据对象
+
+lua 这边只负责引用，至于它的生命周期管理，什么时候释放，lua 这边并不清楚，也就不需要过问
+
+只用 void * p 引用即可
 
 ** number
 
+默认设定下，lua 中所有数字都用 double 来表示
+
+#+INCLUDE: ../lua-5.1.5/src/luaconf.h src c :lines "495-506"
+
+#+INCLUDE: ../lua-5.1.5/src/lua.h src c :lines "98-100"
+
+tt 表示数字，用 lua_Number n 来存取数字内容
+
+** gc
+   
+lua 本身内建了 gc 机制，用于清除未使用的垃圾对象。
+
+gc 只作用于 lua 内部 alloc 内存且需要私下 free 的对象，
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "189-190"
+
+即后 5 种数据类型。
+
+它们都通过 gc 来存取。
+
+
+
+
+
+
+
 ** string
+
+gc 中的 tt 和 TValue 中的 tt 是重复的
 
 lstring.c
 
@@ -49,7 +126,7 @@ lua func
 c memory
 
 
-light
+light？？
 
 heavy
 
