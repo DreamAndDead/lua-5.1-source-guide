@@ -1,0 +1,58 @@
+* object
+
+lobject.c
+
+lua 基础的 8 种数据类型
+
+数据结构组织形式
+
+相对简单，对于 lua source 的风格有一个基础印象
+
+相应对象也是内部实现的关键结构
+
+和 gc 的关联
+
+** nil
+
+** bool
+
+** number
+
+** string
+
+lstring.c
+
+** table
+
+ltable.c
+
+hash
+array
+
+
+ltm.c
+
+metatable
+
+** function
+
+lfunc.c
+
+closure is better
+
+c func
+
+lua func
+
+** userdata
+
+c memory
+
+
+light
+
+heavy
+
+** thread
+
+later, after vm

@@ -1,46 +1,48 @@
 #+TITLE: lua internals guide
 #+AUTHOR: DreamAndDead
-#+DESCRIPTION: a guide for reading lua source code
 #+DATE: 2020-11-19
+#+DESCRIPTION: a guide for reading lua source code
+
 
 #+LATEX_CLASS: book
 
 
-* overview
-
-章节内容
-- 模块的实现原理
+章节规划
+- 章节梗概
+- 对应原理
+- 模块实现方式
 - 图解关键数据结构
 - 图解关键实现过程
-- 非核心部分作为章节阅读任务
+- 对应代码实现片段
+- 相关代码阅读任务
 
 #+INCLUDE: "./overview.org"
   
 * a small example
 
 把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
-from source code to result
 
-graph it!
+from sample code to result, graph the whole process
 
-sample code
+* how to read source
 
-from start to result
+you have known the language before
 
-the whole process
+favorite editor/ide
 
-* how to read
+compile with debug info
+
+from feature to feature
 
 ** source structure
 
 lua source itself
 
-reading project how to use
-
 where I modified the source code
 
+reading project how to use
 
-** toolchain
+** insight
 
 gcc
 
@@ -48,70 +50,65 @@ gdb
 
 gdb script
 
-* object
 
-lobject.c
-
-lua 基础的 8 种数据类型
-
-** nil
-
-** bool
-
-** number
-
-** string
-
-lstring.c
-
-** table
-
-ltable.c
-ltm.c
-
-hash
-array
-
-metatable
-
-** function
-
-lfunc.c
-
-c func
-
-lua func (closure?)
-
-** userdata
-
-c memory
-
-
-light
-
-heavy
-
-** thread
-
-later
+#+INCLUDE: "./object.org"
 
 * memory
 
 lmem.c
 
+not so important
+
+just allocate memory and free them
+
+
 * compiler
+
+类比
+
+opcode -> 机器码
+
+vm -> 机器
+
+将 lua 的执行过程分为编译时和运行时
+
+
+考虑编译的过程
+
+
+传统是 source -> token -> ast -> ir -> ... -> bytecode
+
+
+lua 为了效率，直接从 source -> token -> bytecode
+
+相应代码不是那么容易阅读
+
+需要一些编译原理的了解
 
 ** lexer
 
 llex.c
+zio.c
 
-*** token
+source -> token
+
+
 
 *** regex & DFA & NFA
 
-*** lexstate
+描述 token 的模式
 
-zio.c
+regex 到代码识别的过程
+
+flex 的原理
+
+
+lua 采用了手写的方式
+
+更加灵活，效率更高
+
+
+*** token
 
 zio
 
@@ -119,21 +116,78 @@ mbuffer
 
 lexstate
 
+
+lookahead 的过程，应用于 llex_next
+
+
+抽象为一个 next 接口
+
+
 *** token with gdb script (practice)
+
+从头实现一个 lexer，不方便
+
+直接使用 gdb 技术，研究目的，用脚本实现
+
 
 ** parser
 
 lparser.c
 
+token -> ... -> bytecode
+
+ast 过程可以理解为，在递归下降的过程中发现
+
+至于 ir，由于没有跨平台实现的需求，也可以不考虑（只针对 lua vm 实现）
+
+
+对于 char 到 token 有明显的分辨力，从 token 到 ast 也还可以
+
+但是从 ast 到 bytecode 就差一些
+
+因为
+- 流程的实现
+- 寄存器的分配
+
+涉及到运行时的具体实现，虽然没有在运行，但是未来的 vm 一定是完全按照 bytecode 在执行的
+
+相当于在脑海中将执行过程模拟了一遍
+
 *** EBNF
 
-*** LL(1)
+语法使用 EBNF 描述
 
-*** caveats
+上下文无关文法
 
-binop 优先级
+**** LL(1)
 
-没有按照 EBNF 来命名
+ 递归下降法
+
+**** caveats
+
+ binop 优先级
+
+ 没有按照 EBNF 来命名
+
+ online manual 给出的是不对应的
+
+*** 递归下降整体过程
+
+函数调用的递归关系
+
+关键结构 expdesc
+
+funcState
+
+Proto
+
+
+分析与生成的过程
+
+先不用具体在意生成了哪些 bytecode，整体的生成流程
+
+记录状态和最终存储的数据结构
+
 
 ** bytecode
 
@@ -141,24 +195,43 @@ lopcodes.c
 
 opcode and oprand
 
-*** proto
+格式与含义
 
-*** dump & undump
+其实含义已经涉及到 vm 的原理了，对于栈，寄存器，常量表的假设
+模糊的边界
 
-ldump.c
-lundump.c
+整套 bytecode 的规定，有哪些作用
+
+vm 负责实现（多少有些刻意为 lua vm 定制的意味）
+
+bytecode 的规定，是生成者和执行者的约定
+
 
 ** generate
 
+lparser.c
 lcode.c
 
-*** opcode detail
+这一章有诸多问题
 
-*** var type (local upval global)
+之前是保持语法，生成过程要保持语义
+
+好像没有明确的 dsl 来描述
+
+实现的艺术
+
 
 *** allocate stack for local var
 
-*** key statement insight
+*** var type (local upval global)
+
+*** k table, proto list, upval list
+
+*** statement
+
+statement -> ****stat
+
+**** if
 
 **** for
      
@@ -173,26 +246,41 @@ chunk is not block
 upval
 
 
-* interprete
+** dump & undump
 
-** vm
+ldump.c
+lundump.c
+
+
+引入 vm 的好处之一
+
+在 pc 编译，放入嵌入式执行，可以不编译 compiler 相关代码，只用 vm 就足够了
+
+lua 生成的二进制格式
+
+
+chunkspy 的原理，就是分析二进制
+
+
+* vm
 
 lstate.c
 lvm.c
 
-*** closure
+** exec
 
-*** lua_State
+closure
 
-*** callinfo
+lua_State
 
-*** stack
+callinfo
 
-*** upval
+stack
 
-open and close
+upval, open and close
 
-** thread (coroutine)
+** coroutine (thread)
+
 
 ** c api
 
@@ -208,6 +296,8 @@ c <-> stack <-> lua
 
 lgc.c
 
+从 lobject.c 已经领略了 gc 的相关定义
+
 ** gc object
 
 ** algorithm
@@ -216,7 +306,7 @@ lgc.c
 
 ldebug.c
 
-hooks
+hooks 如何发挥作用？
 
 * package module
 
@@ -226,39 +316,30 @@ linit.c
 ** std lib
 
 lbaselib.c
-
 ldblib.c
-
 liolib.c
 lmathlib.c
 loslib.c
 lstrlib.c
-
 ltablib.c
-
 
 ** dynamic load
 
 loadlib.c
 
 
+
 * error handling
 
-
 ldo.c
-
 
 - protected call
 - longjump
 
 
-
-
-
 * conf
 
 llimits.c
-
 luaconf.c
 
 * lua standalone interpreter
@@ -269,3 +350,4 @@ lua.c
 
 luac.c
 print.c
+
