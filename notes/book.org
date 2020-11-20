@@ -3,8 +3,25 @@
 #+DATE: 2020-11-19
 #+DESCRIPTION: a guide for reading lua source code
 
+#+STARTUP: latexpreview
 
+
+#+LATEX_COMPILER: xelatex
 #+LATEX_CLASS: book
+#+LATEX_CLASS_OPTIONS: [a4paper,11pt,twoside,twocolumn]
+#+LATEX_HEADER: \usepackage{xeCJK}
+
+#+BEGIN_COMMENT
+#+LATEX_HEADER: \setCJKmainfont{WenQuanYi Micro Hei}
+#+END_COMMENT
+
+
+#+HTML_DOCTYPE: html5
+
+
+
+* overview
+
 
 
 章节规划
@@ -15,6 +32,7 @@
 - 图解关键实现过程
 - 对应代码实现片段
 - 相关代码阅读任务
+
 
 #+INCLUDE: "./overview.org"
   
@@ -50,6 +68,7 @@ gdb
 
 gdb script
 
+* object
 
 #+INCLUDE: "./object.org"
 
@@ -60,6 +79,24 @@ lmem.c
 not so important
 
 just allocate memory and free them
+
+
+* string
+
+lstring.c
+
+
+* table
+
+ ltable.c
+
+ hash
+ array
+
+
+ ltm.c
+
+ metatable
 
 
 * compiler
