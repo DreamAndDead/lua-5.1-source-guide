@@ -1,2 +1,21 @@
 * overview
 
+
+章节规划
+- 章节梗概
+- 对应原理
+- 模块实现方式
+- 图解关键数据结构
+- 图解关键实现过程
+- 对应代码实现片段
+- 相关代码阅读任务
+
+
+#+BEGIN_SRC emacs-lisp -n -r
+(save-excursion                  (ref:sc)
+   (goto-char (point-min)))      (ref:jump)
+#+END_SRC
+
+In line [[(sc)]] we remember the current position.
+[[(jump)][Line (jump)]] jumps to point-min.
+

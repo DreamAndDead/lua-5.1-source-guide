@@ -22,7 +22,9 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 
 在 lua 中，这一结构是 TValue
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "67-76"
+#+begin_src c
+#+INCLUDE: ../lua-5.1.5/src/lobject.h :lines "67-76"
+#+end_src
 
 tt 表示数据的类型，value 表示数据的内容。
 
