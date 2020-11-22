@@ -76,15 +76,7 @@ just allocate memory and free them
 
 * table
 
- ltable.c
-
- hash
- array
-
-
- ltm.c
-
- metatable
+#+INCLUDE: "./table.org"
 
 
 * compiler
