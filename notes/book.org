@@ -68,6 +68,7 @@ not so important
 
 just allocate memory and free them
 
+#+INCLUDE: "./mem.org"
 
 * string
 

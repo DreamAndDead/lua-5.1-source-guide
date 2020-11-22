@@ -1,12 +1,9 @@
 table
 
 
- ltable.c
-
  hash
  array
 
 
- ltm.c
 
- metatable
+how metatable works
