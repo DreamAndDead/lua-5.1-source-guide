@@ -13,13 +13,7 @@
 
 lua 中实现的内存管理机制很简单，没有复杂的如整理内存碎片之类，甚至将分配和回收用一个核心 api 实现。
 
-** api
-
-- alloc func protocol
-  - vs sys free and alloc
-- set in new lua_State, G(L)
-
-*** g->frealloc
+** core api
 
 lua 是单线程程序，即使在内部有协程这样的实现，但是内存还是进行统一管理的。
 
@@ -32,9 +26,9 @@ g->totalbytes 用于记录当前使用的内存总额。
 
 准确的说，frealloc 是一个函数指针，原型为
 
-#+INCLUDE: ../lua-5.1.5/src/lua.h :lines "63-67"
+#+INCLUDE: ../lua-5.1.5/src/lua.h src c -n 63 :lines "63-67"
 
-TODO: ud 的使用？
+TODO: ud 的作用？
 
 不管这个函数内部如何实现，必须符合这样的约定
 
@@ -44,18 +38,25 @@ TODO: ud 的使用？
 
 也就是说，符合这样要求的函数都可以当作 frealloc 来使用
 
-lua 默认提供的函数很简单，只是简单利用系统 free realloc api 来实现
+lua 默认提供的函数很简单，只是简单利用系统 api 来实现
 
-#+INCLUDE: ../lua-5.1.5/src/lauxlib.c :lines "627-637"
+#+INCLUDE: ../lua-5.1.5/src/lauxlib.c src c -n 627 :lines "627-637"
 
-lua 同样提供了相关接口，可以使用户自定义内存管理函数。
+lua 提供了相关接口，可以使用户自定义内存管理函数。
 
-#+INCLUDE: ../lua-5.1.5/src/lapi.c :lines "1007-1023"
+#+INCLUDE: ../lua-5.1.5/src/lapi.c src c -n 1007 :lines "1007-1023"
+
+** generic routine
+
+在
+
+#+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 73 :lines "73-86"
+
+~luaM_realloc_~
 
 
 
 
-- luaM_realloc_
 - luaM_rellocv
 - luaM_growaux_
 
