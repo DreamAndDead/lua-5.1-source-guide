@@ -1,0 +1,27 @@
+* vm
+
+** exec
+
+closure
+
+lua_State
+
+callinfo
+
+stack
+
+upval, open and close
+
+** coroutine (thread)
+
+
+** c api
+
+lapi.c
+
+c <-> stack <-> lua
+
+*** c & stack
+
+*** lua & stack
+

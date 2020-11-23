@@ -1,4 +1,15 @@
-mem
+* mem
 
 
-when to set the allof and ud
+  
+in new lua_state
+
+set the allof and ud
+
+
+
+
+
+
+
+

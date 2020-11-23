@@ -3,70 +3,23 @@
 #+DATE: 2020-11-19
 #+DESCRIPTION: a guide for reading lua source code
 
-#+STARTUP: latexpreview
-
-
 #+LATEX_COMPILER: xelatex
 #+LATEX_CLASS: book
-#+LATEX_CLASS_OPTIONS: [a4paper,11pt,twoside,twocolumn]
+#+LATEX_CLASS_OPTIONS: [a4paper]
 #+LATEX_HEADER: \usepackage{xeCJK}
 
-#+BEGIN_COMMENT
-#+LATEX_HEADER: \setCJKmainfont{WenQuanYi Micro Hei}
-#+END_COMMENT
-
-
 #+HTML_DOCTYPE: html5
-
 
 
 * overview
 
 #+INCLUDE: "./overview.org"
   
-* a small example
-
-把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
-
-from sample code to result, graph the whole process
-
-* how to read source
-
-you have known the language before
-
-favorite editor/ide
-
-compile with debug info
-
-from feature to feature
-
-** source structure
-
-lua source itself
-
-where I modified the source code
-
-reading project how to use
-
-** insight
-
-gcc
-
-gdb
-
-gdb script
-
 * object
 
 #+INCLUDE: "./object.org"
 
 * memory
-
-lmem.c
-
-not so important
-
-just allocate memory and free them
 
 #+INCLUDE: "./mem.org"
 
@@ -74,309 +27,70 @@ just allocate memory and free them
 
 #+INCLUDE: "./string.org"
 
-
 * table
 
 #+INCLUDE: "./table.org"
-
 
 * compiler
 
 类比
 
 opcode -> 机器码
-
 vm -> 机器
 
 将 lua 的执行过程分为编译时和运行时
 
-
 考虑编译的过程
-
 
 传统是 source -> token -> ast -> ir -> ... -> bytecode
 
 
 lua 为了效率，直接从 source -> token -> bytecode
-
 相应代码不是那么容易阅读
-
 需要一些编译原理的了解
 
 ** lexer
 
-llex.c
-zio.c
-
-source -> token
-
-
-
-*** regex & DFA & NFA
-
-描述 token 的模式
-
-regex 到代码识别的过程
-
-flex 的原理
-
-
-lua 采用了手写的方式
-
-更加灵活，效率更高
-
-
-*** token
-
-zio
-
-mbuffer
-
-lexstate
-
-
-lookahead 的过程，应用于 llex_next
-
-
-抽象为一个 next 接口
-
-
-*** token with gdb script (practice)
-
-从头实现一个 lexer，不方便
-
-直接使用 gdb 技术，研究目的，用脚本实现
-
+#+INCLUDE: "./lexer.org"
 
 ** parser
 
-lparser.c
+#+INCLUDE: "./parser.org"
 
-token -> ... -> bytecode
+** opcode
 
-ast 过程可以理解为，在递归下降的过程中发现
-
-至于 ir，由于没有跨平台实现的需求，也可以不考虑（只针对 lua vm 实现）
-
-
-对于 char 到 token 有明显的分辨力，从 token 到 ast 也还可以
-
-但是从 ast 到 bytecode 就差一些
-
-因为
-- 流程的实现
-- 寄存器的分配
-
-涉及到运行时的具体实现，虽然没有在运行，但是未来的 vm 一定是完全按照 bytecode 在执行的
-
-相当于在脑海中将执行过程模拟了一遍
-
-*** EBNF
-
-语法使用 EBNF 描述
-
-上下文无关文法
-
-**** LL(1)
-
- 递归下降法
-
-**** caveats
-
- binop 优先级
-
- 没有按照 EBNF 来命名
-
- online manual 给出的是不对应的
-
-*** 递归下降整体过程
-
-函数调用的递归关系
-
-关键结构 expdesc
-
-funcState
-
-Proto
-
-
-分析与生成的过程
-
-先不用具体在意生成了哪些 bytecode，整体的生成流程
-
-记录状态和最终存储的数据结构
-
-
-** bytecode
-
-lopcodes.c
-
-opcode and oprand
-
-格式与含义
-
-其实含义已经涉及到 vm 的原理了，对于栈，寄存器，常量表的假设
-模糊的边界
-
-整套 bytecode 的规定，有哪些作用
-
-vm 负责实现（多少有些刻意为 lua vm 定制的意味）
-
-bytecode 的规定，是生成者和执行者的约定
-
+#+INCLUDE: "./opcode.org"
 
 ** generate
 
-lparser.c
-lcode.c
-
-这一章有诸多问题
-
-之前是保持语法，生成过程要保持语义
-
-好像没有明确的 dsl 来描述
-
-实现的艺术
-
-
-*** allocate stack for local var
-
-*** var type (local upval global)
-
-*** k table, proto list, upval list
-
-*** statement
-
-statement -> ****stat
-
-**** if
-
-**** for
-     
-blockCnt
-
-do end block and break
-
-chunk is not block
-    
-**** function
-
-upval
-
+#+INCLUDE: "./generate.org"
 
 ** dump & undump
 
-ldump.c
-lundump.c
-
-
-引入 vm 的好处之一
-
-在 pc 编译，放入嵌入式执行，可以不编译 compiler 相关代码，只用 vm 就足够了
-
-lua 生成的二进制格式
-
-
-chunkspy 的原理，就是分析二进制
-
+#+INCLUDE: "./dump.org"
 
 * vm
 
-lstate.c
-lvm.c
-
-** exec
-
-closure
-
-lua_State
-
-callinfo
-
-stack
-
-upval, open and close
-
-** coroutine (thread)
-
-
-** c api
-
-lapi.c
-
-c <-> stack <-> lua
-
-*** c & stack
-
-*** lua & stack
+#+INCLUDE: "./vm.org"
 
 * gc
 
-lgc.c
-
-从 lobject.c 已经领略了 gc 的相关定义
-
-** gc object
-
-** algorithm
+#+INCLUDE: "./gc.org"
 
 * debug
 
-ldebug.c
+#+INCLUDE: "./debug.org"
 
-hooks 如何发挥作用？
+* package module lib
 
-* package module
-
-lauxlib.c
-linit.c
-
-** std lib
-
-lbaselib.c
-ldblib.c
-liolib.c
-lmathlib.c
-loslib.c
-lstrlib.c
-ltablib.c
-
-** dynamic load
-
-loadlib.c
-
-
+#+INCLUDE: "./lib.org"
 
 * error handling
 
-ldo.c
-
-- protected call
-- longjump
-
-
+#+INCLUDE: "./error.org"
 
 * work with lua
 
-** conf
-
- llimits.c
- luaconf.c
-
-** lua standalone interpreter
-
- lua.c
-
-** lua compiler
-
- luac.c
- print.c
-
-** compile with lua 
-
-c api
-
-liblua.a
-
+#+INCLUDE: "./usage.org"
 
 

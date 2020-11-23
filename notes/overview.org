@@ -1,21 +1,51 @@
 * overview
 
+** TODO intro
 
-章节规划
-- 章节梗概
-- 对应原理
-- 模块实现方式
-- 图解关键数据结构
-- 图解关键实现过程
-- 对应代码实现片段
-- 相关代码阅读任务
+- 本书的目标与内容
+  - guide
+- 针对读者
+  - lua user
+  - c
+  - linux
+- 章节规划
+  - 功能概要
+  - （补充对应原理）
+  - 图解关键数据结构 关键实现过程
+  - 对照代码实现片段
+  - 剩余代码阅读任务
+
+** TODO big picture
+
+- from sample code to result
+- graph whole process
+- big picture of internal
+
+把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
+
+the final step
 
 
-#+BEGIN_SRC emacs-lisp -n -r
-(save-excursion                  (ref:sc)
-   (goto-char (point-min)))      (ref:jump)
-#+END_SRC
+** TODO how to read source
 
-In line [[(sc)]] we remember the current position.
-[[(jump)][Line (jump)]] jumps to point-min.
+- known the language before
+- favorite editor/ide
+- compile with debug info
+- scan from feature to feature
+
+*** project structure
+
+lua source itself
+
+where I modified the source code
+
+reading project how to use
+
+*** insight
+
+gcc
+
+gdb
+
+gdb script
 

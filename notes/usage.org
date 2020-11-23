@@ -1,0 +1,24 @@
+* work with lua
+
+** conf
+
+ llimits.c
+ luaconf.c
+
+** lua standalone interpreter
+
+ lua.c
+
+** lua compiler
+
+ luac.c
+ print.c
+
+** compile with lua 
+
+c api
+
+liblua.a
+
+
+

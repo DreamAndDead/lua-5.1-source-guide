@@ -1,9 +1,12 @@
-table
+* table
 
 
- hash
- array
+** store
+
+hash part
+array part
 
 
+** TODO how metatable works?
 
-how metatable works
+

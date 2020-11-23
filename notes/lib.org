@@ -1,0 +1,17 @@
+* package module lib
+
+** std lib
+
+lbaselib.c
+ldblib.c
+liolib.c
+lmathlib.c
+loslib.c
+lstrlib.c
+ltablib.c
+
+** dynamic load
+
+loadlib.c
+
+** require?
