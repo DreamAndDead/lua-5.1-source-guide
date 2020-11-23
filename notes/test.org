@@ -1,10 +1,17 @@
+#+STARTUP: logdrawer
+
 * test
 
 test some org feature, such as export, etc.
 
 ** src
+   :LOGBOOK:
+   - Note taken on [2020-11-23 一 16:53] \\
+     jakfljaklfjlk
+   :END:
 
-
+   - Note taken on [2020-11-23 一 16:43] \\
+     test node
 #+BEGIN_SRC emacs-lisp -n -r
 (save-excursion                  (ref:sc)
    (goto-char (point-min)))      (ref:jump)
@@ -12,4 +19,7 @@ test some org feature, such as export, etc.
 
 In line [[(sc)]] we remember the current position.
 [[(jump)][Line (jump)]] jumps to point-min.
+
+
+
 
