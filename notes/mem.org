@@ -1,5 +1,6 @@
-* TODO memory
+#+SETUPFILE: setup.org
 
+* DRAFT memory
 
 ** intro
 
@@ -38,6 +39,8 @@ TODO: ud 的作用？
 
 也就是说，符合这样要求的函数都可以当作 frealloc 来使用
 
+#+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 23 :lines "23-40"
+
 lua 默认提供的函数很简单，只是简单利用系统 api 来实现
 
 #+INCLUDE: ../lua-5.1.5/src/lauxlib.c src c -n 627 :lines "627-637"
@@ -48,28 +51,56 @@ lua 提供了相关接口，可以使用户自定义内存管理函数。
 
 ** generic routine
 
-在
+在核心 api 定义之后，lua 中的其它函数不过是它的封装。
+
+这里主要介绍三个函数
+
+~luaM_realloc_~ ，简单对核心 api 进行了封装，计算了 totalbytes，为其它方法提供基础。
+而且，最后的 =_= 表明其只是对内使用
 
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 73 :lines "73-86"
 
-~luaM_realloc_~
+~luaM_rellocv~
 
+准确的说，这是一个宏
 
+命名有些混乱，参数为
+L
+block
+old n
+new n
+elemsize
 
+先进行除法，是避免溢出，因为 =size_t= 是 unsigned
 
-- luaM_rellocv
-- luaM_growaux_
+不然参数无法用 =size_t= 表示
 
+这个宏，是为了方便进行，不同类型 多元素数组的管理，
 
+#+INCLUDE: ../lua-5.1.5/src/lmem.h src c -n 19 :lines "19-23"
 
+~luaM_growaux_~
 
+这个方法，在 ~luaM_rellocv~ 的基础上，添加了 limit 的限制。
 
+最小不能小于 4， 最大不能超过 limit，按 2 倍速进行内存扩张，这便是 grow 的由来。
+
+适用于维持 vector 类型的结构。
+
+#+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 46 :lines "46-64"
 
 
 ** practice
 
-rest are macro
+以上主要介绍的 3 个方法不是公共的方法，其它模块并不引用它们，而引用加外的宏定义
 
-- free part
-- malloc part
-- realloc part
+分别代表了
+- free
+- malloc
+- realloc
+
+明确了上面的基础，这些宏并不难理解。
+
+#+INCLUDE: ../lua-5.1.5/src/lmem.h src c -n 24 :lines "24-39"
+
+

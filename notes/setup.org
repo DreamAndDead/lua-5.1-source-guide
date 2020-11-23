@@ -1,0 +1,9 @@
+#+TODO: TODO(t) DRAFT(d) | DONE(o)
+
+#+LATEX_COMPILER: xelatex
+#+LATEX_CLASS: book
+#+LATEX_CLASS_OPTIONS: [a4paper]
+#+LATEX_HEADER: \usepackage{xeCJK}
+
+#+HTML_DOCTYPE: html5
+
