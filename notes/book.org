@@ -68,23 +68,16 @@ not so important
 
 just allocate memory and free them
 
+#+INCLUDE: "./mem.org"
 
 * string
 
-lstring.c
+#+INCLUDE: "./string.org"
 
 
 * table
 
- ltable.c
-
- hash
- array
-
-
- ltm.c
-
- metatable
+#+INCLUDE: "./table.org"
 
 
 * compiler

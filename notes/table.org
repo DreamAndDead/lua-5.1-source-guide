@@ -1,0 +1,9 @@
+table
+
+
+ hash
+ array
+
+
+
+how metatable works

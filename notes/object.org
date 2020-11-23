@@ -24,8 +24,8 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 
 #+NAME: object e.g.
 #+begin_src c -n 10 -r
+
 #+INCLUDE: ../lua-5.1.5/src/lobject.h :lines "67-76"
-#+end_src
 
 tt 表示数据的类型，value 表示数据的内容。
 
@@ -50,6 +50,10 @@ tt 表示数据的类型，value 表示数据的内容。
 struct memory
 
 union memory
+
+TODO how TString alignment?
+
+dummy is small than tsv
 
 ** non-collectable
 
