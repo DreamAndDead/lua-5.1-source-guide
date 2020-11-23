@@ -1,8 +1,5 @@
-* gc
+* TODO gc
 
-从 lobject.c 已经领略了 gc 的相关定义
-
-** gc object
-
-** algorithm
+- gc object
+- algo
 

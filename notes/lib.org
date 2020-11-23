@@ -1,17 +1,19 @@
-* package module lib
+* TODO package module lib
 
-** std lib
+- lib protocol
+  - when to register
+  - how to register
+- std lib
+  - lbaselib.c
+  - ldblib.c
+  - liolib.c
+  - lmathlib.c
+  - loslib.c
+  - lstrlib.c
+  - ltablib.c
+- dynamic load
+  - loadlib.c
+- require?
 
-lbaselib.c
-ldblib.c
-liolib.c
-lmathlib.c
-loslib.c
-lstrlib.c
-ltablib.c
 
-** dynamic load
 
-loadlib.c
-
-** require?

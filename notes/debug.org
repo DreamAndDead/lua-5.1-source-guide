@@ -1,4 +1,8 @@
-* debug
+* TODO debug
 
-hooks 如何发挥作用？
+- job
+- hook
+
+
+
 

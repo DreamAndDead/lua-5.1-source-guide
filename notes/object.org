@@ -14,6 +14,13 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 
 想必了解 lua 的人都不陌生，几乎是所有 lua 书/教程最先讲到的。
 
+** TODO review struct & union
+
+- struct memory
+- union memory
+- how TString alignment? where dummy is smaller than tsv
+- struct in union, gcobject hack
+
 ** data representation
 
 抽象来说，“数据”本身的概念可以用一个结构来表示，内部可以细分为
@@ -21,9 +28,6 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 - 数据内容
 
 在 lua 中，这一结构是 TValue
-
-#+NAME: object e.g.
-#+begin_src c -n 10 -r
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h :lines "67-76"
 
@@ -35,7 +39,9 @@ tt 表示数据的类型，value 表示数据的内容。
 
 #+INCLUDE: ../lua-5.1.5/src/lua.h src c :lines "69-83"
 
-完全对应上面提到的 8 种数据类型（TODO light userdata 后面再细说）
+完全对应上面提到的 8 种数据类型
+
+细心的你一定发现了特别的一点，userdata 分为 light 和 non-light 两种，在后面再说明为什么
 
 *** content
 
@@ -45,17 +51,9 @@ tt 表示数据的类型，value 表示数据的内容。
 
 不同类型的数据使用不同的键值来存取。
 
-** TODO review struct & union
-
-struct memory
-
-union memory
-
-TODO how TString alignment?
-
-dummy is small than tsv
-
 ** non-collectable
+
+value 中有 4 个键，不同类型如何存储？
 
 lua 本身内建了 gc 机制，用于清除未使用的垃圾对象。
 
@@ -81,7 +79,6 @@ gc 只作用于 lua 内部 alloc 内存且需要私下 free 的对象，
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.c src c :lines "27-28"
 
-
 *** bool
 
  lua 中的 bool 值是 true/false
@@ -106,7 +103,6 @@ gc 只作用于 lua 内部 alloc 内存且需要私下 free 的对象，
 
  tt 表示数字，用 lua_Number n 来存取数字内容
 
-
 ** collectable
 
 GCObject 是一个 union 结构，不同键值对应于不同的类型。
@@ -127,8 +123,6 @@ GCObject 内部的所有结构都拥有 CommonHeader，作为头部的位置。
 
 *** TODO string
 
-
-
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "196-208"
 
 *** TODO table
@@ -137,16 +131,10 @@ GCObject 内部的所有结构都拥有 CommonHeader，作为头部的位置。
 
 *** TODO function
 
- lfunc.c
-
- closure is better
-
- c func
-
- lua func
+- c closure
+- lua closure
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "287-317"
-
 
 *** TODO userdata
 
@@ -160,7 +148,6 @@ GCObject 内部的所有结构都拥有 CommonHeader，作为头部的位置。
 
  later, after vm
 
-
 *** internal
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "19-30"
@@ -172,13 +159,8 @@ GCObject 内部的所有结构都拥有 CommonHeader，作为头部的位置。
 proto 在 GCObject 用 p 来存取
 upval 则是 uv
 
+** TODO practice
 
-** practice
-
-阅读更多
-
-
-
-
+- which part of code?
 
 

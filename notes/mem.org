@@ -1,10 +1,63 @@
-* mem
+* TODO memory
 
 
-  
-in new lua_state
+** intro
 
-set the allof and ud
+内存是重要的系统资源。
+
+内存管理在任意程序中都是非常重要的，尤其像 lua 这样使用底层的 c 实现。
+
+内存管理必须提供两种基础功能
+- 内存分配
+- 内存回收
+
+lua 中实现的内存管理机制很简单，没有复杂的如整理内存碎片之类，甚至将分配和回收用一个核心 api 实现。
+
+** api
+
+- alloc func protocol
+  - vs sys free and alloc
+- set in new lua_State, G(L)
+
+*** g->frealloc
+
+lua 是单线程程序，即使在内部有协程这样的实现，但是内存还是进行统一管理的。
+
+负责全局的相关事务的结构，为 global state。
+
+其中，g->frealloc 就是负责内存分配和回收的核心 api。
+g->ud 记录了 ud
+g->totalbytes 用于记录当前使用的内存总额。
+
+
+准确的说，frealloc 是一个函数指针，原型为
+
+#+INCLUDE: ../lua-5.1.5/src/lua.h :lines "63-67"
+
+TODO: ud 的使用？
+
+不管这个函数内部如何实现，必须符合这样的约定
+
+- malloc 功能， ~frealloc(ud, NULL, 0, n)~ ，分配大小为 n 的内存，并返回头地址
+- free 功能， ~frealloc(ud, p, o, 0)~ ，回收以 p 开始的 o 大小的内存块，返回 NULL
+- realloc 功能， ~frealloc(ud, p, o, n)~ ，变更 p 开始的内存块大小为 n，失败则返回 NULL
+
+也就是说，符合这样要求的函数都可以当作 frealloc 来使用
+
+lua 默认提供的函数很简单，只是简单利用系统 free realloc api 来实现
+
+#+INCLUDE: ../lua-5.1.5/src/lauxlib.c :lines "627-637"
+
+lua 同样提供了相关接口，可以使用户自定义内存管理函数。
+
+#+INCLUDE: ../lua-5.1.5/src/lapi.c :lines "1007-1023"
+
+
+
+
+- luaM_realloc_
+- luaM_rellocv
+- luaM_growaux_
 
 
 
@@ -12,4 +65,10 @@ set the allof and ud
 
 
 
+** practice
 
+rest are macro
+
+- free part
+- malloc part
+- realloc part

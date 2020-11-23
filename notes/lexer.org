@@ -1,39 +1,20 @@
 * lexer
 
-** source -> token
-
-
-** regex & DFA & NFA
-
-描述 token 的模式
-regex 到代码识别的过程
-
-flex 的原理
-
-
-lua 采用了手写的方式
-更加灵活，效率更高
-
-
-** token
-
-zio
-mbuffer
-lexstate
-
-
-lookahead 的过程，应用于 llex_next
-
-
-抽象为一个 next 接口
-
-
-** a lexer program
-
-token with gdb script
-
-从头实现一个 lexer，不方便
-
-直接使用 gdb 技术，研究目的，用脚本实现
+- job
+  - from source to token, base on regex
+- regex & DFA & NFA
+  - 描述 token 的模式
+  - 转换 regex 为代码实现
+    - flex 的原理
+  - lua 采用了手写的方式
+    - 更加灵活，效率更高
+- llex_next
+  - zio mbuffer
+  - lexstate
+    - lookahead
+    - singleton
+    - hold fs and f
+- a lexer program
+  - with gdb script
 
 

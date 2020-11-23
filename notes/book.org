@@ -15,39 +15,27 @@
 
 #+INCLUDE: "./overview.org"
   
-* object
+* basic
 
-#+INCLUDE: "./object.org"
+** object
 
-* memory
+ #+INCLUDE: "./object.org"
+
+** memory
 
 #+INCLUDE: "./mem.org"
 
-* string
+** string
 
-#+INCLUDE: "./string.org"
+ #+INCLUDE: "./string.org"
 
-* table
+** table
 
-#+INCLUDE: "./table.org"
+ #+INCLUDE: "./table.org"
 
 * compiler
 
-类比
-
-opcode -> 机器码
-vm -> 机器
-
-将 lua 的执行过程分为编译时和运行时
-
-考虑编译的过程
-
-传统是 source -> token -> ast -> ir -> ... -> bytecode
-
-
-lua 为了效率，直接从 source -> token -> bytecode
-相应代码不是那么容易阅读
-需要一些编译原理的了解
+#+INCLUDE: "./compiler.org"
 
 ** lexer
 
@@ -77,13 +65,13 @@ lua 为了效率，直接从 source -> token -> bytecode
 
 #+INCLUDE: "./gc.org"
 
-* debug
-
-#+INCLUDE: "./debug.org"
-
 * package module lib
 
 #+INCLUDE: "./lib.org"
+
+* debug
+
+#+INCLUDE: "./debug.org"
 
 * error handling
 

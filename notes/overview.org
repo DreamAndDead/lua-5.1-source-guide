@@ -8,6 +8,9 @@
   - lua user
   - c
   - linux
+- 整体规划
+  - 依赖关系
+  - 由浅入深
 - 章节规划
   - 功能概要
   - （补充对应原理）
@@ -33,19 +36,16 @@ the final step
 - compile with debug info
 - scan from feature to feature
 
-*** project structure
+*** project itself
 
-lua source itself
-
-where I modified the source code
-
-reading project how to use
+- lua source itself
+- where I modified the source code
+- some tool to help
 
 *** insight
 
-gcc
-
-gdb
-
-gdb script
+- gcc
+- gdb
+- gdb script
+- how to step
 

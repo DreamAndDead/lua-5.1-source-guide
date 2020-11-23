@@ -1,2 +1,19 @@
-* string
+* TODO string
+
+- as a gcobject
+  - commonHeader
+- mem alignment
+  - meta and content (char *)
+  - just behind, no next pointer
+- all cached in G(L) string table
+  - hash structure
+  - set and get
+  - when to resize
+- hash algo
+- reserved?
+- new str, similar with new userdata, so put them together
+
+
+教科书式的实现
+
 

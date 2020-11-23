@@ -1,12 +1,17 @@
-* table
+* TODO table
 
+- split hash part and array part
+  - array, tvalue list
+  - hash, node list, like hash bucket
+    - node is smart
+  - num not in array part, before hash nodes part?
+- how to decide array size
+  - largest size where n/2 are used (use log method to iterate)
+- hash all kind of key (no nil)
+  - pointer, str and other
+- how metatable works
 
-** store
-
-hash part
-array part
-
-
-** TODO how metatable works?
+- metatable now? after vm chapter
+- tvaluefields order rocks! value first and tt later. why?
 
 

@@ -1,44 +1,33 @@
-* generate
+* TODO generate
+
+- generic
+  - L fs f big picture
+    - proto
+    - expdesc
+    - nest func
+  - alloc stack
+  - var type
+    - local
+    - upval
+    - global
+  - k table
+  - proto list
+  - upval list
+- statement
+  - if
+    - jump chain
+  - for
+    - blockCnt
+    - do end, chunk is not block
+  - function
+    - upval
+  - ...
+- opcode
+  - close
+  - ...
+
 
 之前是保持语法，生成过程要保持语义
-
 好像没有明确的 dsl 来描述
-
 应该属于实现的艺术
 
-
-从语句开始，和 opcode 合在一起讲
-剩下关键的 opcode 再作一番补充
-
-
-** generic
-
-*** allocate stack for local var
-
-*** var type (local upval global)
-
-*** k table, proto list, upval list
-
-** statement
-
-statement -> ****stat
-
-*** if
-
-*** for
-     
-blockCnt
-
-do end block and break
-
-chunk is not block
-    
-*** function
-
-upval
-
-
-
-** opcode
-
-*** close

@@ -1,27 +1,19 @@
-* vm
+* TODO vm
 
-** exec
+- exec
+  - how to implement semantic
+    - generic process
+      - pc, etc
+    - lua_State callinfo stack
+    - upval, open and close
+    - metatable
+    - env
+- coroutine (thread)
+- c api
+  - c to stack
+  - lua to stack
 
-closure
-
-lua_State
-
-callinfo
-
-stack
-
-upval, open and close
-
-** coroutine (thread)
 
 
-** c api
 
-lapi.c
-
-c <-> stack <-> lua
-
-*** c & stack
-
-*** lua & stack
 

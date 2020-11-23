@@ -1,7 +1,6 @@
-* error
+* TODO error handling
 
 - protected call
 - longjump
-
 
 

@@ -1,24 +1,15 @@
-* work with lua
+* TODO work with lua
 
-** conf
+- conf
+  - llimits.c
+  - luaconf.c
+- lua standalone interpreter
+- lua compiler
+- compile with lua
+  - lua as lib
+  - c as lib
 
- llimits.c
- luaconf.c
 
-** lua standalone interpreter
-
- lua.c
-
-** lua compiler
-
- luac.c
- print.c
-
-** compile with lua 
-
-c api
-
-liblua.a
 
 
 
