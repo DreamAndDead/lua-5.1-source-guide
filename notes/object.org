@@ -20,6 +20,7 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 - union memory
 - how TString alignment? where dummy is smaller than tsv
 - struct in union, gcobject hack
+- if in array?
 
 ** data representation
 
@@ -114,6 +115,8 @@ GCObject 是一个 union 结构，不同键值对应于不同的类型。
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "39-52"
 
 GCObject 内部的所有结构都拥有 CommonHeader，作为头部的位置。
+
+TODO: more details
 
 这样在引用 GCObject 的时候，可以先通过 gch 来判断类型，再用不同的键值来取数据。
 

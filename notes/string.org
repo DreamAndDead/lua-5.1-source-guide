@@ -1,10 +1,7 @@
+#+SETUPFILE: setup.org
+
 * TODO string
 
-- as a gcobject
-  - commonHeader
-- mem alignment
-  - meta and content (char *)
-  - just behind, no next pointer
 - all cached in G(L) string table
   - hash structure
   - set and get
@@ -14,6 +11,103 @@
 - new str, similar with new userdata, so put them together
 
 
-教科书式的实现
+
+** intro
+
+- 字符串都是不可变的，有且只有一份存留在内存，由多个变量指向
+- 全部 string 创建并缓存在全局表中
+- 是 lua 语言的基础类型之一，也为 vm 底层提供作用
+
+** data structure
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
+
+- [ ] graph
+
+string 的内存结构很简单，包含
+- meta
+- content
+
+- 本身是 union
+  - dummy 用来对齐内存？how？本身比 tsv 小很多。并不用来引用数据
+  - 作为 gcobject，配置了 commonHeader
+  - reserved 用于缓存关键字，比如 if end，不会被 gc，> 0 即可
+  - hash 是字符串内容计算得到的
+    - 相同串 hash 相同
+    - 可比较大小
+  - len，字符串内容的长度
+- 字符串的具体内容存放在，符合 tstring 对齐原则的（？）下一个内存地址处，紧紧凑在一起
+  而没有使用 next 之类的指针来存储
+
+** method
+
+对于 tstring，只有两个方法是最重要的。
+
+一个是 new string，新建 string 对象，释放的过程由 gc 来处理。
+
+一个是底层使用的 resize，用于动态调整 hash bucket
+      
+*** new
+
+string 只会被新建，不会被修改
+
+所有的 string 都存储在 global->strt 中。
+存储的方式，是教科书式的 hash bucket 实现。
+
+#+INCLUDE: ../lua-5.1.5/src/lstate.h src c -n 38 :lines "38-43"
+
+- hash 是桶数组，元素为 gcobject *
+- nuse 为所有字符串的数量
+- size 为桶数组的长度
+
+每个 string 都有一个唯一的 hash，string 就存放在 hash % size 的桶里
+如果 hash 出现冲突，就用 next（commonHeader 还记得吗） 将相同 hash 的字符串串起来
+
+- [ ] graph
+
+当新建字符串的时候，很计算出 string 的 hash 值，到桶中去寻找，是否已经存在
+- 存在则直接返回相应指针
+- 不存在则调用私有方法，新建 string
+
+#+INCLUDE: ../lua-5.1.5/src/lstring.c src c -n 75 :lines "75-94"
+
+
+
+- 检测是否超出长度限制，右侧 - 防止溢出
+- 分配 l+1 长度 + TSring 头部的内存，+1 是为了添加最后的 '\0'
+- 设置相应的字段，ts+1 就是 char * 的开始处
+- 添加后置 '\0'
+- 使用头插法，插入到 global string table 中
+- 是否触发 resize 操作
+
+#+INCLUDE: ../lua-5.1.5/src/lstring.c src c -n 50 :lines "50-73"
+
+
+*** resize
+    
+resize 的作用，就是动态根据所有桶中元素的多少，进行桶的数量的调整。
+
+在 new string 中，触发的条件为
+- 元素超过桶的个数
+- 桶的个数小于最大整数的一半
+
+
+
+
+
+
+
+#+INCLUDE: ../lua-5.1.5/src/lstring.c src c -n 22 :lines "22-48"
+
+
+
+
+
+
+** practice
+
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 210 :lines "210-212"
+   
 
 

@@ -14,7 +14,7 @@
 
 ** object
 
- #+INCLUDE: "./object.org"
+#+INCLUDE: "./object.org"
 
 ** memory
 
@@ -22,11 +22,11 @@
 
 ** string
 
- #+INCLUDE: "./string.org"
+#+INCLUDE: "./string.org"
 
 ** table
 
- #+INCLUDE: "./table.org"
+#+INCLUDE: "./table.org"
 
 * compiler
 
