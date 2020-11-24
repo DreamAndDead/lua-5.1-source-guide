@@ -34,6 +34,11 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 
 tt 表示数据的类型，value 表示数据的内容。
 
+
+
+TODO tvaluefields order rocks! value first and tt later.
+
+
 *** type
 
 类型只是简单的用数字来标识，可以看到其基础类型的宏定义

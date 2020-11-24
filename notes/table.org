@@ -2,21 +2,9 @@
 
 * TODO table
 
-- split hash part and array part
-  - hash, node list, like hash bucket
-    - node is smart
-  - num not in array part, before hash nodes part?
+- num not in array part, before hash nodes part?
 - how to decide array size
   - largest size where n/2 are used (use log method to iterate)
-- hash all kind of key (no nil)
-  - pointer, str and other
-- how metatable works
-
-- metatable now? after vm chapter
-- tvaluefields order rocks! value first and tt later. why?
-
-
-
 
 ** intro
 
@@ -127,27 +115,35 @@ TODO graph
     
 *** set key
 
-=luaH_set= =newkey= 相互调用
+set key 并非是直接设置 v，而是返回 key 代表的位置，v 的指针，直接由调用者修改
 
-newkey 的逻辑，不能出现碰撞？
+=luaH_setstr= =luaH_setnum= 底层都依赖 newkey
 
 并不是桶的实现，因为如果出现碰撞，则找到一个 freepos，用 next 串联起来，
 相当于是数组链表
 
 
+=luaH_set= 进行基本的检测，如果找到位置，直接返回
 
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-506"
 
-=luaH_setstr= =luaH_setnum= 底层都依赖 newkey
+=newkey= 进行 key 的插入
+- dummy node ?
 
+- 先找到 key 的 mp
+- 如果 mp 上已经有元素
+  - 如果它已经在其位置上，则将 key 放置在 freepos
+  - 如果它不在位置，则由其 mp 位置，一直 next 找到其 previous 位置
+    将 key 放在 mp 位置，另外放在 freepos，并改变指针的指向
+
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 392 :lines "392-430"
 
 ** array
 
 没有 array 一开始令学习 lua 的人困惑，尤其是通过 table 来表示数组
 且默认索引从 1 开始
 
-
 array part 只存储 正整数索引（>= 1） 表示的键值对。
-
 
 数字索引的 kv 自然可以用 hash 的结构来存储，但是引入 array part 来存储，
 是出于效率的原因。
@@ -169,7 +165,6 @@ local t = {1, 2, 3, 4}
 #+end_src
 
 这样紧密的情况下，全部使用 array part 来存储，自然效率是最高的，完全看作一个数组。
-
 
 如果
 
@@ -198,13 +193,25 @@ array part 在 table 中，就是一个 TValue 数组，
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 338 :lines "338-349"
 
+*** get num
+
+- TODO 什么时候使用 hashnum，？超过 sizearray？浮点？
+
 *** set num
 
 
     
-*** get num
+
+使用 newkey 的逻辑
+
+** TODO rehash
 
 
+
+
+** TODO next
+
+next
 
 ** metatable
 
@@ -214,20 +221,7 @@ tagmethod cache
 
 ** practice
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+jk
 
 
 
