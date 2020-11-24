@@ -257,7 +257,29 @@ findindex 返回
 rehash -> resize
 
 - 先进行 size 计算，多少用于 array，多少用于 hash
-- 
+- 巧妙，使用 log pow 来统计
+
+
+computesizes 中
+
+twotoi/2 < *narray 的条件，是因为如果不符合，则 twotoi 一定不符合
+因为其中所有元素小于 size 的一半，一定不符合 array size 的选择
+
+if a == *narray break
+
+是一个优化，如果元素出现的非常密集，在前方
+继续统计也没有意义，nums[i] 都是 0，（好像不完全正确？）
+
+累计的应该是 1 2 4 8 之类
+
+相当于，如果 a == *narray，则 a 最大为 twotoi
+
+a 统计的是 < 2^i 的个数 == twotoi
+
+既然已经统计结束，则下一轮，twotoi * 2 必定大于 a 的 2 倍
+
+不符合查找条件
+
 
 
 ** metatable
