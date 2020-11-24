@@ -113,6 +113,8 @@ resize 的作用，就是动态根据所有桶中元素的多少，进行桶的�
 
 ** practice
 
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 215 :lines "215-224"
+
 userdata 的实现方法和 string 很相似，就一并放在 lstring.c.h 中
 
 - ~sizeudata~
