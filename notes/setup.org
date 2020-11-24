@@ -1,4 +1,7 @@
+#+STARTUP: logdrawer logdone logreschedule
+
 #+TODO: TODO(t) DRAFT(d) | DONE(o)
+#+SEQ_TODO: TODO(t@/!) DRAFT(d@/!) | DONE(o@/!)
 
 #+LATEX_COMPILER: xelatex
 #+LATEX_CLASS: book
@@ -6,4 +9,5 @@
 #+LATEX_HEADER: \usepackage{xeCJK}
 
 #+HTML_DOCTYPE: html5
+
 

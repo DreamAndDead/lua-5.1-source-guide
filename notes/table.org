@@ -47,7 +47,7 @@ table 的结构很简单，很不看 整数 相关的部分，
 
 - lsizenode，指 node 桶的大小 Log2
 - node，桶
-- lastfree，？
+- lastfree，？初始在 node array 的最后，索引 size，（不会超出数组本身吗？）
   
 Node 代表一个 kv 存储
 - i_val
@@ -81,6 +81,7 @@ TODO graph
   如果不是，需要参与运算（可能是浮点）如何计算？
 - 其它，将指针地址强制转换为 int 作为 hash
   其中 mod 的值，不是 size - 1 的值，地址一般是对齐的，减小碰撞的概率
+  - lightudata 和 gc 各自的指针
 
   
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 352 :lines "352-361"
@@ -138,6 +139,9 @@ set key 并非是直接设置 v，而是返回 key 代表的位置，v 的指针
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 392 :lines "392-430"
 
+
+和 setobj 一起用
+
 ** array
 
 没有 array 一开始令学习 lua 的人困惑，尤其是通过 table 来表示数组
@@ -193,25 +197,68 @@ array part 在 table 中，就是一个 TValue 数组，
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 338 :lines "338-349"
 
+*** hash num
+
+- TODO avoid -0?
+
+- 从字节角度，将 double 分为多个 unsigned int
+- 所有 int 求和，得到 hash
+- mod size node，得到 num 的 mp
+
 *** get num
 
-- TODO 什么时候使用 hashnum，？超过 sizearray？浮点？
+=luaH_get=
+
+- 如果 key 是 number 和 int，使用 =luaH_getnum=
+  是浮点，则正常使用 =hashnum=
+- 在 =luaH_getnum= 中，在 1 - sizearray 范围内，可以直接索引
+  否则，还是通过 =hashnum= ，从 hash 部分搜索
+
 
 *** set num
 
-
-    
-
 使用 newkey 的逻辑
 
-** TODO rehash
+TODO setnum 没有特殊处理？直接使用 hashnum。何时使用 array index 添加？
 
-
-
+可能只有在 rehash 的时候，才会将相应的 整数 key 移动到 array 部分
+先计算大小，再进行迁移
 
 ** TODO next
 
-next
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 116 :lines "116-180"
+
+=luaH_next=
+
+被 lapi.c lua_next 使用
+
+应用在 baselib tablelib 的 foreach 中
+
+TODO deadkey?
+
+findindex 返回
+- -1，是开始
+- 在 sizearray 范围内，直接返回
+- 计算 mp，在 next 链中寻找 key，返回 sizearray + node偏移
+
+
+将 array node 并起来，从前到后，遍历所有元素
+
+以 nil 开始
+
+每次将 key, key+1 置为 next key, next key value，
+一直到没有元素
+
+
+最后和 ltablib foreach 以及 c api 结合起来，会理解的更为深刻
+
+** TODO rehash
+
+rehash -> resize
+
+- 先进行 size 计算，多少用于 array，多少用于 hash
+- 
+
 
 ** metatable
 
@@ -226,5 +273,13 @@ jk
 
 
 
+** TODO graph list
+   :LOGBOOK:
+   - State "TODO"       from              [2020-11-24 二 17:06] \\
+     prepare to make a table graph plan
+   :END:
 
+- data structure first
+- process after
+- how to namingc
 
