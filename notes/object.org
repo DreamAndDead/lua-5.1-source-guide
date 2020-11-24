@@ -1,3 +1,5 @@
+#+SETUPFILE: setup.org
+
 * object
 
 lua 是一种动态语言，即数据的类型不存在于变量中，而存在于数据本身。
