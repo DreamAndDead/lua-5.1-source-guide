@@ -1,20 +1,84 @@
+#+SETUPFILE: setup.org
+
 * lexer
 
-- job
-  - from source to token, base on regex
-- regex & DFA & NFA
-  - 描述 token 的模式
-  - 转换 regex 为代码实现
-    - flex 的原理
-  - lua 采用了手写的方式
-    - 更加灵活，效率更高
-- llex_next
-  - zio mbuffer
-  - lexstate
-    - lookahead
-    - singleton
-    - hold fs and f
-- a lexer program
-  - with gdb script
+** intro
+
+从源代码到 token 的过程
+
+字符流 到 token 流
+
+lexer 的作用
+
+辅助 parser 的第一步
+
+
+** theory
+
+*** regex
+
+正则都不陌生
+
+描述 token
+
+匹配的优先级？
+如果有相同的匹配模式？
+
+*** DFA
+
+*** NFA
+
+*** relation
+
+equal
+
+flex 原理
+
+将 regex 表示为代码逻辑
+
+** lexer
+
+lua 采用了手写的方式
+更加灵活，效率更高
+
+反而看代码更直白，用正则反而不容易描述
+
+TODO flex 描述
+
+从字符流的开头处，开始按规则，匹配，返回匹配的 token
+
+一直重复这样的过程
+
+*** zio
+
+
+    
+*** mbuffer
+
+*** token
+
+
+
+*** lexstate
+
+singleton
+hold fs and f
+
+*** =luaX_next=
+    
+lookahead
+
+
+** lexer program
+
+
+   
+** practice
+
+
+
+
+
+
 
 

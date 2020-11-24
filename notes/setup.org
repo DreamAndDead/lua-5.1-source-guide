@@ -1,7 +1,6 @@
 #+STARTUP: logdrawer logdone logreschedule
 
 #+TODO: TODO(t) DRAFT(d) | DONE(o)
-#+SEQ_TODO: TODO(t@/!) DRAFT(d@/!) | DONE(o@/!)
 
 #+LATEX_COMPILER: xelatex
 #+LATEX_CLASS: book

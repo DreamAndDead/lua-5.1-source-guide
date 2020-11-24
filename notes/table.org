@@ -281,27 +281,18 @@ a 统计的是 < 2^i 的个数 == twotoi
 不符合查找条件
 
 
-
-** metatable
+** TODO metatable
 
 tagmethod cache
 
 机制不在这里发生作用
 
-** practice
-
-jk
-
-
-
-
 ** TODO graph list
-   :LOGBOOK:
-   - State "TODO"       from              [2020-11-24 二 17:06] \\
-     prepare to make a table graph plan
-   :END:
 
 - data structure first
 - process after
 - how to namingc
+
+** practice
+
 
