@@ -4,3 +4,6 @@
 *.tex
 *.toc
 *.html
+
+*.pygtex
+*.pygstyle

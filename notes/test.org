@@ -1,6 +1,6 @@
-#+STARTUP: logdrawer logdone logreschedule
-#+SEQ_TODO: TODO(t@/!) DRAFT(d@/!) | DONE(o@/!)
+#+SETUPFILE: setup.org
 
+#+STARTUP: logdrawer logdone logreschedule
 
 * test
 
@@ -23,25 +23,7 @@ In line [[(sc)]] we remember the current position.
 [[(jump)][Line (jump)]] jumps to point-min.
 
 
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 287 :lines "287-317"
 
 
-** TODO new chapter
-   SCHEDULED: <2020-11-26 四>
-   :LOGBOOK:
-   CLOCK: [2020-11-24 二 15:15]--[2020-11-24 二 15:15] =>  0:00
-   - Rescheduled from "[2020-11-25 三]" on [2020-11-24 二 14:52]
-   - State "TODO"       from "DONE"       [2020-11-24 二 14:50] \\
-     reopen
-   - State "DONE"       from "DRAFT"      [2020-11-24 二 14:50] \\
-     end
-   - State "DRAFT"      from "TODO"       [2020-11-24 二 14:48] \\
-     draft
-   - State "TODO"       from              [2020-11-24 二 14:47] \\
-     new todo
-   :END:
-
-
-
-#+begin_src shell
-ls -al
-#+end_src
+一些中文内容

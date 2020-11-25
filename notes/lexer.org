@@ -23,6 +23,8 @@ lexer 的作用
 
 匹配的优先级？
 如果有相同的匹配模式？
+第一人匹配的优先级？
+
 
 *** DFA
 
@@ -56,6 +58,9 @@ TODO flex 描述
 *** mbuffer
 
 *** token
+
+first reserved 257
+256 匹配 ascii 码字符
 
 
 

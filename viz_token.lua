@@ -36,3 +36,12 @@ for i, line in ipairs(lines) do
 end
 
 
+
+
+--[[
+local a = 1
+-- ]]
+
+local s = [=[
+afkal
+]=]
