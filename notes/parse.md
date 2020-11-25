@@ -182,14 +182,9 @@ lexical scoping 和 syntax scoping 的区别？
 
 
 
-
-
 fs->f->sizek 和 fs->nk 是有区别的
-
 nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
-
 如 length 和 capacity 的区别
-
 当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
 
 
@@ -260,82 +255,6 @@ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是�
 	unop ::= `-´ | not | `#´
 ```
 
-
-
-EBNF
-
-
-
-```
-{ a } 表示 a*，0 个或多个
-[ a ] 表示 a?，0 个或一个
-( a ) 表示一个
-| 表示或
-
-
-chunk -> { stat [ `;' ] }
-
-stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat
-
-ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
-cond -> expr
-block -> chunk
-
-whilestat -> WHILE cond DO block END
-
-dostat -> DO block END
-
-forstat -> FOR (fornum | forlist) END
-fornum -> NAME = expr, expr[, expr] forbody
-forlist -> NAME {, NAME} IN explist forbody
-forbody -> DO block
-
-repeatstat -> REPEAT block UNTIL cond
-
-funcstat -> FUNCTION funcname body
-funcname -> NAME {`.' NAME} [`:' NAME]
-body -> `(' parlist `)' chunk END
-parlist -> [ NAME {`,' NAME} [ `...' ] ]
-
-localstat -> LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist]
-
-retstat -> RETURN [explist]
-
-breakstat -> BREAK
-
-exprstat -> prefixexp (funccallstat | assignstat)
-prefixexp -> NAME | `(' expr `)'
-
-funccallstat -> primaryexp (`:' NAME funcargs | funcargs)
-funcargs -> `(' [ explist ] `)' | constructor | STRING
-
-assignstat -> primaryexp (`.' NAME | `[' expr `]') assignment
-assignment -> `,' assignstat | `=' explist
-
-primaryexp -> {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
-
-
-explist -> expr {`,' expr}
-expr -> subexpr      # 在 subexpr 中进行了比较级的限制（唉，EBNF）
-subexpr -> (simpleexp | unop subexpr) {binop subexpr}
-
-simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
-
-binop -> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ | 
-	`<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
-	and | or
-unop -> `-´ | not | `#´
-
-
-constructor -> `{' [fieldlist] `}'
-fieldlist -> field {fieldsep field} [fieldsep]
-field -> `[' expr `]' `=' expr | name `=' expr | expr
-fieldsep -> `,' | `;'
-```
-
-ENBF 语法并没有给出完全的限制
-
-虽然是递归下降，但是各个名称和 函数名称不一定是对应的
 
 
 

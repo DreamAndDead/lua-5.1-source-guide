@@ -14,10 +14,90 @@
     - online manual/metalua/comments
 
 
-
+** intro
 
 ast 过程可以理解为，在递归下降的过程中发现
 至于 ir，由于没有跨平台实现的需求，也可以不考虑（只针对 lua vm 实现）
+
+
+
+** EBNF
+
+#+begin_example
+{ a } 表示 a*，0 个或多个
+[ a ] 表示 a?，0 个或一个
+( a ) 表示一个
+| 表示或
+#+end_example
+
+
+#+begin_src bnf
+chunk -> { stat [ `;' ] }
+
+stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat
+
+ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+cond -> expr
+block -> chunk
+
+whilestat -> WHILE cond DO block END
+
+dostat -> DO block END
+
+forstat -> FOR (fornum | forlist) END
+fornum -> NAME = expr, expr[, expr] forbody
+forlist -> NAME {, NAME} IN explist forbody
+forbody -> DO block
+
+repeatstat -> REPEAT block UNTIL cond
+
+funcstat -> FUNCTION funcname body
+funcname -> NAME {`.' NAME} [`:' NAME]
+body -> `(' parlist `)' chunk END
+parlist -> [ NAME {`,' NAME} [ `...' ] ]
+
+localstat -> LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist]
+
+retstat -> RETURN [explist]
+
+breakstat -> BREAK
+
+exprstat -> prefixexp (funccallstat | assignstat)
+prefixexp -> NAME | `(' expr `)'
+
+funccallstat -> primaryexp (`:' NAME funcargs | funcargs)
+funcargs -> `(' [ explist ] `)' | constructor | STRING
+
+assignstat -> primaryexp (`.' NAME | `[' expr `]') assignment
+assignment -> `,' assignstat | `=' explist
+
+primaryexp -> {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
+
+
+explist -> expr {`,' expr}
+expr -> subexpr      # 在 subexpr 中进行了比较级的限制（唉，EBNF）
+subexpr -> (simpleexp | unop subexpr) {binop subexpr}
+
+simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
+
+binop -> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ | 
+	`<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
+	and | or
+unop -> `-´ | not | `#´
+
+
+constructor -> `{' [fieldlist] `}'
+fieldlist -> field {fieldsep field} [fieldsep]
+field -> `[' expr `]' `=' expr | name `=' expr | expr
+fieldsep -> `,' | `;'
+#+end_src
+
+
+ENBF 语法并没有给出完全的限制
+
+虽然是递归下降，但是各个名称和 函数名称不一定是对应的
+
+
 
 
 对于 char 到 token 有明显的分辨力，从 token 到 ast 也还可以
