@@ -51,16 +51,21 @@ TODO flex 描述
 
 一直重复这样的过程
 
-*** zio
-
-
-    
-*** mbuffer
 
 *** token
 
 first reserved 257
 256 匹配 ascii 码字符
+
+用 reverved 保存了相应的类型
+在 llex 中还原
+
+
+
+
+
+对数字的检测，正则检测并不完整
+还使用了 strtod 的转换错误检测
 
 
 
@@ -76,13 +81,13 @@ lookahead
 
 ** lexer program
 
-
    
 ** practice
 
 
-
-
+*** zio
+    
+*** mbuffer
 
 
 
