@@ -1,18 +1,28 @@
+#+SETUPFILE: setup.org
+
 * TODO opcode
 
-  
+** format
+
 - format
   - 3 kind
   - opcode and oprand
-- meaning
+
+
+** model
+
+opcode 本身是包含语义的
+和 vm 有着相同的语义约定
+
+按照一个模型来协同
+
+- running model
   - pc
   - k
   - local var, stack
-- running model
+  - global table
+  - upvalue table
 
 
 
-opcode 本身是包含语义的
-
-和 vm 有着相同的语义约定
 

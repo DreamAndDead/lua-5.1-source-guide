@@ -75,7 +75,7 @@ primaryexp -> {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
 
 
 explist -> expr {`,' expr}
-expr -> subexpr      # 在 subexpr 中进行了比较级的限制（唉，EBNF）
+expr -> subexpr      ; 在 subexpr 中进行了比较级的限制（唉，EBNF）
 subexpr -> (simpleexp | unop subexpr) {binop subexpr}
 
 simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
