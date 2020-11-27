@@ -1,3 +1,5 @@
+#+SETUPFILE: setup.org
+
 * TODO parser
 
 - job
@@ -30,11 +32,11 @@ ast 过程可以理解为，在递归下降的过程中发现
 | 表示或
 #+end_example
 
-
-#+begin_src bnf
+#+begin_src
 chunk -> { stat [ `;' ] }
 
-stat -> ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat
+stat -> ifstat | whilestat | dostat | forstat | repeatstat |
+        funcstat | localstat | retstat | breakstat | exprstat
 
 ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
 cond -> expr
@@ -45,8 +47,8 @@ whilestat -> WHILE cond DO block END
 dostat -> DO block END
 
 forstat -> FOR (fornum | forlist) END
-fornum -> NAME = expr, expr[, expr] forbody
-forlist -> NAME {, NAME} IN explist forbody
+fornum -> NAME = expr `,' expr [`,' expr] forbody
+forlist -> NAME {`,' NAME} IN explist forbody
 forbody -> DO block
 
 repeatstat -> REPEAT block UNTIL cond
@@ -54,7 +56,7 @@ repeatstat -> REPEAT block UNTIL cond
 funcstat -> FUNCTION funcname body
 funcname -> NAME {`.' NAME} [`:' NAME]
 body -> `(' parlist `)' chunk END
-parlist -> [ NAME {`,' NAME} [ `...' ] ]
+parlist -> [ NAME {`,' NAME} [ DOTS ] ]
 
 localstat -> LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist]
 
@@ -75,20 +77,19 @@ primaryexp -> {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
 
 
 explist -> expr {`,' expr}
-expr -> subexpr      ; 在 subexpr 中进行了比较级的限制（唉，EBNF）
+expr -> subexpr              ; 在 subexpr 中进行了比较级的限制（唉，EBNF）
 subexpr -> (simpleexp | unop subexpr) {binop subexpr}
 
-simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor | FUNCTION body | primaryexp
+simpleexp -> NUMBER | STRING | NIL | TRUE | FALSE | DOTS |
+             constructor | FUNCTION body | primaryexp
 
-binop -> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ | 
-	`<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
-	and | or
-unop -> `-´ | not | `#´
-
+binop -> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | CONCAT | 
+	`<´ | LE | `>´ | GE | EQ | NE |	AND | OR
+unop -> `-´ | NOT | `#´
 
 constructor -> `{' [fieldlist] `}'
 fieldlist -> field {fieldsep field} [fieldsep]
-field -> `[' expr `]' `=' expr | name `=' expr | expr
+field -> `[' expr `]' `=' expr | NAME `=' expr | expr
 fieldsep -> `,' | `;'
 #+end_src
 
