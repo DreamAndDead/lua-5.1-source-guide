@@ -99,6 +99,8 @@ ENBF 语法并没有给出完全的限制
 虽然是递归下降，但是各个名称和 函数名称不一定是对应的
 
 
+explist1 -> explist
+
 
 
 对于 char 到 token 有明显的分辨力，从 token 到 ast 也还可以
