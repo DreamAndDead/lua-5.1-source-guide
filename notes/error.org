@@ -4,3 +4,19 @@
 - longjump
 
 
+
+error msg to L->top
+
+
+
+
+https://stackoverflow.com/questions/14685406/practical-usage-of-setjmp-and-longjmp-in-c
+
+Error handling
+
+Suppose there is an error deep down in a function nested in many other functions and error handling makes sense only in the top level function.
+
+It would be very tedious and awkward if all the functions in between had to return normally and evaluate return values or a global error variable to determine that further processing doesn't make sense or even would be bad.
+
+That's a situation where setjmp/longjmp makes sense. Those situations are similar to situation where exception in other langages (C++, Java) make sense. 
+
