@@ -56,10 +56,6 @@
 
 #+INCLUDE: "./vm.org"
 
-* gc
-
-#+INCLUDE: "./gc.org"
-
 * package module lib
 
 #+INCLUDE: "./lib.org"
@@ -67,6 +63,10 @@
 * debug
 
 #+INCLUDE: "./debug.org"
+
+* gc
+
+#+INCLUDE: "./gc.org"
 
 * error handling
 

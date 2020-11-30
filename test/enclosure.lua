@@ -1,8 +1,9 @@
 --
 
+local a = 2
+local b = 3
+
 function foo()
-   local a = 2
-   function bar()
-      local a = 1
-   end
+   local d = b + 4
+   local c = a + 1
 end
