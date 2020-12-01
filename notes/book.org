@@ -56,10 +56,6 @@
 
 #+INCLUDE: "./vm.org"
 
-* package module lib
-
-#+INCLUDE: "./lib.org"
-
 * debug
 
 #+INCLUDE: "./debug.org"
@@ -68,9 +64,17 @@
 
 #+INCLUDE: "./gc.org"
 
+* c api
+
+[[http://www.lua.org/manual/5.1/manual.html#3][lua 5.1 ref]]
+
 * error handling
 
 #+INCLUDE: "./error.org"
+
+* lib
+
+#+INCLUDE: "./lib.org"
 
 * work with lua
 
