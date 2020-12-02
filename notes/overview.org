@@ -1,3 +1,5 @@
+#+SETUPFILE: setup.org
+
 * overview
 
 ** TODO intro

@@ -1,10 +1,16 @@
 #+SETUPFILE: setup.org
 
-* object
+- struct & union 规则
+- tvalue
+- gcobject
+- collectable & non-collectable
+- 
 
-lua 是一种动态语言，即数据的类型不存在于变量中，而存在于数据本身。
+* types & values
 
-语言本身定义了 8 种数据类型
+lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
+
+lua 中有 8 种类型的值
 - nil
 - bool
 - number
@@ -14,7 +20,8 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 - userdata
 - thread
 
-想必了解 lua 的人都不陌生，几乎是所有 lua 书/教程最先讲到的。
+从某种角度而言，程序就是“数据”与“操作数据的方法”。
+所以第一步，先来了解 lua 类型与值的实现。
 
 ** TODO review struct & union
 
@@ -22,141 +29,139 @@ lua 是一种动态语言，即数据的类型不存在于变量中，而存在�
 - union memory
 - how TString alignment? where dummy is smaller than tsv
 - struct in union, gcobject hack
-- if in array?
+- union in array?
 
-** data representation
+** tagged value
 
-抽象来说，“数据”本身的概念可以用一个结构来表示，内部可以细分为
-- 数据类型
-- 数据内容
+一开始就提到，类型存在于值本身。
+在 lua 内部，用 TValue（tagged value）表示值的概念。
 
-在 lua 中，这一结构是 TValue
+#+INCLUDE: ../lua-5.1.5/src/lobject.h -n 67 :lines "67-76"
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h :lines "67-76"
+tt 表示值的类型，value 表示值的内容。明显地，类型是值的一部分。
 
-tt 表示数据的类型，value 表示数据的内容。
+fig.tvalue simple
 
+*** TODO type
 
-
-TODO tvaluefields order rocks! value first and tt later.
-
-
-*** type
-
-类型只是简单的用数字来标识，可以看到其基础类型的宏定义
+在 TValue 中，类型用 int 数字来标识，可以找到所有基础类型的宏定义
 
 #+INCLUDE: ../lua-5.1.5/src/lua.h src c :lines "69-83"
 
-完全对应上面提到的 8 种数据类型
+完全对应lua 中的 8 种类型。
 
-细心的你一定发现了特别的一点，userdata 分为 light 和 non-light 两种，在后面再说明为什么
+同样地，lua 定义了相应的宏，方便类型的检测。
 
-*** content
+#+INCLUDE: ../lua-5.1.5/src/lobject.h -n 78 :lines "78-91"
 
-至于 value，数据的内容，用一个 union 结构来表示，有效利用内存空间。
+细心如你，一定发现多了一种 lightuserdata 类型。
+userdata 类型有 light 和 non-light 两种类型定义，这一点先不做细致的解释，
+先带着问题前进，之后再解释为什么。
+
+*** data
+
+至于值的数据，TValue 用一个 union 结构来表示，有效利用内存空间。
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "56-65"
 
 不同类型的数据使用不同的键值来存取。
 
-** non-collectable
+fig.value
 
-value 中有 4 个键，不同类型如何存储？
-
-lua 本身内建了 gc 机制，用于清除未使用的垃圾对象。
-
-gc 只作用于 lua 内部 alloc 内存且需要私下 free 的对象，
-
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "189-190"
-
-即后 5 种数据类型。
-
-它们都通过 gc 来存取。
-
-不需要 gc 的，通过其它键来存取。
+** detail
 
 *** nil
 
-准确的说，nil 是一个单例对象，代表没有。
-
-只需要用 tt 表示类型即可，不需要用 value 记录内容。
-
-
+nil 是最简单的值，表示没有值。由于不需要数据，只需用 tt 表示类型即可。
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "363-366"
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.c src c :lines "27-28"
 
+重要的是，nil 是一个单例值，所有使用 nil 的地方，都通过 ~luaO_nilobject~ 来引用。
+
+fig.nil
+
 *** bool
 
- lua 中的 bool 值是 true/false
+lua 中的 bool 值是 true 和 false。
 
- tt 记录类型之后，用 int b = 1/0 表示 true/false。
+在 tt 记录类型之后，用 int b = 1/0 表示 true/false。
 
-*** light userdata
+fig.bool
 
- light userdata 表示 c 和 lua 协同的时候，由 c 语言一方表示的数据对象
+*** TODO light userdata
 
- lua 这边只负责引用，至于它的生命周期管理，什么时候释放，lua 这边并不清楚，也就不需要过问
+light userdata 表示 c 和 lua 协同的时候，由 c 语言一方传入的数据。
 
- 只用 void * p 引用即可
+相应的，lua 内部只负责引用，而不负责其生命周期管理，什么时候释放，lua 并不清楚，也不过问。
+
+所以只用 void * p 引用即可
+
+fig.light userdata
 
 *** number
 
- 默认设定下，lua 中所有数字都用 double 来表示
+默认设定下，lua 中所有数字都用 double 来表示。
 
- #+INCLUDE: ../lua-5.1.5/src/luaconf.h src c :lines "495-506"
+#+INCLUDE: ../lua-5.1.5/src/luaconf.h src c :lines "495-506"
 
- #+INCLUDE: ../lua-5.1.5/src/lua.h src c :lines "98-100"
+#+INCLUDE: ../lua-5.1.5/src/lua.h src c :lines "98-100"
 
- tt 表示数字，用 lua_Number n 来存取数字内容
+相应地，tt 表示数字，用 lua_Number n 来存取数字内容
 
-** collectable
+fig.number
 
-GCObject 是一个 union 结构，不同键值对应于不同的类型。
+*** collectable
+
+上面的数据表示都相对简单，其余类型的数据就相对复杂一些。
+但是有一点是共通的，它们都属于可 gc 的对象。
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "189-190"
+
+lua 内建了 gc 机制，其中关键的结构是 ~GCObject~ 。
+其本身是 union 结构，内部键值表明了可存取其它类型的数据。
 
 #+INCLUDE: ../lua-5.1.5/src/lstate.h src c :lines "133-146"
 
-这里有一个很巧妙的点
+所有这些数据都有一个共同点，它们都是 struct，且头部的字段都是 CommonHeader。
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "39-52"
 
-GCObject 内部的所有结构都拥有 CommonHeader，作为头部的位置。
+其中 tt 和 TValue 中的 tt 是相同的。
 
-TODO: more details
+这样就可以利用内存结构的特性，引用 GCHeader gch 来读取 tt，再根据 tt 来引用不同的键值。
 
-这样在引用 GCObject 的时候，可以先通过 gch 来判断类型，再用不同的键值来取数据。
+这一点在取数据的宏定义中可以清晰的看到
 
-另有一点，gc 中的 tt 和 TValue 中的 tt 是重复的（TODO why？）
+#+INCLUDE: ../lua-5.1.5/src/lstate.h src c :lines "148-160"
 
-以上两点需要注意
-
-*** TODO string
+**** TODO string
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "196-208"
 
-*** TODO table
+**** TODO table
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "319-349"
+ #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "319-349"
 
-*** TODO function
+**** TODO function
 
-- c closure
-- lua closure
+ - c closure
+ - lua closure
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "287-317"
+ #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "287-317"
 
-*** TODO userdata
+**** TODO userdata
 
- c memory
+  c memory
 
- light
+  light
 
- heavy
+  heavy
 
-*** TODO thread
+**** TODO thread
 
- later, after vm
+  later, after vm
 
 *** internal
 
@@ -169,8 +174,14 @@ TODO: more details
 proto 在 GCObject 用 p 来存取
 upval 则是 uv
 
+**** proto
+     
+**** upval
+
+**** deadkey
+
 ** TODO practice
 
-- which part of code?
+- related code
 
 

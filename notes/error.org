@@ -1,12 +1,16 @@
+#+SETUPFILE: setup.org
+
 * TODO error handling
 
 - protected call
 - longjump
-
+- different kind of error catch method
+  - in api
+  - in stack
+  - in ...
 
 
 error msg to L->top
-
 
 
 
