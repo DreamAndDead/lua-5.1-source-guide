@@ -21,6 +21,11 @@
   - 剩余代码阅读任务
 
 ** TODO big picture
+   :LOGBOOK:
+   - Note taken on [2020-12-02 三 17:39] \\
+     talk about lua state and global state
+     state scope and graph them
+   :END:
 
 - from sample code to result
 - graph whole process
@@ -29,6 +34,8 @@
 把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
 
 the final step
+
+
 
 
 ** TODO how to read source

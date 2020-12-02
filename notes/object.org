@@ -1,6 +1,6 @@
 #+SETUPFILE: setup.org
 
-* types & values
+* DRAFT types & values
 
 lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
 

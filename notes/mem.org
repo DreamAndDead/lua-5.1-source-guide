@@ -2,51 +2,47 @@
 
 * DRAFT memory
 
-内存是重要的系统资源。
+内存是承载数据的基础。在讲解更多细节之前，先关注 lua 是如何管理内存资源的。
 
-内存管理在任意程序中都是非常重要的，尤其像 lua 这样使用底层的 c 实现。
-
-内存管理必须提供两种基础功能
-- 内存分配
-- 内存回收
-
-lua 中实现的内存管理机制很简单，没有复杂的如整理内存碎片之类，甚至将分配和回收用一个核心 api 实现。
 
 ** core api
    :LOGBOOK:
+   - Note taken on [2020-12-02 三 17:26] \\
+     g->ud 和 g->totalbytes 的作用
    - Note taken on [2020-12-02 三 16:13] \\
      ud 的作用？
    :END:
 
-lua 是单线程程序，即使在内部有协程这样的实现，但是内存还是进行统一管理的。
 
+TODO: overview 中需要讲解 lua_state 和 global_state
+
+lua 是单线程程序，即使在内部有协程这样的实现，但是内存还是进行统一管理的。
 负责全局的相关事务的结构，为 global state。
 
-其中，g->frealloc 就是负责内存分配和回收的核心 api。
-g->ud 记录了 ud
-g->totalbytes 用于记录当前使用的内存总额。
+内存模块，必须提供两种基础功能，内存分配 和 内存回收。
 
+lua 中的内存模块很简单，没有复杂如整理内存碎片之类，甚至将内存分配和内存回收用一个核心 api 实现。
 
-准确的说，frealloc 是一个函数指针，原型为
+g->frealloc 是函数指针，指向负责内存分配和回收的核心 api。
+
+其原型为 lua_Alloc
 
 #+CAPTION: lua.h
 #+INCLUDE: ../lua-5.1.5/src/lua.h src c -n 63 :lines "63-67"
 
-不管这个函数内部如何实现，必须符合这样的约定
-
+不管这个函数内部如何实现，只要符合如下的行为，都可以作为核心 api。
 - malloc 功能， ~frealloc(ud, NULL, 0, n)~ ，分配大小为 n 的内存，并返回头地址
 - free 功能， ~frealloc(ud, p, o, 0)~ ，回收以 p 开始的 o 大小的内存块，返回 NULL
 - realloc 功能， ~frealloc(ud, p, o, n)~ ，变更 p 开始的内存块大小为 n，失败则返回 NULL
 
-也就是说，符合这样要求的函数都可以当作 frealloc 来使用
-
+#+CAPTION: lmem.c
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 23 :lines "23-40"
 
-lua 默认提供的函数很简单，只是简单利用系统 api 来实现
+lua 默认提供的 frealloc 函数很简单，只是简单利用系统 api 来实现
 
 #+INCLUDE: ../lua-5.1.5/src/lauxlib.c src c -n 627 :lines "627-637"
 
-lua 提供了相关接口，可以使用户自定义内存管理函数。
+同时，lua 也提供了相关接口，可以使用户自定义内存管理函数。
 
 #+INCLUDE: ../lua-5.1.5/src/lapi.c src c -n 1007 :lines "1007-1023"
 
@@ -56,14 +52,15 @@ lua 提供了相关接口，可以使用户自定义内存管理函数。
 
 这里主要介绍三个函数
 
-~luaM_realloc_~ ，简单对核心 api 进行了封装，计算了 totalbytes，为其它方法提供基础。
-而且，最后的 =_= 表明其只是对内使用
+*** ~luaM_realloc_~
+
+简单对核心 api 进行了封装，计算了 totalbytes，为其它方法提供基础。
 
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 73 :lines "73-86"
 
-~luaM_rellocv~
+*** ~luaM_rellocv~
 
-准确的说，这是一个宏
+这是一个宏，
 
 命名有些混乱，参数为
 L
@@ -74,13 +71,11 @@ elemsize
 
 先进行除法，是避免溢出，因为 =size_t= 是 unsigned
 
-不然参数无法用 =size_t= 表示
-
-这个宏，是为了方便进行，不同类型 多元素数组的管理，
+这个宏，是为了方便进行，不同类型 多元素数组的管理，不用重复计算内存的大小
 
 #+INCLUDE: ../lua-5.1.5/src/lmem.h src c -n 19 :lines "19-23"
 
-~luaM_growaux_~
+*** ~luaM_growaux_~
 
 这个方法，在 ~luaM_rellocv~ 的基础上，添加了 limit 的限制。
 
@@ -90,15 +85,14 @@ elemsize
 
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 46 :lines "46-64"
 
-
 ** practice
 
-以上主要介绍的 3 个方法不是公共的方法，其它模块并不引用它们，而引用加外的宏定义
+以上主要介绍的 3 个方法不是公共的方法，其它模块并不引用它们，而引用其它宏定义
 
-分别代表了
-- free
-- malloc
-- realloc
+它们分别代表了
+- free 功能
+- malloc 功能
+- realloc 功能
 
 明确了上面的基础，这些宏并不难理解。
 

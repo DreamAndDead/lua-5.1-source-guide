@@ -2,17 +2,41 @@
 
 * DRAFT string
 
-** intro
+lua 中使用字符串是比较方便的，因为其在内存中的新建由底层完成，
+gc 回收也由底层完成，极大方便了上层使用者。
 
-- 字符串都是不可变的，有且只有一份存留在内存，由多个变量指向
-- 全部 string 创建并缓存在全局表中
-- 是 lua 语言的基础类型之一，也为 vm 底层提供作用
+作为 lua 语言的基础类型之一，在 lua 实现的底层也提供着重要的作用
+
+
+** feature
+
+可能是出于优化的考虑，lua 中所有 string 都是不可变的，且只有一份留存在内存中。
+
+#+begin_src lua
+  local a = "pre"
+  local b = "post"
+  local c = a .. b
+local d = "pre"
+#+end_src
+
+
+#+CAPTION: immutable string
+fig.ref to immutable string
+
+a 和 b 分别指向内存中，存储字符串的区域，
+
+进行连接时，并没有在 "pre" 内存区域，新增 "post" 进行修改，而是
+新建字符串 "prepost"，由 c 指向
+
+当 d 再度使用 "pre" 字符串时，因为内存中已经存在相应实例，所以
+a 和 d 引用的是相同的字符串。
+
+如果说存在以上的特性，在底层必定存在一个字符串池，用来存储所有在使用的字符串，
+就是 g->stringtable
 
 ** data structure
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
-
-- [ ] graph
 
 string 的内存结构很简单，包含
 - meta
