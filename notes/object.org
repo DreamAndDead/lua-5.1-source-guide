@@ -1,11 +1,5 @@
 #+SETUPFILE: setup.org
 
-- struct & union 规则
-- tvalue
-- gcobject
-- collectable & non-collectable
-- 
-
 * types & values
 
 lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
@@ -29,16 +23,17 @@ lua 中有 8 种类型的值
 - union memory
 - how TString alignment? where dummy is smaller than tsv
 - struct in union, gcobject hack
-- union in array?
+- union in array? 如何对齐
 
 ** tagged value
 
 一开始就提到，类型存在于值本身。
 在 lua 内部，用 TValue（tagged value）表示值的概念。
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h -n 67 :lines "67-76"
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 67 :lines "67-76"
 
-tt 表示值的类型，value 表示值的内容。明显地，类型是值的一部分。
+tt 表示值的类型，value 表示值的数据。
+很明显，类型是值的一部分。
 
 fig.tvalue simple
 
@@ -52,7 +47,7 @@ fig.tvalue simple
 
 同样地，lua 定义了相应的宏，方便类型的检测。
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h -n 78 :lines "78-91"
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 78 :lines "78-91"
 
 细心如你，一定发现多了一种 lightuserdata 类型。
 userdata 类型有 light 和 non-light 两种类型定义，这一点先不做细致的解释，
@@ -132,56 +127,51 @@ lua 内建了 gc 机制，其中关键的结构是 ~GCObject~ 。
 
 这样就可以利用内存结构的特性，引用 GCHeader gch 来读取 tt，再根据 tt 来引用不同的键值。
 
+fig.gcobject
+
 这一点在取数据的宏定义中可以清晰的看到
 
 #+INCLUDE: ../lua-5.1.5/src/lstate.h src c :lines "148-160"
 
-**** TODO string
+至于剩下的类型，
+- string
+- table
+- function
+- userdata
+- thread
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "196-208"
+其数据管理在后续，单独分拆为独立章节来讲解。这里先略过不表。
 
-**** TODO table
+*** TODO internal
+    :LOGBOOK:
+    - Note taken on [2020-12-02 三 15:42] \\
+      deadkey 是什么含义？
+    :END:
 
- #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "319-349"
+细心如你，一定又发现了，GCObject 中除了 gch，有 7 个键值，而不是 5 个。
 
-**** TODO function
+事实上，在 thread 之后，新定义了 3 个类型，
+- proto
+- upval
+- deadkey
 
- - c closure
- - lua closure
+用于内部实现使用
 
- #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "287-317"
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "19-31"
 
-**** TODO userdata
-
-  c memory
-
-  light
-
-  heavy
-
-**** TODO thread
-
-  later, after vm
-
-*** internal
-
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "19-30"
-
-在 8 种数据类型的基础上，枚举进行拓展
-
-新增了 proto upval 和 deadkey(TODO)
-
-proto 在 GCObject 用 p 来存取
-upval 则是 uv
-
-**** proto
-     
-**** upval
-
-**** deadkey
+proto 和 upval 就对应 GCObject 中多出的 2 个键值。
+至于 deadkey，后续再说（现在还不清楚）。
 
 ** TODO practice
+   :LOGBOOK:
+   - Note taken on [2020-12-02 三 15:43] \\
+     所有可关联本章内容一起阅读的代码
+     
+     关联性强，容易阅读
+   :END:
 
-- related code
+根据不同类型，从 TValue 中取数据的宏
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "91-102"
 
 
