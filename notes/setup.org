@@ -5,8 +5,10 @@
 #+LATEX_COMPILER: xelatex
 #+LATEX_CLASS: book
 #+LATEX_CLASS_OPTIONS: [a4paper]
-
 #+LATEX_HEADER: \usepackage{xeCJK}
 
 #+HTML_DOCTYPE: html5
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="style.css">
+
+# #+OPTIONS: html-style:nil
 
