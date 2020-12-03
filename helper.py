@@ -262,6 +262,8 @@ class CustomPrettyPrinterLocator(PrettyPrinter):
             return ProtoPrinter(val)
         elif typename == "TString *":
             return TStringPrinter(val)
+        elif typename == "TValue":
+            return TValuePrinter(val)
 
 
 register_pretty_printer(None, CustomPrettyPrinterLocator(), replace=True)

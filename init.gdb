@@ -7,7 +7,7 @@ set print array on
 
 source helper.py
 
-b statement
+b lvm.c:457
 
-run statement/expr.lua
+r test/table.lua
 
