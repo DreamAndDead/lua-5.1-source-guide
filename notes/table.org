@@ -298,14 +298,29 @@ TODO 当 next 返回 0 时，意味着结束，上层一定进行了封装，以
 这里直接进行了栈操作，参考 c api
 
 *** TODO rehash
+    :LOGBOOK:
+    - Note taken on [2020-12-03 四 17:49] \\
+      TODO resize 操作
+    - Note taken on [2020-12-03 四 17:46] \\
+      TODO 理解 computesizes
+    :END:
 
-rehash -> resize
+在 newkey 进行插入的时候，如果发生了空间不足
+就会引发 rehash 操作
 
-- 先进行 size 计算，多少用于 array，多少用于 hash
-- 巧妙，使用 log pow 来统计
+因为不同于 hash bucket，允许碰撞插入
+
+table 是数组链表的形式，没有空间就没办法了，只能进行扩展。
 
 
-computesizes 中
+入口是 rehash 方法
+- 先进行 array 部分的统计
+  这里的统计很巧妙，使用 log2 数组进行统计，a[i] 表示数组索引在 2^(i-1) - 2^i 的数量
+  - 先统计 array part 的数量
+  - 再统计 dict part 的数量
+  - 不要遗漏最新要添加的值（没有判断去重？和调用 rehash 的时机有关，在 newkey 的时候，必定是不会重复的）
+
+computesizes，计算新的 array part 的大小，需要一些理解
 
 twotoi/2 < *narray 的条件，是因为如果不符合，则 twotoi 一定不符合
 因为其中所有元素小于 size 的一半，一定不符合 array size 的选择
@@ -325,12 +340,45 @@ a 统计的是 < 2^i 的个数 == twotoi
 
 不符合查找条件
 
+
+得到大小之后，进行 resize 操作
+
+
+
 *** TODO len
 
-getn
+如何确定 table 的长度？
 
-unbound_search
+长度是针对 array 的含义而言的
 
+getn，含义针对于数组，因为并没有对 dict 进行搜索，只针对整数索引
+- 先取得 sizearray 的大小
+  - 如果最后的值是 nil，就要在数组中搜索出一个边界，使用二分法，找到 i j
+    i 不是 nil 而 j 是 nil
+    i 就是所谓的长度
+  - 若数组是满的
+    - 没有 dict 部分，直接返回
+    - 有 dict 部分，则继续搜索，因为可能有部分整数值，在 dict 部分存储
+      - 先 2 倍进行扩张
+	- 如果超过最值，bad purpose?
+      - 在 i 和 j (2 * i) 中进行 2 分，找到一个边界值
+
+
+
+
+#+begin_src lua
+> t = {1,2,3,4,5,6}
+> print(#t)
+6
+> t[3] = nil
+> print(#t)
+6
+> t[6] = nil
+> print(#t)
+2
+#+end_src
+
+=#= 本身的行为，在 array 有空洞的时候，对于不理解底层机制的用户，表现出的行为是“不确定的”
 
 ** TODO metatable
 
@@ -343,3 +391,6 @@ tagmethod cache
 new/free
 
 get/set num/str
+
+考虑将 rehash 的部分放到这里，非重点
+

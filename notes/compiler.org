@@ -1,4 +1,6 @@
-* compiler
+#+SETUPFILE: setup.org
+
+* TODO compiler
 
 类比
 - opcode -> 机器码
@@ -9,7 +11,6 @@
 考虑编译的过程
 
 传统是 source -> token -> ast -> ir -> ... -> bytecode
-
 
 lua 为了效率，直接从 source -> token -> bytecode
 相应代码不是那么容易阅读
