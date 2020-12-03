@@ -36,10 +36,6 @@ assert(a[1] == 1, "index start from 1")
 无论是 function 还是 string。这是一个非常大的自由度。
 
 ** data representation
-   :LOGBOOK:
-   - Note taken on [2020-12-03 四 10:40] \\
-     lastfree 的作用？
-   :END:
 
 table 的结构很简明，
 
@@ -52,7 +48,9 @@ table 的结构很简明，
 先来看 dict 部分，
 - lsizenode，指 node 桶的大小 Log2，桶的大小总是 2 的幂，进行 2 倍的伸缩（缩？）
 - node，桶
-- lastfree，？初始在 node array 的最后，索引 size，（不会超出数组本身吗？）
+- lastfree，初始化在 node array 的最后，刚好在 size 边界外，
+  和 getfreepos 配合使用，由后向前，进行 node 的遍历，如果 key 为 nil，说明其
+  为未使用空间，因为 nil 作为 key 是无法被 set 的
   
 Node 代表一个 kv 存储
 - i_val
@@ -228,6 +226,9 @@ array 在 table 中，只是单纯用 TValue 数组来存储，
       对于 dict 部分，是如何处理删除的？可能只是在 rehash 的时候发生
     - Note taken on [2020-12-03 四 14:43] \\
       dummynode 的作用？
+      dummynode 用于表明可用的空间，还没有 key 来使用其空间
+      与之相对的， deadkey 只是由 gc 来处理的，标识 deadkey 是当值为 nil 的时候
+      但是这部分空间仍然是被占据的
     :END:
 
 在 =luaH_set= 中，先通过 get 来寻找存储空间
@@ -247,35 +248,54 @@ get 只关注位置，而不关注位置上对应的值
 
 这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
 
-** method
+** other method
    
-*** TODO next
+*** DRAFT next
+    :LOGBOOK:
+    - Note taken on [2020-12-03 四 15:44] \\
+      TODO deadkey?
+      deadkey maybe key with nil value?
+    :END:
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 116 :lines "116-180"
 
 =luaH_next=
 
-被 lapi.c lua_next 使用
+被 lapi.c lua_next 使用，实现 next 功能
+遍历所有元素
 
-应用在 baselib tablelib 的 foreach 中
-
-TODO deadkey?
-
-findindex 返回
-- -1，是开始
-- 在 sizearray 范围内，直接返回
-- 计算 mp，在 next 链中寻找 key，返回 sizearray + node偏移
-
-
-将 array node 并起来，从前到后，遍历所有元素
-
-以 nil 开始
-
-每次将 key, key+1 置为 next key, next key value，
-一直到没有元素
+findindex，意义是返回 key 的下一个位置
+- nil，返回 -1，意味着从头开始，其后访问的所有元素都是 k v 非 nil 的值
+  回到 next 中，则访问到 0
+- 若是整数，且在 sizearray 范围内，直接 -1 返回，因为 C 索引的关系
+- 计算 mp node
+  - 如果 node 和 key 相同
+  - 或者 如果是 deadkey 但是和 key 的 gc 部分相同，则可认为寻找到
+    返回 sizearray + node 中的偏移
+    否则在 next 链表中寻找
+- 未找到，则用 error 处理（TODO 如何不影响继续运行？）
 
 
-最后和 ltablib foreach 以及 c api 结合起来，会理解的更为深刻
+next
+- 通过 findindex，一个 key 会返回平铺序列下的索引
+  aaaaaaaaaaadddddddddddddddd
+  -----------+---------------
+- next 通过这个索引，++，以数组的方式，索引下一个非 nil 值
+  - key <- 下一个索引对应的 key
+  - key+1 <- 当前 key 对应的 value
+- TODO detail 从数组过渡到 dict 的时刻
+- TODO 在 dict 时刻如何与 ++ 结合起来
+- 对于 dict 部分
+  - key <- 当前 key index 对应的 key，在下一轮中，会 ++ 递增
+  - key+1 <- 当前 key index 对应的 value
+
+
+对应 next api，next 每次返回两个值，key 和 value
+当 key 为 nil 时，TODO 意味着结束？
+
+TODO 当 next 返回 0 时，意味着结束，上层一定进行了封装，以符合 lua 上层封装的 api
+
+这里直接进行了栈操作，参考 c api
 
 *** TODO rehash
 
@@ -305,6 +325,12 @@ a 统计的是 < 2^i 的个数 == twotoi
 
 不符合查找条件
 
+*** TODO len
+
+getn
+
+unbound_search
+
 
 ** TODO metatable
 
@@ -314,4 +340,6 @@ tagmethod cache
 
 ** practice
 
+new/free
 
+get/set num/str
