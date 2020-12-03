@@ -22,6 +22,8 @@
 
 ** TODO big picture
    :LOGBOOK:
+   - Note taken on [2020-12-03 四 09:57] \\
+     lua api name convenience. lua*_ for outside, static for inside
    - Note taken on [2020-12-02 三 17:39] \\
      talk about lua state and global state
      state scope and graph them
