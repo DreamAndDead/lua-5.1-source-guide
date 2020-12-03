@@ -6,46 +6,51 @@
 - how to decide array size
   - largest size where n/2 are used (use log method to iterate)
 
-** intro
+学习 lua 的人都有困惑，lua 中只有 table 而没有 array，
+换句话说，用 table 同时表示 array 和 dict 的概念。
 
-lua 没有内建多种数据结构，比如数组，dict 之类。
+如果将数组，看作 k 为整数的一种特殊情况，也无不可。
+毕竟使用者只是从使用感觉上来区分两者的。
 
-只有一个 table 表示两种概念。
+lua 内部出于效率考虑，有特别的实现方式。
 
-可以说 table 可以作为 dict 也可以作为 array 来使用。
-
-为了效率，table 内部的实现，将 array 与 dict 部分分开存储。有时也会有交叉。
-
-
-TODO 为何这样设计？
-
-核心是存取，get and set。
-
-** hash
+** feature
 
 table 核心上来说，是一个 hash 结构。
-array 可以理解为是 hash 结构，不过 key 是整数罢了。
-
-lua 内部为了优化，将部分整数索引的值放在 array 结构里实现，这一点在下一节讲解。
-
-
 table 的作用是，是 get set kv 对。
 
-在 lua 中，k 不能是 nil。如果 v 是 nil，代表删除 k。
+约定，在 lua 中，k 不能是 nil。如果 v 是 nil，代表删除 k。
 
-因为之前已经用 TValue 统一表示了所有数据类型。
-所以 table 的 k v 可以是任意 lua 数据（上面的 nil 是例外）。
-无论是 function 还是 string。
+array 可以理解为是 hash 结构，不过 key 是整数罢了。
+所以 array 的概念也一同由 table 表示了。
 
-这是一个非常大的自由度。
+array 默认的索引从 1 开始。
 
-*** data structure
+#+begin_src lua
+local a = {1, 2, 3, 4}
+assert(a[1] == 1, "index start from 1")
+#+end_src
 
-table 的结构很简单，很不看 整数 相关的部分，
+最重要的特点，之前已经用 TValue 统一表示了所有数据类型。
+所以 table 的 k v 可以是任意 lua 数据（nil 是例外）。
+无论是 function 还是 string。这是一个非常大的自由度。
+
+** data representation
+   :LOGBOOK:
+   - Note taken on [2020-12-03 四 10:40] \\
+     lastfree 的作用？
+   :END:
+
+table 的结构很简明，
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 319 :lines "319-349"
 
-- lsizenode，指 node 桶的大小 Log2
+事实上，为了效率，table 还是将 array 部分 和 dict 部分分开存储
+
+** dict
+
+先来看 dict 部分，
+- lsizenode，指 node 桶的大小 Log2，桶的大小总是 2 的幂，进行 2 倍的伸缩（缩？）
 - node，桶
 - lastfree，？初始在 node array 的最后，索引 size，（不会超出数组本身吗？）
   
@@ -53,95 +58,90 @@ Node 代表一个 kv 存储
 - i_val
 - i_key
 
-根据 key 的 hash 值，放到不同的桶中
+不是桶的实现，
+根据 key 的 hash 值，放到不同的位置中，不同于 tstring 的实现
 
-TKey 中使用的技巧，保留了 TKey 的 value 的同时，添加了 next 指针，
-可以在发生碰撞的时候，头插入桶。
+TKey 中使用的技巧，保留了 TKey 的 value 的同时，添加了 next 指针。
+和 gch 使用一样的技巧。
 
-整体实现很像 string table 中的实现。
-
-TODO graph
+next 用于在发生位置碰撞时，将所有相同 hash 的 key 的 node chain 起来。
 
 这样，一些相关的宏就容易理解了
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.h src c -n 13 :lines "13-19"
 
 
-*** hash method
+*** method
 
-桶的大小总是 2 的幂
+dict 部分有 3 个核心方法
+
+get 和 set，发挥 dict 的作用
+
+另外，需要一种方法，决定相应的 node 存储在什么位置，这一点通过 hash 来计算。
+
+相应 node 的位置称为 main position。
+
+get 和 set 之前，必须先找到对应的 main position 才能进一步进行下一步操作。
+
+- ~mainposition~
+- ~luaH_set~
+- ~luaH_get~
+
+**** main position
 
 前面提到，除了 nil，其它 7 种类型都可以作为 key
 
-而决定相应的 key 放在哪个桶中，需要由 hash algo 来计算，得到桶的位置
-
+对于相应的类型，分别计算其 hash 值
 - bool，直接取 0 1
-- string，使用其自身的 hash
-- num，如果是 int 类型，可直接使用 number 值
-  如果不是，需要参与运算（可能是浮点）如何计算？
-- 其它，将指针地址强制转换为 int 作为 hash
-  其中 mod 的值，不是 size - 1 的值，地址一般是对齐的，减小碰撞的概率
+- string，使用其自身的 hash（复习 string chapter）
+- 其实分为两部分处理，在 get 方法中，如果 num 是 int 类型，可直接使用 number 值，使用 getnum
+  如果不是，需要参与运算（可能是浮点），将 double 从位角度，分拆为 unsigned int 来计算和
+- 其它类型，将指针地址强制转换为 int 作为 hash
+  其中 mod (size - 1) ，地址一般是对齐的，减小碰撞的概率，
+  =| 1= 是避免出现 mod 0 的情况
   - lightudata 和 gc 各自的指针
-
-  
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 352 :lines "352-361"
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 50 :lines "50-64"
 
-- lmod 使用二进制的 mod，值得思考
-- lsizenode 至少是 0，所以 sizenode 至少是 1
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 96 :lines "81-114"
 
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 96 :lines "96-114"
+**** TODO set key
+     :LOGBOOK:
+     - Note taken on [2020-12-03 四 11:38] \\
+       hash use a mix of chained scatter table with brent's variation?
+     :END:
 
+~luaH_set~ 中只有 key 参数，而没有 v 参数。
+它只返回 key 在 table 中相应 node 的 tvalue *，至于如何修改，则由外部调用者决定
 
-*** get str
-
-- 先根据 hash 找到桶的位置
-- 在桶中对比 key 值，需要完全相同
-- 没有则返回 nil，有则返回值
-
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 452 :lines "452-464"
-
-*** get key
-
-- 根据类型不同，进行分配
-- nil，直接返回
-- str，参见上面
-- num，如果是整数，使用 getnum （参考下一节）
-  如果不是，则需要特殊计算 hash
-- 其它，计算 hash，
-- 找到桶，对比 key，返回值/nil
-
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
-    
-*** set key
-
-set key 并非是直接设置 v，而是返回 key 代表的位置，v 的指针，直接由调用者修改
-
-=luaH_setstr= =luaH_setnum= 底层都依赖 newkey
-
-并不是桶的实现，因为如果出现碰撞，则找到一个 freepos，用 next 串联起来，
-相当于是数组链表
-
+并不是桶的实现，因为如果出现碰撞，则找到一个 freepos，用 next 串联起来，相当于是数组链表
 
 =luaH_set= 进行基本的检测，如果找到位置，直接返回
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-506"
 
-=newkey= 进行 key 的插入
-- dummy node ?
+若没有，则使用 =newkey= 新建 node，其中 key 为参数，value 则作为返回值
 
+=newkey=
 - 先找到 key 的 mp
 - 如果 mp 上已经有元素
-  - 如果它已经在其位置上，则将 key 放置在 freepos
+  - 如果它已经在其位置上，则将 key 放置在 freepos，链接起来
   - 如果它不在位置，则由其 mp 位置，一直 next 找到其 previous 位置
     将 key 放在 mp 位置，另外放在 freepos，并改变指针的指向
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 392 :lines "392-430"
 
+#+CAPTION: new key process
 
-和 setobj 一起用
+**** get
 
+有了 set 阶段对内存结构的理解，get 就很容易理解
+
+get 方法的核心很简单，先计算得到 main pos，再一路 next 寻找相同的 key，
+找到则返回其 node 中存在的 v，没有则返回 nil
+
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
+    
 ** array
 
 没有 array 一开始令学习 lua 的人困惑，尤其是通过 table 来表示数组

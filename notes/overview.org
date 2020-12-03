@@ -11,8 +11,8 @@
   - c
   - linux
 - 整体规划
-  - 依赖关系
   - 由浅入深
+  - 依赖关系，基础到深入
 - 章节规划
   - 功能概要
   - （补充对应原理）
@@ -24,6 +24,7 @@
    :LOGBOOK:
    - Note taken on [2020-12-03 四 09:57] \\
      lua api name convenience. lua*_ for outside, static for inside
+     every module, outside method in h file, inside method in c file
    - Note taken on [2020-12-02 三 17:39] \\
      talk about lua state and global state
      state scope and graph them
