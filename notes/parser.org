@@ -23,6 +23,13 @@ ast 过程可以理解为，在递归下降的过程中发现
 
 
 
+如果使用多趟式的处理过程，则需要一次完整的遍历
+token 数组，交给 parser
+
+lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
+核心使用的便是 lexstate
+
+
 ** EBNF
 
 #+begin_example

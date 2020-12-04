@@ -6,81 +6,124 @@
     compiler section describe lex part in whole chain.
   :END:
 
-lexer 的作用
+编程语言从文件角度来看，只是单纯的文本文件，由字符组成。
 
-从源代码到 token
-字符流 到 token 流
+至于作为编程语言来由机器理解并执行，需要经过一系列的过程。
+不同组件有明确的分工，不同的组件有不同的输入和输出，组成上下游关系。
 
-辅助 parser 的第一步
+词法分析 lex 就是第一步。
 
+#+CAPTION: char stream to token stream
+
+lexer 将源代码转换为 token，将字符流转化为 token 流，作为 parser 的输入。
 
 ** token
 
-token 由多个有序字符组成的序列
+简单的说，token 就是多个有序字符组成的序列。
+
+lexer 按照一定的规则，在字符流中寻找并将匹配为 token。
 
 lua 中定义了如下 token
 
+#+INCLUDE: ../lua-5.1.5/src/llex.h src c :lines "14-34"
+
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c :lines "36-46"
+
+#+INCLUDE: ../lua-5.1.5/src/llex.h src c :lines "43-53"
+
+所有匹配的 token 都用 Token 来表示，其中
+- token，即上面的 enum 值，表示 token 的类型
+  - 单字符 char token，比如 =( , . ; [= 之类，这也是 FIRST_RESERVED 从 257 开始的原因
+- Seminfo，用于存储 =<number> <name> <string>= 的实际内容
+  - r =number= 数字值
+  - ts =name= 字面字符串， =string= 的字符串内容
+
+#+CAPTION: some example
+
+** process
+
+#+CAPTION: 匹配过程，with eg code example
+
+转化的过程，简单描述，就是从输入流的头部开始匹配，返回匹配的 token
+
+一般而言，这是一个相对枯燥又考验耐心的工作。
+通常用 regex 来描述定义的 token，再将其转化为代码的形式。
+
+一般一个语言的开发初期，都会使用 lexer generator 比如 flex 这样的工具，
+自动将 regex 生成相应匹配的代码，方便快速迭代，sketch，进行语言的开发。
+
+但到了后期发展相对成熟的时候，为了效率，就会将这部分代码重写，py ry 如此，lua 也是如此。
+
+看似简单，实际有底层严谨的数学支撑，regex NFA DFA 再到代码呈现。
+
+这一段是相对符合程序员直觉的，有更多专业的书讲解的更清楚，具体关于模式匹配的内容就不再赘述。
+
+TODO ref materials
+
+至于如何匹配，都在 llex 中实现
+
+提到几个值得关注的点，
+
+- 只有 name 匹配过程，而没有关键字的匹配过程
+  如果 name 和关键字相同，就认为是关键字，这也是为什么 name 决不能是关键字的原因
+  直接导致语法错误
+
+#+begin_src lua
+local end = 1
+#+end_src
 
 
-并不完全
-first reserved 257
-256 匹配单 ascii 码字符
-
-
-#+CAPTION: 匹配过程
-
-不断从头部开始匹配，找出唯一的匹配（决策）
-
-
-总体过程
-- 注释
-- 长字符串
-- 字符串
-- name -> key
-- number
-
-
-严谨的 DFA，粗略的讲解
-看似简单，实际有底层严谨的数学支撑
-
-匹配的优先级？
-如果有相同的匹配模式？
-
-
-省略空白
-
-
+实际实现中，并非所有都是借助 regex 的过程来实现的
 
 对数字的检测，正则检测并不完整
-还使用了 strtod 的转换错误检测，转移到了语义
+
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c :lines "193-208"
+
+比如匹配数字的 read numeral 方法，从 llex 到这里
+
+TODO 如果直接从 regex 的角度来看，模式是 =(.\d | \d)(. | \d)*[Ee[+-]]=??
+
+明显这不是正确的数字匹配模式， =10.3.3.3= 就可以匹配，但是并不是数字。
+关于这一步，lua 使用了 c lib 中的 strtod 来尝试进行转换，如果发生错误，则不是数字
+
+有些取巧的做法
 
 
 
-Token 和 seminfo 结构
-- token，上面的 enum 值
-  - <= 256，则直接存储，单字符
-- seminfo
-  - r 存储转换后的数字
-  - ts 存储读到的字符串（关键字好像不需要）
+lua 中有一种长字符串表示，但是同样存在一种变体， ~=~ 的数量要完全相同，才是正确的匹配
+长字符串的规则，同样可以扩充到长注释。
+
+这一点在阅读代码时要注意。
+
+#+begin_src lua
+local long_str = [[
+this is a long string.
+]]
+
+local another_str = [==[
+another long string.
+]==]
+
+--[[
+comment this line
+]]
+
+--[====[
+comment this line
+]====]
+#+end_src
 
 
-** lexer
+** inside
 
-lua 采用了手写的方式
-更加灵活，效率更高
+在 lex 的过程中，
 
-从字符流的开头处，开始按规则，匹配，返回匹配的 token
-一直重复这样的过程
-
-如果使用多趟式的处理过程，则需要一次完整的遍历
-token 数组，交给 parser
-
-lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
-核心使用的便是 lexstate
-
-其它操作 lexstate 的方法
 
 *** lexstate
+    :LOGBOOK:
+    - Note taken on [2020-12-04 五 11:13] \\
+      ls 和 fs 及 f 的全局安排，图解
+    :END:
 
 存储了所有 lex 状态
 - current 当前 token 之后紧跟的字符

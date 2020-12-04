@@ -15,3 +15,7 @@ local co = coroutine.create(
 local r, v = coroutine.resume(co)
 
 print(r, v)
+
+local a = [==[
+jak
+]==]
