@@ -1,6 +1,6 @@
 #+SETUPFILE: setup.org
 
-* TODO lexer
+* DRAFT lexer
   :LOGBOOK:
   - Note taken on [2020-12-04 五 08:46] \\
     compiler section describe lex part in whole chain.
@@ -116,16 +116,18 @@ comment this line
 
 ** inside
 
-在 lex 的过程中，
-
-
 *** lexstate
     :LOGBOOK:
     - Note taken on [2020-12-04 五 11:13] \\
       ls 和 fs 及 f 的全局安排，图解
     :END:
 
-存储了所有 lex 状态
+在 lex 的过程中，需要有相应的数据来记录匹配的过程和结果，这个数据结构就是 lexstate
+
+这个结构在整个 front 过程是会经常出现，核心结构之一，所以清楚其概念是非常大的收益
+
+#+INCLUDE: ../lua-5.1.5/src/llex.h src c :lines "55-68"
+
 - current 当前 token 之后紧跟的字符
 - linenumber 行号
 - lastline 上一个 token 的行号
@@ -138,57 +140,82 @@ comment this line
 - source name
 - decpoint locale decimal point
 
+#+CAPTION: lex state inside picture, with line number
 
-singleton
+核心数据形式定义了，lex 的其余部分就是对数据的操作
 
-hold fs and f
+zio -> buffer -> token -->> lookahead
 
-*** init
+它和 nil 一样，是一个 singleton 结构，只出现在 front 阶段，做好本职工作
 
-init 过程，新建了 tstring
-并使用 reverved 保存了相应的类型
+*** =luaX_init=
+
+先提一下 init 过程，和之前 tstring 连接起来
+
+前面提到，其中有 reserved 字段，就在 lex 这里发挥作用。
+
+init 过程，对所有 token 类型新建了 tstring（存在于全局表），
 gc fix
+并将 reverved 设置为从 1 开始的偏移量，标识类型，再后面的
+name -> keyword 过程中发挥作用。
+
+从这里也看出，ts 不只用于对外，也在内部运作中产生重要作用
+
+*** =luaX_next=
+
+使用 llex 过程，得到 token 内容，并返回 token 类型
+
+#+CAPTION: zio -> mbuffer -> token picture
+
+语法分析中，有时候需要进行前瞻 lookahead，来进行下一步的运作
+
+lookahead 同样使用 llex，不过存储在 lookahead 中而不是 t
+
+在 next 中可以发现，如果存在 lookahead，则顺利交接
 
 
-不只对外，ts 在内部发生作用
-
-
-*** llex
-
-
-其中对于 string 的判断，占据了不少
-   
-=luaX_next=
-
-zio -> mbuffer -> token
-
-
-对于 lookahead 的安排
-
-lookahead 内部的实现，说明无法进行连续的 lookahead 调用，这样会在 next 中丢失
-
-
-
-
+同时也要注意，lookahead 内部的实现，说明无法进行连续的 lookahead 调用，这样会在 next 中丢失
 
 
 ** lexer program
 
-in gdb
-break next method?
+根据对 lex 模块的理解，可以利用其中的方法，做一个简单的 lexer 分析器。
 
-break
-commands
+首先，它不是一个独立的程序，而是一段 gdb 脚本，可以在 lua 的运行时，进行 inspect。
+我们在 next 方法加上断点，每次触发的时候，就输出相应的 token
 
+就可以完美的分析出词法过程。
+
+默认编译 lua 有
+- lua 解释器
+- luac 编译器
+
+这里并不需要相应代码的执行结果，所以使用 luac 就足够
+
+#+begin_src bash
+make -s lex
+#+end_src
+
+
+这种做法也有弱点，因为其包含了整个编译过程，所以是无法正常分析语法错误的代码的
+只能分析正常使用的代码。
+
+TODO 或许可以自己主动调用 next，这样就可以避免上面的约束？
 
 
 ** practice
 
-*** zio
-    
-*** mbuffer
+llex.h.c rest
+
+对 io 部分的抽象，建议阅读 zio.h.c
+
+- zio input stream
+- mbuffer mini buffer
+
 
 *** more theory
+
+with materials
 
 regex
 DFA
