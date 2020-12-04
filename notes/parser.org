@@ -30,7 +30,9 @@ lua 使用了流式的处理过程，提供核心的方法，next，供 parser �
 核心使用的便是 lexstate
 
 
-** EBNF
+#+CAPTION: lex -> parse -> gen picture
+
+** EBNF lang of lang
 
 #+begin_example
 { a } 表示 a*，0 个或多个
@@ -38,6 +40,7 @@ lua 使用了流式的处理过程，提供核心的方法，next，供 parser �
 ( a ) 表示一个
 | 表示或
 #+end_example
+
 
 #+begin_src
 chunk -> { stat [ `;' ] }

@@ -2,11 +2,47 @@
 
 * TODO opcode
 
-** format
+- model
+  - all kinds of opcode (37?)
+  - meta info
+    - 8 bits
+    - split into several parts
 
-- format
-  - 3 kind
-  - opcode and oprand
+
+opcode 字节码
+
+是 front phase 的最终结果，至此，front phase 的任务才算完成。
+
+剩下的就是 vm 运行 opcode 的过程。
+
+** opcode
+  
+opcode 是定长的，4 bytes 32 bits，Ins 用 unsigned int 就可以表示
+
+#+INCLUDE: ../lua-5.1.5/src/llimits.h src c :lines "84-89"
+
+opcode 分为 类型 和 参数 两大部分，
+
+类型有 38 种，分为 3 种模式
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "31-32"
+
+类型占据的空间是定长的，不同模式对应的参数安排不同
+
+#+CAPTION: opcode mem graph, pos and size, left to right, low to high
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "34-49"
+
+
+iABC，a b c 3 个参数，无符号数
+iABx，a bx 两个参数，bx 是无符号
+iAsBx，a sbx 两个参数，sbx 是有符号的
+
+- RK 的理解
+  - register 和 constant 空间
+  - B C 都是 9 长度，顶位 0 1 用于分别 r/k
+- sbx 和正常的不同，是由 unsigned - offset 得到的
+- max 值
 
 
 ** model
@@ -23,6 +59,10 @@ opcode 本身是包含语义的
   - global table
   - upvalue table
 
+
+类型有 38 种，用 enum 表示
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "146-212"
 
 
 
