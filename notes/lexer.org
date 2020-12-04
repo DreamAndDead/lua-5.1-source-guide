@@ -1,94 +1,158 @@
 #+SETUPFILE: setup.org
 
 * TODO lexer
-
-** intro
-
-从源代码到 token 的过程
-
-字符流 到 token 流
+  :LOGBOOK:
+  - Note taken on [2020-12-04 五 08:46] \\
+    compiler section describe lex part in whole chain.
+  :END:
 
 lexer 的作用
+
+从源代码到 token
+字符流 到 token 流
 
 辅助 parser 的第一步
 
 
-** theory
+** token
 
-*** regex
+token 由多个有序字符组成的序列
 
-正则都不陌生
+lua 中定义了如下 token
 
-描述 token
+
+
+并不完全
+first reserved 257
+256 匹配单 ascii 码字符
+
+
+#+CAPTION: 匹配过程
+
+不断从头部开始匹配，找出唯一的匹配（决策）
+
+
+总体过程
+- 注释
+- 长字符串
+- 字符串
+- name -> key
+- number
+
+
+严谨的 DFA，粗略的讲解
+看似简单，实际有底层严谨的数学支撑
 
 匹配的优先级？
 如果有相同的匹配模式？
-第一人匹配的优先级？
 
 
-*** DFA
+省略空白
 
-*** NFA
 
-*** relation
 
-equal
+对数字的检测，正则检测并不完整
+还使用了 strtod 的转换错误检测，转移到了语义
 
-flex 原理
 
-将 regex 表示为代码逻辑
+
+Token 和 seminfo 结构
+- token，上面的 enum 值
+  - <= 256，则直接存储，单字符
+- seminfo
+  - r 存储转换后的数字
+  - ts 存储读到的字符串（关键字好像不需要）
+
 
 ** lexer
 
 lua 采用了手写的方式
 更加灵活，效率更高
 
-反而看代码更直白，用正则反而不容易描述
-
-TODO flex 描述
-
 从字符流的开头处，开始按规则，匹配，返回匹配的 token
-
 一直重复这样的过程
 
+如果使用多趟式的处理过程，则需要一次完整的遍历
+token 数组，交给 parser
 
-*** token
+lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
+核心使用的便是 lexstate
 
-first reserved 257
-256 匹配 ascii 码字符
-
-用 reverved 保存了相应的类型
-在 llex 中还原
-
-
-
-
-
-对数字的检测，正则检测并不完整
-还使用了 strtod 的转换错误检测
-
-
+其它操作 lexstate 的方法
 
 *** lexstate
 
+存储了所有 lex 状态
+- current 当前 token 之后紧跟的字符
+- linenumber 行号
+- lastline 上一个 token 的行号
+- t 当前 token
+- lookahead 前瞻的 token
+- fs pointer
+- L pointer
+- z input stream pointer
+- buff pointer
+- source name
+- decpoint locale decimal point
+
+
 singleton
+
 hold fs and f
 
-*** =luaX_next=
-    
-lookahead
+*** init
+
+init 过程，新建了 tstring
+并使用 reverved 保存了相应的类型
+gc fix
+
+
+不只对外，ts 在内部发生作用
+
+
+*** llex
+
+
+其中对于 string 的判断，占据了不少
+   
+=luaX_next=
+
+zio -> mbuffer -> token
+
+
+对于 lookahead 的安排
+
+lookahead 内部的实现，说明无法进行连续的 lookahead 调用，这样会在 next 中丢失
+
+
+
+
 
 
 ** lexer program
 
-   
-** practice
+in gdb
+break next method?
 
+break
+commands
+
+
+
+** practice
 
 *** zio
     
 *** mbuffer
 
+*** more theory
 
+regex
+DFA
+NFA
+
+flex 原理
+
+将 regex 表示为代码逻辑
 
 

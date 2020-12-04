@@ -7,7 +7,7 @@ set print array on
 
 source helper.py
 
-b lvm.c:457
+b luaX_next
 
-r test/table.lua
+r test/co.lua
 

@@ -21,4 +21,8 @@ hex:
 debug:
 	gdb -x init.gdb ./lua-5.1.5/src/lua
 
+lex:
+	gdb -batch -x lex.gdb --args ./lua-5.1.5/src/luac test/co.lua
+	rm luac.out
+
 .PHONY:	test
