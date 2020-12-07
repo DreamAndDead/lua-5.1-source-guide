@@ -36,17 +36,13 @@
 
 #+INCLUDE: "./lexer.org"
 
-** parser
-
-#+INCLUDE: "./parser.org"
-
 ** opcode
 
 #+INCLUDE: "./opcode.org"
 
-** generate
+** parser
 
-#+INCLUDE: "./generate.org"
+#+INCLUDE: "./parser.org"
 
 ** dump & undump
 

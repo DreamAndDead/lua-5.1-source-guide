@@ -334,6 +334,37 @@ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是�
 
 ** generate
 
+- generic
+  - L fs f big picture
+    - proto
+    - expdesc
+    - nest func
+  - alloc stack
+  - var type
+    - local
+    - upval
+    - global
+  - k table
+  - proto list
+  - upval list
+- statement
+  - if
+    - jump chain
+  - for
+    - blockCnt
+    - do end, chunk is not block
+  - function
+    - upval
+  - ...
+- opcode
+  - close
+  - ...
+
+
+之前是保持语法，生成过程要保持语义
+好像没有明确的 dsl 来描述
+应该属于实现的艺术
+
 *** register
     :LOGBOOK:
     - Note taken on [2020-12-07 一 14:01] \\
