@@ -13,6 +13,7 @@
 传统是 source -> token -> ast -> ir -> ... -> bytecode
 
 lua 为了效率，直接从 source -> token -> bytecode
+
 相应代码不是那么容易阅读
 需要一些编译原理的了解
 

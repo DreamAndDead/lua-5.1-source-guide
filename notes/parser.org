@@ -14,13 +14,14 @@
     - binop precedence
     - ebnf naming
     - online manual/metalua/comments
+- everything before generator
 
 
 ** intro
 
 ast 过程可以理解为，在递归下降的过程中发现
-至于 ir，由于没有跨平台实现的需求，也可以不考虑（只针对 lua vm 实现）
 
+至于 ir，由于没有跨平台实现的需求，也可以不考虑（只针对 lua vm 实现）
 
 
 如果使用多趟式的处理过程，则需要一次完整的遍历

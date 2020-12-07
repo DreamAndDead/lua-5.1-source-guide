@@ -9,60 +9,153 @@
     - split into several parts
 
 
-opcode 字节码
+opcode 字节码，是编译阶段的最终结果，至此，front phase 的任务才算完成。
 
-是 front phase 的最终结果，至此，front phase 的任务才算完成。
+类比为 c 编译为机器码二进制可执行文件的过程。
 
 剩下的就是 vm 运行 opcode 的过程。
 
 ** opcode
   
-opcode 是定长的，4 bytes 32 bits，Ins 用 unsigned int 就可以表示
+opcode 是定长的，4 bytes 32 bits，所以 Instruction 用 unsigned int 就足以表示
 
 #+INCLUDE: ../lua-5.1.5/src/llimits.h src c :lines "84-89"
 
-opcode 分为 类型 和 参数 两大部分，
+一条 opcode 分为 指令类型 和 指令参数 两大部分。
 
-类型有 38 种，分为 3 种模式
+指令类型有 38 种，根据参数的安排方式，分为 3 种模式
 
 #+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "31-32"
 
-类型占据的空间是定长的，不同模式对应的参数安排不同
+- iABC，a b c 3 个参数
+- iABx，a bx 两个参数
+- iAsBx，a sbx 两个参数
+
+A B C Bx 都是无符号数，只有 sBx 是有符号数
 
 #+CAPTION: opcode mem graph, pos and size, left to right, low to high
+
+指令类型加上参数在 32 字节的空间中进行如下的划分
+- 指令类型始终是 6 字节，在最低位
+- A C B 为 8 9 9 字节，从低位到高位
+- Bx 将 B C 空间进行合并，这也是为什么顺序会有差异
+- sBx 和 Bx 的空间是相同的，不过代表了有符号数
 
 #+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "34-49"
 
 
-iABC，a b c 3 个参数，无符号数
-iABx，a bx 两个参数，bx 是无符号
-iAsBx，a sbx 两个参数，sbx 是有符号的
+** param
 
-- RK 的理解
-  - register 和 constant 空间
-  - B C 都是 9 长度，顶位 0 1 用于分别 r/k
-- sbx 和正常的不同，是由 unsigned - offset 得到的
-- max 值
+*** range
+
+指令类型占据 6 字节，理论上，全部利用，可以有 64 种指令
+现在只利用了其中的 38 个位置，还有很大的扩展空间
 
 
-** model
+A B C 分别是 8 9 9 空间，且都是无符号数，理论上，3 个参数各自的范围为
 
-opcode 本身是包含语义的
-和 vm 有着相同的语义约定
+0 -> 2^8 2^9 2^9 - 1
 
-按照一个模型来协同
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "65-68"
 
-- running model
-  - pc
-  - k
-  - local var, stack
-  - global table
-  - upvalue table
+Bx 占据 18 位，理论上大小为 0 ->
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "57-59"
+
+sBx 和 Bx 占据同一空间，但是要解释为无符号数
+
+lua 不是通过将高位理解为符号位这种传统方式，而只是将 Bx - offset = sBx
+建立了两者的对应关系，这个 offset 值，就是 sBx 的最大值
+
+从位的角度来看，相同的位，解析为两者是不同的含义
+
+#+begin_example
+offset    011111111
+
+Bx        0                 011111111             1111111110     1111111111
+
+sBx       -max              0                     max            -
+#+end_example
 
 
-类型有 38 种，用 enum 表示
+** TODO model
+   :LOGBOOK:
+   - Note taken on [2020-12-07 一 11:36] \\
+     gbl table 和 env 和关系？
+   :END:
+
+opcode 本身只是 01 编码而已，至于其代表什么样的含义，是 vm 来定义的。
+
+编译器只是将有相同的语义的源代码转换成 vm 认识的相同语义的 opcode。
+
+具体理解 opcode 就要对 vm 的运作模型有一些简单的了解。
+
+
+粗略而言，和机器运作是类似的
+
+指令逐个运行，pc 表明当前执行指令的位置
+
+其中有 寄存器，用来存取数据
+不通过 eax 这样的名称来索引，而将其视作数组，通过数字来索引，可读写
+
+其实 寄存器和栈是一体的。
+
+常量区域，k 表是独有的，其中存储了一些出现的常量，比如数字和字符串，也通过数字来索引，只读
+- k 应该不算是 表，和 gbl 有些不同
+
+除此之外，还有 global 表和 upval 表，可读写
+- gbl，索引为任意值
+- upval，索引只是数字
+
+#+CAPTION: simple vm model with pc, k, glb, upval etc.
+
+lua 的 opcode 正是根据上面的模型来设计的。
+
+至于具体的来源，作用，过程，实现，之后再详细解释。
+
+*** meaning
+
+opcode 有 38 种，用 enum 表示
 
 #+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "146-212"
 
+相对应的名称
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.c src c :lines "14-57"
+
+其中每个类型之后，都附加了相应的参数类型和功能描述。
+其中用到了一些缩写，就是上面描述的 model 部分。
+
+#+begin_example
+R(A) 表示 索引为 数字 A 的寄存器，根据左值和右值的不同，认为是位置/值
+Kst(Bx) 表示 索引为 数字 Bx，从 k 表中取值（因为只读）
+RK(B) 表示 根据 B 值的不同，索引 寄存器或者 K 表，用于只读
+
+Gbl 全局表
+upval up 表
+#+end_example
+
+RK 的理解，就要再来看 A B C 三个参数，分别为 8 9 9 长度。
+
+在整体设计中，A 不用于 RK，B C 是有可能的。
+
+所以将高位 9 0/1 用于辨别当前代表的是 R 还是 K。
+
+#+begin_example
+0xxxxxxxx R
+
+1xxxxxxxx K
+#+end_example
+
+所以除去高位之后，B C 的实际长度也就是 8 bit 长度。
+
+这也就是 ISK 的含义
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "114-131"
 
 
+
+
+** practice
+
+关于 opcode 的 macro 操作
