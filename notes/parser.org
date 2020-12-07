@@ -2,11 +2,7 @@
 
 * TODO parser
 
-- job
-  - token -> ... -> bytecode
-  - generic step (no generate)
 - 上下文无关文法
-  - EBNF
   - LL 1
   - 递归下降过程
     - funcname and ebnf symbol
@@ -17,23 +13,27 @@
 - everything before generator
 
 
-** intro
+前面提到，lua 为了效率，将 token -> bytecode 压缩到了一个过程中
+没有 ast ir 等中间产物，直接从 token 到 opcode。
 
-ast 过程可以理解为，在递归下降的过程中发现
+相对应的，这部分代码就相对难以理解。
 
-至于 ir，由于没有跨平台实现的需求，也可以不考虑（只针对 lua vm 实现）
-
-
-如果使用多趟式的处理过程，则需要一次完整的遍历
-token 数组，交给 parser
-
-lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
-核心使用的便是 lexstate
-
+这一章先讲宏观的过程，在 gen 章节，再针对具体代码，进行 gen 的分析。
 
 #+CAPTION: lex -> parse -> gen picture
 
 ** EBNF lang of lang
+
+虽然过程综合在一起，还是从语法分析作为入口开始分析的。
+
+语法分析，必须提到 EBNF 描述，lang of lang。
+描述语言结构的语言。
+
+综合官方文档和代码注释，以及实际生成的过程，整理 EBNF 如下。
+
+
+
+因为使用 E，一些默认规则如下
 
 #+begin_example
 { a } 表示 a*，0 个或多个
@@ -42,6 +42,7 @@ lua 使用了流式的处理过程，提供核心的方法，next，供 parser �
 | 表示或
 #+end_example
 
+整体如下
 
 #+begin_src
 chunk -> { stat [ `;' ] }
@@ -105,13 +106,76 @@ fieldsep -> `,' | `;'
 #+end_src
 
 
+
+
+官方的描述
+
+Here is the complete syntax of Lua in extended BNF. (It does not describe operator precedences.)
+
+#+begin_src bnf
+	chunk ::= {stat [`;´]} [laststat [`;´]]
+
+	block ::= chunk
+
+	stat ::=  varlist `=´ explist | 
+		 functioncall | 
+		 do block end | 
+		 while exp do block end | 
+		 repeat block until exp | 
+		 if exp then block {elseif exp then block} [else block] end | 
+		 for Name `=´ exp `,´ exp [`,´ exp] do block end | 
+		 for namelist in explist do block end | 
+		 function funcname funcbody | 
+		 local function Name funcbody | 
+		 local namelist [`=´ explist] 
+
+	laststat ::= return [explist] | break
+
+	funcname ::= Name {`.´ Name} [`:´ Name]
+
+	varlist ::= var {`,´ var}
+
+	var ::=  Name | prefixexp `[´ exp `]´ | prefixexp `.´ Name 
+
+	namelist ::= Name {`,´ Name}
+
+	explist ::= {exp `,´} exp
+
+	exp ::=  nil | false | true | Number | String | `...´ | function | 
+		 prefixexp | tableconstructor | exp binop exp | unop exp 
+
+	prefixexp ::= var | functioncall | `(´ exp `)´
+
+	functioncall ::=  prefixexp args | prefixexp `:´ Name args 
+
+	args ::=  `(´ [explist] `)´ | tableconstructor | String 
+
+	function ::= function funcbody
+
+	funcbody ::= `(´ [parlist] `)´ block end
+
+	parlist ::= namelist [`,´ `...´] | `...´
+
+	tableconstructor ::= `{´ [fieldlist] `}´
+
+	fieldlist ::= field {fieldsep field} [fieldsep]
+
+	field ::= `[´ exp `]´ `=´ exp | Name `=´ exp | exp
+
+	fieldsep ::= `,´ | `;´
+
+	binop ::= `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | `..´ | 
+		 `<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ | 
+		 and | or
+
+	unop ::= `-´ | not | `#´
+#+end_src
+
 ENBF 语法并没有给出完全的限制
 
 虽然是递归下降，但是各个名称和 函数名称不一定是对应的
 
-
 explist1 -> explist
-
 
 
 对于 char 到 token 有明显的分辨力，从 token 到 ast 也还可以
@@ -123,4 +187,258 @@ explist1 -> explist
 
 涉及到运行时的具体实现，虽然没有在运行，但是未来的 vm 一定是完全按照 bytecode 在执行的
 相当于在脑海中将执行过程模拟了一遍
+
+** 递归下降
+   :LOGBOOK:
+   - Note taken on [2020-12-07 一 13:44] \\
+     递归下降法与 LL 1 的关系？
+   - Note taken on [2020-12-07 一 13:40] \\
+     LL 1?
+     递归下降？
+   :END:
+
+lua 使用上下文无关方法描述，且使用 LL 1 方式，进行递归下降法，进行语法分析。
+
+和通常所见的不同，直接从这个过程中生成了 opcode，而不是 ast ir 之类。
+
+
+由于递归下降的特性，大部分函数名和相应的规则相同，所以相应的过程就比较容易梳理。
+但是并不完全，也有一些不完美的地方。
+
+
+** data structure
+   :LOGBOOK:
+   - Note taken on [2020-12-07 一 13:54] \\
+     lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
+   :END:
+
+- func state
+- proto
+
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "57-76"
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "228-254"
+
+一个 funcState 对应一个 function 层次，记录相关函数信息，用来辅助生成 Proto
+
+Proto 最终生成的 bytecode 与相关环境
+
+
+#+begin_src c
+typedef struct FuncState {
+  Proto *f;                              // 存储生成的 bytecode
+  Table *h;                              // global 表？
+  struct FuncState *prev;                // 函数闭包的上层，同为 FuncState，仅在编译期存在
+  struct LexState *ls;                   // 指向 LexState，获取 token
+  struct lua_State *L;                   // lua_State，作用？
+  struct BlockCnt *bl;                   // 和 prev 不冲突吗？
+  int pc;                                // 下一个存储 bytecode 的索引，因为索引从 0 开始，所以此值等同于 ncode
+  int lasttarget;                        // 上一个 jump target 的 pc 值
+  int jpc;                               // ？ /* list of pending jumps to `pc' */
+  int freereg;                           // 第一个空闲寄存器的索引
+  int nk;                                // f 中 k 表的元素个数，也可做下一个可存储的 k 值索引
+  int np;                                // 嵌套 proto 的个数？
+  short nlocvars;                        // 存储在 f->locvars 中的数量
+  lu_byte nactvar;                       // active local var 的个数
+  upvaldesc upvalues[LUAI_MAXUPVALUES];  // 存储 upvalues？
+  unsigned short actvar[LUAI_MAXVARS];   // 存储 active local vars，值是 locvar 在 f->locvars 中的索引
+};
+#+end_src
+
+
+#+begin_src c
+typedef struct Proto {
+  CommonHeader;
+  TValue *k;               // k 表，数组实现，存储函数所有使用的常量
+  Instruction *code;       // 存储字节码
+  struct Proto **p;        // 函数内嵌套的函数
+  int *lineinfo;           // opcode 与源代码行号的对应
+  struct LocVar *locvars;  // local vars 的信息？
+  TString **upvalues;      // ？
+  TString  *source;        // 源代码的文件名
+  int sizeupvalues;        // ？
+  int sizek;               // k 表的大小，有可能会比实际 k 表中元素多
+  int sizecode;            // code 指令个数
+  int sizelineinfo;        // lineinfo 数组大小
+  int sizep;               // 嵌套函数的个数？
+  int sizelocvars;         // local vars 的个数？
+  int linedefined;         // ？
+  int lastlinedefined;     // 源码中函数的起点和终点？
+  GCObject *gclist;        // ？
+  lu_byte nups;            // ？ /* number of upvalues */
+  lu_byte numparams;       // 参数的个数？
+  lu_byte is_vararg;       // 是否可变参数？
+  lu_byte maxstacksize;    // 栈的最大大小？
+};
+#+end_src
+
+
+为什么 local var 和 active local var 存储在两个部分？
+
+因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
+且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
+
+因为 active 状态只能在 parse 过程分辨。
+离开作用域自然不是 active 的。
+而是否 active 对于 bytecode 并不重要。
+active 状态用于辅助 funcstate 生成 bytecode。
+
+
+
+
+discharge vars 意思是解析变量，比如
+
+```
+a = 1
+```
+
+在赋值之间，要先解析 1，从 k 表中将 1 加载到栈中，
+然后再设置到全局表。
+
+解析 1 的过程就是 discharge。
+
+生成的 bytecode 也就在 assignment 的前面。
+
+
+
+
+
+
+fs->f->sizek 和 fs->nk 是有区别的
+nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
+如 length 和 capacity 的区别
+当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
+
+
+
+
+
+
+
+
+- expdesc
+
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
+
+
+
+
+
+#+CAPTION: lex next -> Y parser -> proto
+
+
+
+#+CAPTION: L ls fs p structure
+
+
+
+** generate
+
+*** register
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 14:01] \\
+      如何调度寄存器？
+    :END:
+
+
+parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
+因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+
+move a b
+
+但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
+因为这是编译时，而不是运行时
+    
+
+
+*** opcode
+
+    
+**** move
+     
+move code 发生在 assignment 环节
+
+在这里要进行值的迁移
+
+
+luaK_storevar 生成了 move 指令
+
+exp2reg?
+
+对于赋值，= 后是 exp，前是存储空间
+
+后面的 exp 要经过解析，才能向前赋值
+
+
+
+**** loadnil
+
+luaK_nil()
+
+
+**** upval related
+
+在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
+
+但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
+所以其 upvalue 不一定出现在 stack frame 上
+
+**** table related
+
+gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 constant，也可能是
+一个表，一个函数，等其它值，这种值只能由 寄存器 存储
+
+同时，加上了 k，也可以节省临时寄存器的使用
+
+如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
+
+
+*** statement
+
+**** local assignment
+
+ ```lua
+ local a = 10
+ ```
+
+ 将 10 存入 k 表，将 a 存入 locvars 表中（其中存储了名字 "a"）。
+ 使用 loadk 指令，将 k 中的 10 加载入 reg 中。
+
+
+ 如果是
+
+ ```lua
+ a = 1
+ ```
+
+ 则直接将名字 "a" 和 1 都保存在 k 表。
+
+ 需要通过 "a" 来索引全局变量。这一点和 local var 完全不同。
+
+
+ 通过 numberK 和 stringK 方法
+
+ 每个 function 都有一个 k 表，而且可以去重存储。
+
+**** arithmetic
+
+
+**** compare
+
+lua 在进行解析时，没有进行关系运算的实时解析，但是对 constant 算法运算有编译时执行
+
+如 `local a = 5 > 2` 和 `local a = 1 + 2` 的区别
+
+前者需要生成 jmp 指令，但是后者，直接是 loadk 0 0 ; 3
+
+
+**** loop
+
+***** for
+
+for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
+依然是通过 jmp 来实现的。
+
+***** while & repeat
+
 
