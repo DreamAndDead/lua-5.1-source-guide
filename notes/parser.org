@@ -22,14 +22,17 @@
 
 #+CAPTION: lex -> parse -> gen picture
 
-** EBNF lang of lang
+** lang of lang
+   :LOGBOOK:
+   - Note taken on [2020-12-07 一 16:25] \\
+     right extended grammar
+   :END:
 
 几乎所有 token 都可以使用 RE 表示，但是也有 RE 无法表示的情况
 
 如 `a^kb^k`
 
 但是用 上下文无关 文法就可以方便的表示
-
 因为 上下文无关 文法提供了递归生成的方式
 
 
@@ -121,8 +124,6 @@ fieldsep -> `,' | `;'
 
 官方的描述
 
-Here is the complete syntax of Lua in extended BNF. (It does not describe operator precedences.)
-
 #+begin_src bnf
 	chunk ::= {stat [`;´]} [laststat [`;´]]
 
@@ -188,191 +189,41 @@ ENBF 语法并没有给出完全的限制
 
 explist1 -> explist
 
+并没有描述算术运算的优先级，和 number 一样，是在底层另行实现的。
 
-对于 char 到 token 有明显的分辨力，从 token 到 ast 也还可以
-但是从 ast 到 bytecode 就差一些
 
-因为
-- 流程的实现
-- 寄存器的分配
+函数的流程，像是字面意义上的 ast。
 
-涉及到运行时的具体实现，虽然没有在运行，但是未来的 vm 一定是完全按照 bytecode 在执行的
-相当于在脑海中将执行过程模拟了一遍
+函数名与 left hand 同名，方便理清 ast 层面的逻辑。
 
-** 递归下降
-   :LOGBOOK:
-   - Note taken on [2020-12-07 一 13:44] \\
-     递归下降法与 LL 1 的关系？
-   - Note taken on [2020-12-07 一 13:40] \\
-     LL 1?
-     递归下降？
-   :END:
+但是具体的同义生成过程，还需要一番思索。
 
-lua 使用上下文无关方法描述，且使用 LL 1 方式，进行递归下降法，进行语法分析。
+*** 递归下降
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 13:44] \\
+    递归下降法与 LL 1 的关系？
+    :END:
 
-和通常所见的不同，直接从这个过程中生成了 opcode，而不是 ast ir 之类。
+ lua 使用上下文无关方法描述，且使用 LL 1 方式，进行递归下降法，进行语法分析。
 
+ 和通常所见的不同，直接从这个过程中生成了 opcode，而不是 ast ir 之类。
 
-由于递归下降的特性，大部分函数名和相应的规则相同，所以相应的过程就比较容易梳理。
-但是并不完全，也有一些不完美的地方。
+ 由于递归下降的特性，大部分函数名和相应的规则相同，所以相应的过程就比较容易梳理。
+ 但是并不完全，也有一些不完美的地方。
 
+*** inspect
 
-** big picture
-   :LOGBOOK:
-   - Note taken on [2020-12-07 一 13:54] \\
-     lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
-   :END:
+gdb py 插件的介绍
 
-luaY_parser return Proto
+** practice
 
-Proto 最终生成的 bytecode 与相关环境
-基本可以将 proto 等同于生成的可执行文件，交给 vm 就可以执行，不过其中有一些结构上的安排。
-
-一个 function 对应生成一个 proto，一个 lua 文件，可被认为是一个匿名函数
-故最终返回的是一个 proto。
-
-function 是基础类型，如果 lua 文件作为一级函数，则其中定义的函数为二级函数
-
-其中函数内部定义的函数为三级函数，可以不断向下延伸
-
-每一级函数，在 **p 中记录其包含的下一级函数，根据出现的顺序，用数组来记录。
-
-
-其中的 k 表，opcode，就是在 vm 模型讨论的，
-关于 upval 的信息，隐藏在了 code 中。
-
-以及其它信息，需要的时候，仔细分析。
-
-实际运行时，将 Proto 封装为 Closure，开辟 upval 的空间。
-
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "228-254"
-
-#+begin_src c
-typedef struct Proto {
-  CommonHeader;
-  TValue *k;               // k 表，数组实现，存储函数所有使用的常量
-  Instruction *code;       // 存储字节码
-  struct Proto **p;        // 函数内嵌套的函数
-  int *lineinfo;           // opcode 与源代码行号的对应
-  struct LocVar *locvars;  // local vars 的信息？
-  TString **upvalues;      // ？
-  TString  *source;        // 源代码的文件名
-  int sizeupvalues;        // ？
-  int sizek;               // k 表的大小，有可能会比实际 k 表中元素多
-  int sizecode;            // code 指令个数
-  int sizelineinfo;        // lineinfo 数组大小
-  int sizep;               // 嵌套函数的个数？
-  int sizelocvars;         // local vars 的个数？
-  int linedefined;         // ？
-  int lastlinedefined;     // 源码中函数的起点和终点？
-  GCObject *gclist;        // ？
-  lu_byte nups;            // ？ /* number of upvalues */
-  lu_byte numparams;       // 参数的个数？
-  lu_byte is_vararg;       // 是否可变参数？
-  lu_byte maxstacksize;    // 栈的最大大小？
-};
-#+end_src
-
-
-
-
-
-
-
-- func state
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "57-76"
-
-一个 funcState 对应一个 function 层次，记录相关函数信息，用来辅助生成 Proto
-
-
-#+begin_src c
-typedef struct FuncState {
-  Proto *f;                              // 存储生成的 bytecode
-  Table *h;                              // global 表？
-  struct FuncState *prev;                // 函数闭包的上层，同为 FuncState，仅在编译期存在
-  struct LexState *ls;                   // 指向 LexState，获取 token
-  struct lua_State *L;                   // lua_State，作用？
-  struct BlockCnt *bl;                   // 和 prev 不冲突吗？
-  int pc;                                // 下一个存储 bytecode 的索引，因为索引从 0 开始，所以此值等同于 ncode
-  int lasttarget;                        // 上一个 jump target 的 pc 值
-  int jpc;                               // ？ /* list of pending jumps to `pc' */
-  int freereg;                           // 第一个空闲寄存器的索引
-  int nk;                                // f 中 k 表的元素个数，也可做下一个可存储的 k 值索引
-  int np;                                // 嵌套 proto 的个数？
-  short nlocvars;                        // 存储在 f->locvars 中的数量
-  lu_byte nactvar;                       // active local var 的个数
-  upvaldesc upvalues[LUAI_MAXUPVALUES];  // 存储 upvalues？
-  unsigned short actvar[LUAI_MAXVARS];   // 存储 active local vars，值是 locvar 在 f->locvars 中的索引
-};
-#+end_src
-
-
-
-
-
-为什么 local var 和 active local var 存储在两个部分？
-
-因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
-且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
-
-因为 active 状态只能在 parse 过程分辨。
-离开作用域自然不是 active 的。
-而是否 active 对于 bytecode 并不重要。
-active 状态用于辅助 funcstate 生成 bytecode。
-
-
-
-
-discharge vars 意思是解析变量，比如
-
-```
-a = 1
-```
-
-在赋值之间，要先解析 1，从 k 表中将 1 加载到栈中，
-然后再设置到全局表。
-
-解析 1 的过程就是 discharge。
-
-生成的 bytecode 也就在 assignment 的前面。
-
-
-
-
-fs->f->sizek 和 fs->nk 是有区别的
-nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
-如 length 和 capacity 的区别
-当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
-
-
-
-
-
-
-
-- expdesc
-
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
-
-
-
-
-
-#+CAPTION: lex next -> Y parser -> proto
-
-
-
-#+CAPTION: L ls fs p structure
-
-
+尝试随意的代码，在 chunk 处打上断点
+n/s 观察代码的走向
 
 ** generate
 
 - generic
-  - L fs f big picture
-    - proto
-    - expdesc
-    - nest func
+  - expdesc
   - alloc stack
   - var type
     - local
@@ -395,10 +246,148 @@ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是�
   - ...
 
 
-之前是保持语法，生成过程要保持语义
-好像没有明确的 dsl 来描述
-应该属于实现的艺术
+生成过程，就是等义转换的过程
 
+隐藏在语法分析下的艺术
+
+
+*** big picture
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 13:54] \\
+    lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
+    :END:
+
+ #+CAPTION: luaY_parser function
+
+
+
+ 概念 vs
+ - function，是 lua 中的概念，函数
+ - proto，是 function 分析之后的同语义结构
+ - closure，封装 proto，提供 upval 空间，用于 vm 运行时
+
+
+
+ Proto 最终生成的 bytecode 与相关环境
+ 基本可以将 proto 等同于生成的可执行文件，交给 vm 就可以执行，不过其中有一些结构上的安排。
+
+ 一个 function 对应生成一个 proto，一个 lua 文件，可被认为是一个匿名函数
+ 故最终返回的是一个 proto。
+
+ function 是基础类型，如果 lua 文件作为一级函数，则其中定义的函数为二级函数
+
+ 其中函数内部定义的函数为三级函数，可以不断向下延伸
+
+ 每一级函数，在 **p 中记录其包含的下一级函数，根据出现的顺序，用数组来记录。
+
+
+ #+CAPTION: proto and function
+
+
+ 以 function 为单位，生成一块一块的 proto，组合在一起。
+
+
+ 前面提到过，在词法分析的过程中，有 lexstate 结构，它存储了一切词法分析过程中的状态
+ 在生成过程中，也存在如此结构，称为 funcstate，存储生成过程中涉及到的状态
+ 其中的 proto 就是生成的结果。
+
+ 总体过程如下。
+
+ #+CAPTION: ls fs p big picture
+
+ 可以看出，ls 是单例，向 fs 输入 token，并在不同的 func 层次，对接不同的 fs 结构。
+
+ 每当生成一个新的 function，都会新建一个 fs，并指向父 fs，并对接 ls，生成自己的 f
+ 在结束之后，将 f 的结果并入父 fs 的 f 中。
+
+
+ 其实 fs 和 f 几乎是一个整体，总是同时行动。
+ 区别在于，proto 作为最终返回的结果，内容最小化，不多不少
+ 而作为中间过程中相关的 state，并不是 vm 需要关心的，所以就剔除到 fs 结构中了。
+
+
+ ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用，生成返回 f 之后，就被丢弃。
+
+
+
+
+
+
+
+
+ 其中的 k 表，opcode，就是在 vm 模型讨论的，
+ 关于 upval 的信息，隐藏在了 code 中。
+ #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "228-254"
+
+
+ - func state
+ #+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "57-76"
+
+
+
+
+
+
+ 为什么 local var 和 active local var 存储在两个部分？
+
+ 因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
+ 且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
+
+ 因为 active 状态只能在 parse 过程分辨。
+ 离开作用域自然不是 active 的。
+ 而是否 active 对于 bytecode 并不重要。
+ active 状态用于辅助 funcstate 生成 bytecode。
+
+
+
+
+ discharge vars 意思是解析变量，比如
+
+ ```
+ a = 1
+ ```
+
+ 在赋值之间，要先解析 1，从 k 表中将 1 加载到栈中，
+ 然后再设置到全局表。
+
+ 解析 1 的过程就是 discharge。
+
+ 生成的 bytecode 也就在 assignment 的前面。
+
+
+
+
+ fs->f->sizek 和 fs->nk 是有区别的
+ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
+ 如 length 和 capacity 的区别
+ 当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
+
+
+
+
+
+
+
+ - expdesc
+
+ #+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
+
+
+
+
+
+ #+CAPTION: lex next -> Y parser -> proto
+
+
+
+ #+CAPTION: L ls fs p structure
+
+
+*** expdesc?
+*** code
+
+code.c
+    
 *** register
     :LOGBOOK:
     - Note taken on [2020-12-07 一 14:01] \\
@@ -414,7 +403,6 @@ move a b
 但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
 因为这是编译时，而不是运行时
     
-
 
 *** opcode
 
