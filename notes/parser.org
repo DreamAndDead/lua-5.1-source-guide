@@ -211,6 +211,22 @@ explist1 -> explist
  由于递归下降的特性，大部分函数名和相应的规则相同，所以相应的过程就比较容易梳理。
  但是并不完全，也有一些不完美的地方。
 
+
+
+可以逐个模块进行分析
+
+*** TODO expdesc
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 17:34] \\
+      各个状态如何发生作用？
+    :END:
+
+exp desc
+
+exp 基本运作单元
+
+desc 描述其属性，是 ast 到 code 的纽带
+
 *** inspect
 
 gdb py 插件的介绍
@@ -383,11 +399,6 @@ n/s 观察代码的走向
  #+CAPTION: L ls fs p structure
 
 
-*** expdesc?
-*** code
-
-code.c
-    
 *** register
     :LOGBOOK:
     - Note taken on [2020-12-07 一 14:01] \\
@@ -403,48 +414,6 @@ move a b
 但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
 因为这是编译时，而不是运行时
     
-
-*** opcode
-
-    
-**** move
-     
-move code 发生在 assignment 环节
-
-在这里要进行值的迁移
-
-
-luaK_storevar 生成了 move 指令
-
-exp2reg?
-
-对于赋值，= 后是 exp，前是存储空间
-
-后面的 exp 要经过解析，才能向前赋值
-
-
-
-**** loadnil
-
-luaK_nil()
-
-
-**** upval related
-
-在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
-
-但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
-所以其 upvalue 不一定出现在 stack frame 上
-
-**** table related
-
-gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 constant，也可能是
-一个表，一个函数，等其它值，这种值只能由 寄存器 存储
-
-同时，加上了 k，也可以节省临时寄存器的使用
-
-如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
-
 
 *** statement
 
@@ -494,4 +463,45 @@ for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有�
 
 ***** while & repeat
 
+
+*** opcode
+    
+**** move
+     
+move code 发生在 assignment 环节
+
+在这里要进行值的迁移
+
+
+luaK_storevar 生成了 move 指令
+
+exp2reg?
+
+对于赋值，= 后是 exp，前是存储空间
+
+后面的 exp 要经过解析，才能向前赋值
+
+
+
+**** loadnil
+
+luaK_nil()
+
+
+**** table related
+
+gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 constant，也可能是
+一个表，一个函数，等其它值，这种值只能由 寄存器 存储
+
+同时，加上了 k，也可以节省临时寄存器的使用
+
+如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
+
+
+**** upval related
+
+在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
+
+但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
+所以其 upvalue 不一定出现在 stack frame 上
 

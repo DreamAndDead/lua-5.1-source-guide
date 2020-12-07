@@ -178,6 +178,14 @@ RK 的理解，就要再来看 A B C 三个参数，分别为 8 9 9 长度。
 
 #+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
 
+** TODO meaning table
+
+the 38 opcode meaning
+
+prepared for parser and gen
+
+vm model detail
+
 ** practice
 
 关于 opcode 的 macro 操作
