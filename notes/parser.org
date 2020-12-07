@@ -24,6 +24,17 @@
 
 ** EBNF lang of lang
 
+几乎所有 token 都可以使用 RE 表示，但是也有 RE 无法表示的情况
+
+如 `a^kb^k`
+
+但是用 上下文无关 文法就可以方便的表示
+
+因为 上下文无关 文法提供了递归生成的方式
+
+
+
+
 虽然过程综合在一起，还是从语法分析作为入口开始分析的。
 
 语法分析，必须提到 EBNF 描述，lang of lang。
@@ -206,45 +217,35 @@ lua 使用上下文无关方法描述，且使用 LL 1 方式，进行递归下�
 但是并不完全，也有一些不完美的地方。
 
 
-** data structure
+** big picture
    :LOGBOOK:
    - Note taken on [2020-12-07 一 13:54] \\
      lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
    :END:
 
-- func state
-- proto
-
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "57-76"
-
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "228-254"
-
-一个 funcState 对应一个 function 层次，记录相关函数信息，用来辅助生成 Proto
+luaY_parser return Proto
 
 Proto 最终生成的 bytecode 与相关环境
+基本可以将 proto 等同于生成的可执行文件，交给 vm 就可以执行，不过其中有一些结构上的安排。
+
+一个 function 对应生成一个 proto，一个 lua 文件，可被认为是一个匿名函数
+故最终返回的是一个 proto。
+
+function 是基础类型，如果 lua 文件作为一级函数，则其中定义的函数为二级函数
+
+其中函数内部定义的函数为三级函数，可以不断向下延伸
+
+每一级函数，在 **p 中记录其包含的下一级函数，根据出现的顺序，用数组来记录。
 
 
-#+begin_src c
-typedef struct FuncState {
-  Proto *f;                              // 存储生成的 bytecode
-  Table *h;                              // global 表？
-  struct FuncState *prev;                // 函数闭包的上层，同为 FuncState，仅在编译期存在
-  struct LexState *ls;                   // 指向 LexState，获取 token
-  struct lua_State *L;                   // lua_State，作用？
-  struct BlockCnt *bl;                   // 和 prev 不冲突吗？
-  int pc;                                // 下一个存储 bytecode 的索引，因为索引从 0 开始，所以此值等同于 ncode
-  int lasttarget;                        // 上一个 jump target 的 pc 值
-  int jpc;                               // ？ /* list of pending jumps to `pc' */
-  int freereg;                           // 第一个空闲寄存器的索引
-  int nk;                                // f 中 k 表的元素个数，也可做下一个可存储的 k 值索引
-  int np;                                // 嵌套 proto 的个数？
-  short nlocvars;                        // 存储在 f->locvars 中的数量
-  lu_byte nactvar;                       // active local var 的个数
-  upvaldesc upvalues[LUAI_MAXUPVALUES];  // 存储 upvalues？
-  unsigned short actvar[LUAI_MAXVARS];   // 存储 active local vars，值是 locvar 在 f->locvars 中的索引
-};
-#+end_src
+其中的 k 表，opcode，就是在 vm 模型讨论的，
+关于 upval 的信息，隐藏在了 code 中。
 
+以及其它信息，需要的时候，仔细分析。
+
+实际运行时，将 Proto 封装为 Closure，开辟 upval 的空间。
+
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "228-254"
 
 #+begin_src c
 typedef struct Proto {
@@ -271,6 +272,42 @@ typedef struct Proto {
   lu_byte maxstacksize;    // 栈的最大大小？
 };
 #+end_src
+
+
+
+
+
+
+
+- func state
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "57-76"
+
+一个 funcState 对应一个 function 层次，记录相关函数信息，用来辅助生成 Proto
+
+
+#+begin_src c
+typedef struct FuncState {
+  Proto *f;                              // 存储生成的 bytecode
+  Table *h;                              // global 表？
+  struct FuncState *prev;                // 函数闭包的上层，同为 FuncState，仅在编译期存在
+  struct LexState *ls;                   // 指向 LexState，获取 token
+  struct lua_State *L;                   // lua_State，作用？
+  struct BlockCnt *bl;                   // 和 prev 不冲突吗？
+  int pc;                                // 下一个存储 bytecode 的索引，因为索引从 0 开始，所以此值等同于 ncode
+  int lasttarget;                        // 上一个 jump target 的 pc 值
+  int jpc;                               // ？ /* list of pending jumps to `pc' */
+  int freereg;                           // 第一个空闲寄存器的索引
+  int nk;                                // f 中 k 表的元素个数，也可做下一个可存储的 k 值索引
+  int np;                                // 嵌套 proto 的个数？
+  short nlocvars;                        // 存储在 f->locvars 中的数量
+  lu_byte nactvar;                       // active local var 的个数
+  upvaldesc upvalues[LUAI_MAXUPVALUES];  // 存储 upvalues？
+  unsigned short actvar[LUAI_MAXVARS];   // 存储 active local vars，值是 locvar 在 f->locvars 中的索引
+};
+#+end_src
+
+
+
 
 
 为什么 local var 和 active local var 存储在两个部分？
@@ -302,13 +339,10 @@ a = 1
 
 
 
-
-
 fs->f->sizek 和 fs->nk 是有区别的
 nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
 如 length 和 capacity 的区别
 当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
-
 
 
 

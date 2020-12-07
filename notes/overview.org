@@ -4,24 +4,18 @@
 
 ** TODO intro
 
-- 本书的目标与内容
-  - guide
+- 本书目标
+  - source reading guide
+- 章节规划
+  - 逻辑关系的模块顺序
+  - 只讲核心部分，2 8 原则，只讲 2
+  - 图解关键数据结构，及实现过程（从 macro 到 micro，图解是重要的连接点）
+  - 对照代码片段
+  - 代码阅读任务
 - 针对读者
   - lua user
   - c
   - linux
-- 整体规划
-  - 由浅入深
-  - 依赖关系，基础到深入
-- 章节规划
-  - 功能概要
-  - （补充对应原理）
-  - 图解关键数据结构 关键实现过程
-    - h 表示的公共方法
-    - c 表示的内部方法
-    - 找准核心的实现，2 8 原则，只讲 2 的部分
-  - 对照代码实现片段
-  - 剩余代码阅读任务
 
 ** TODO big picture
    :LOGBOOK:
@@ -51,11 +45,34 @@ the final step
 - compile with debug info
 - scan from feature to feature
 
+
+|prefix|module|
+|:-:|:-:|
+|luaX|lex|
+|luaK|code|
+
+
 *** project itself
 
 - lua source itself
 - where I modified the source code
 - some tool to help
+
+
+CFLAGS -> -ggdb3 -O0  (debug macros)
+
+
+
+makefile -m32
+
+chunkspy, add is_vararg
+
+#+begin_src diff
++    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",
++      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+#+end_src
+
+
 
 *** insight
 

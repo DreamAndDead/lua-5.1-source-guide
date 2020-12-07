@@ -114,6 +114,29 @@ comment this line
 #+end_src
 
 
+
+lua 中的 lex 过程在检测数字时，没有判断数字的 + - 值
+而是将 + - 作为运算符对待，来应对
+
+```lua
+a = 1 --------- 1
+a = 1 +++++++++ 1  -- 这种方式是错误的，因为 + 是完全的二元运算，而 - 可能表示负数的一元运算
+```
+
+的情况
+
+在下面的规则可以发现
+
+```
+subexpr -> (simpleexp | unop subexpr) { binop subexpr }
+```
+
+
+require 不是关键字，而是 function name，而它的功能是在 vm 中实现的
+环境中提供了 require 方法
+
+
+
 ** inside
 
 *** lexstate
