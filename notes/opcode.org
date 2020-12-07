@@ -1,13 +1,6 @@
 #+SETUPFILE: setup.org
 
-* TODO opcode
-
-- model
-  - all kinds of opcode (37?)
-  - meta info
-    - 8 bits
-    - split into several parts
-
+* DRAFT opcode
 
 opcode 字节码，是编译阶段的最终结果，至此，front phase 的任务才算完成。
 
@@ -45,8 +38,6 @@ A B C Bx 都是无符号数，只有 sBx 是有符号数
 
 
 ** param
-
-*** range
 
 指令类型占据 6 字节，理论上，全部利用，可以有 64 种指令
 现在只利用了其中的 38 个位置，还有很大的扩展空间
@@ -100,7 +91,7 @@ opcode 本身只是 01 编码而已，至于其代表什么样的含义，是 vm
 
 其实 寄存器和栈是一体的。
 
-常量区域，k 表是独有的，其中存储了一些出现的常量，比如数字和字符串，也通过数字来索引，只读
+k 表 常量表 是独有的，其中存储了一些出现的常量，比如数字和字符串，也通过数字来索引，只读
 - k 应该不算是 表，和 gbl 有些不同
 
 除此之外，还有 global 表和 upval 表，可读写
@@ -153,9 +144,42 @@ RK 的理解，就要再来看 A B C 三个参数，分别为 8 9 9 长度。
 
 #+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "114-131"
 
+*** meta
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 11:55] \\
+      至于如此安排的原因，之后再补充
+    :END:
+
+除了定义指令的类型，也对指令整体描述进行了记录。
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "59-102"
+
+顺序和 op 类型的顺序是相同的。
+
+其中 opmode 使用一个 byte 8 bits 来记录 opcode 的相关信息
+- T 是否是 test 指令
+- A 是否修改了 R(A)
+- B C ，B C 参数的使用方式
+  - 未使用
+  - 使用
+  - 是 R 或者 jump offset
+  - 是常量 或者 RK
+- mode，iABC 等 3 种的哪一种
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "236-251"
 
 
+所以下面的几个 macro 意义也就非常清晰
+- getOpMode
+- getBMode
+- getCMode
+- testAMode R(A) 是否修改
+- testTMode 是否为 test 指令
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
 
 ** practice
 
 关于 opcode 的 macro 操作
+
+
