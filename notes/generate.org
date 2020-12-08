@@ -194,6 +194,14 @@ nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是�
 #+CAPTION: L ls fs p structure
 
 
+** tools
+
+make spy
+
+make inspect
+
+chunkspy 中 .local .const 的概念对应
+
 ** TODO expdesc
     :LOGBOOK:
     - Note taken on [2020-12-07 一 17:34] \\
