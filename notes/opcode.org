@@ -68,6 +68,39 @@ Bx        0                 011111111             1111111110     1111111111
 sBx       -max              0                     max            -
 #+end_example
 
+** meta
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 11:55] \\
+      至于如此安排的原因，之后再补充
+    :END:
+
+除了定义指令的类型，也对指令整体描述进行了记录。
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "59-102"
+
+顺序和 op 类型的顺序是相同的。
+
+其中 opmode 使用一个 byte 8 bits 来记录 opcode 的相关信息
+- T 是否是 test 指令
+- A 是否修改了 R(A)
+- B C ，B C 参数的使用方式
+  - 未使用
+  - 使用
+  - 是 R 或者 jump offset
+  - 是常量 或者 RK
+- mode，iABC 等 3 种的哪一种
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "236-251"
+
+
+所以下面的几个 macro 意义也就非常清晰
+- getOpMode
+- getBMode
+- getCMode
+- testAMode R(A) 是否修改
+- testTMode 是否为 test 指令
+
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
 
 ** TODO model
    :LOGBOOK:
@@ -81,7 +114,6 @@ opcode 本身只是 01 编码而已，至于其代表什么样的含义，是 vm
 
 具体理解 opcode 就要对 vm 的运作模型有一些简单的了解。
 
-
 粗略而言，和机器运作是类似的
 
 指令逐个运行，pc 表明当前执行指令的位置
@@ -91,8 +123,9 @@ opcode 本身只是 01 编码而已，至于其代表什么样的含义，是 vm
 
 其实 寄存器和栈是一体的。
 
-k 表 常量表 是独有的，其中存储了一些出现的常量，比如数字和字符串，也通过数字来索引，只读
-- k 应该不算是 表，和 gbl 有些不同
+k 表 常量表 是独有的，其中存储了一些出现的常量，比如数字和字符串，通过数字来索引，只读
+其中的值是在语法分析过程中收集的数值，全部收集在一起，方便使用
+
 
 除此之外，还有 global 表和 upval 表，可读写
 - gbl，索引为任意值
@@ -104,7 +137,7 @@ lua 的 opcode 正是根据上面的模型来设计的。
 
 至于具体的来源，作用，过程，实现，之后再详细解释。
 
-*** meaning
+** meaning
 
 opcode 有 38 种，用 enum 表示
 
@@ -144,50 +177,15 @@ RK 的理解，就要再来看 A B C 三个参数，分别为 8 9 9 长度。
 
 #+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "114-131"
 
-*** meta
-    :LOGBOOK:
-    - Note taken on [2020-12-07 一 11:55] \\
-      至于如此安排的原因，之后再补充
-    :END:
-
-除了定义指令的类型，也对指令整体描述进行了记录。
-
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "59-102"
-
-顺序和 op 类型的顺序是相同的。
-
-其中 opmode 使用一个 byte 8 bits 来记录 opcode 的相关信息
-- T 是否是 test 指令
-- A 是否修改了 R(A)
-- B C ，B C 参数的使用方式
-  - 未使用
-  - 使用
-  - 是 R 或者 jump offset
-  - 是常量 或者 RK
-- mode，iABC 等 3 种的哪一种
-
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "236-251"
-
-
-所以下面的几个 macro 意义也就非常清晰
-- getOpMode
-- getBMode
-- getCMode
-- testAMode R(A) 是否修改
-- testTMode 是否为 test 指令
-
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
-
-** TODO meaning table
-
-the 38 opcode meaning
-
-prepared for parser and gen
 
 vm model detail
+
+*** move
+
 
 ** practice
 
 关于 opcode 的 macro 操作
 
+未介绍的 opcode
 
