@@ -164,6 +164,14 @@ f locvars  fs nlocvars
 fs upvalues  f nups
 f upvalues  f nups
 
+
+
+
+代码的生成过程有一个隐式的假设，对 vm 的运作方式有明显的假定
+如果纯粹的分离开来，应该对一套 opcode 进行编程
+但是这里 opcode 的定义显然就是 vm 本身
+
+
 ** tools
 
 make spy
@@ -188,6 +196,22 @@ level 1 指的是第一层级
 function [0] 表明是当前层级的第 1 个函数（以 0 开始索引）
 
 line 2
+0 个 upvalue
+0 个参数
+0b010 接收可变参数
+3 需要分配栈容量，2 是最小值，来源于在不断的运算过程中，栈增长减少，遇到的最大值
+
+line 3
+和 line 2 相同，2 是 3 的注释
+
+line 4 5 6
+.local f->locvars 内容
+
+line 7
+f->code 指令
+
+line 8
+function 结束注释
 
 
 
@@ -206,18 +230,15 @@ desc 描述其属性，是 ast 到 code 的纽带
 #+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
 
 
+
+
 ** register
    :LOGBOOK:
    - Note taken on [2020-12-07 一 14:01] \\
    如何调度寄存器？
    :END:
 
-
-how to alloc register
-
 register is stack
-
-
 
 parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
 因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
@@ -227,6 +248,62 @@ move a b
 但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
 因为这是编译时，而不是运行时
     
+
+** variable
+
+变量有 3 类，local upval global
+
+*** local
+
+local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
+
+作用域是有明显的栈特性的，新作用域入栈，离开作用域出栈
+
+在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，local var dead，让出空间
+
+这样栈中从 base 到 top，就始终记录着 active local 变量，作用范围由大到小。
+
+#+CAPTION: 16 active local scope & fs->actvar nactvar
+
+利用这种特征，在 fs 中用 actvar 和 nactvar 始终记录着当前 active local var 的状态。
+
+#+CAPTION: 16 actvar & locvars
+
+statement/scope.lua
+
+b lparser.c:1306
+
+fs->nlocvars 的原因，不需要这个变量，nlocvars 只用来指向下一个可放置的位置
+
+local 只在使用时发生作用，而在使用时，已经被记录在 code 中了
+
+*** upvalue
+
+#+begin_quote
+对象是带函数的值
+闭包是带值的函数
+#+end_quote
+
+因为 function 也是基础类型，可以作为普通变量，作为参数，返回值，赋值，而四处流转
+
+
+#+begin_src lua
+function add_func(i)
+  local inc = i
+  function add(a)
+    return a + inc
+  end
+end
+#+end_src
+
+
+
+
+只有 closure 类型的值才有 upvalue。
+
+
+
+*** global
 
 
 ** statement
@@ -264,7 +341,7 @@ local a, b, c
 
 考虑如上代码，声明局部变量 a。
 
-
+#+CAPTION: local no assignment
 
 
 
