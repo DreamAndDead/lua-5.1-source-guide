@@ -177,7 +177,11 @@ RK 的理解，就要再来看 A B C 三个参数，分别为 8 9 9 长度。
 #+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "114-131"
 
 
-vm model detail
+
+** model
+
+sktid is tvalue!
+
 
 *** move
 

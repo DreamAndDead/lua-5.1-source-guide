@@ -1,60 +1,46 @@
 #+SETUPFILE: setup.org
 
-* TODO parser
-
-- 上下文无关文法
-  - 递归下降过程
-    - funcname and ebnf symbol
-  - caveats
-    - binop precedence
-    - ebnf naming
-    - online manual/metalua/comments
-- everything before generator
-
+* DRAFT parser
 
 前面提到，lua 为了效率，将 token -> bytecode 压缩到了一个过程中
 没有 ast ir 等中间产物，直接从 token 到 opcode。
 
 相对应的，这部分代码就相对难以理解。
 
-这一章先讲宏观的过程，在 gen 章节，再针对具体代码，进行 gen 的分析。
-
 #+CAPTION: lex -> parse -> gen picture
 
+
+虽然代码实现没有明显的划分，在理解上，先找出不同步骤的影子，最后再联系在一起。
+
+过程综合在一起，但是从语法分析作为入口开始分析的。
+语法制导翻译的过程。
+
+本章
+- 语法分析过程
+- debug 方法
+
+
 ** lang of lang
-
-几乎所有 token 都可以使用 RE 表示，但是也有 RE 无法表示的情况
-
-如 `a^kb^k`
-
-但是用 上下文无关 文法就可以方便的表示
-因为 上下文无关 文法提供了递归生成的方式
+   :LOGBOOK:
+   - Note taken on [2020-12-09 三 09:19] \\
+     chunk vs block?
+   :END:
 
 
+官方文档使用上下文无关文法来描述 lua 语言。
 
+[[http://www.lua.org/manual/5.1/manual.html#8]]
 
-虽然过程综合在一起，还是从语法分析作为入口开始分析的。
-
-语法分析，必须提到 EBNF 描述，lang of lang。
-描述语言结构的语言。
-
-综合官方文档和代码注释，以及实际生成的过程，整理 EBNF 如下。
-
-
-递归下降，每个非终结符号都有一个对应的过程
-
-
-
-
-
-因为使用 E，一些默认规则如下
+根据实际代码中的相关注释，代码的实现过程，做了一些修改，整理 EBNF 如下。
 
 #+begin_example
 { a } 表示 a*，0 个或多个
 [ a ] 表示 a?，0 个或一个
-( a ) 表示一个
-| 表示或
-大写 与 引号单字符 为 lex 阶段的 token
+( a ) 表示组
+  |   表示或
+
+终结符：大写单词，`单字符' 是 lex 阶段生成的 token
+非终结符：小写单词，以 chunk 为入口
 #+end_example
 
 
@@ -110,7 +96,7 @@ simpleexp    ::= NUMBER | STRING | NIL | TRUE | FALSE | DOTS |
                  constructor | FUNCTION body | primaryexp
 
 binop        ::= `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | CONCAT | 
-	         `<´ | LE | `>´ | GE | EQ | NE |	AND | OR
+	         `<´ | LE | `>´ | GE | EQ | NE | AND | OR
 unop         ::= `-´ | NOT | `#´
 
 constructor  ::= `{' [fieldlist] `}'
@@ -119,46 +105,49 @@ field        ::= `[' expr `]' `=' expr | NAME `=' expr | expr
 fieldsep     ::= `,' | `;'
 #+end_src
 
+值得注意的是，和 lex 过程中的 RE 一样，没有正确表示 number ，而在 RE 之外进行了判断
+ENBF 语法也存在这样的问题。
+
+没有在语言描述层面对运算符优先级进行限定，而在 subexpr 过程中隐式实现。
+
+** 递归下降
+
+语法分析层面，整体使用递归下降过程。
+
+每个非终结符都用一个同名函数来实现（有部分例外），
+在整体运行过程中，函数之间的流程，就像是隐式的 ast 的遍历过程。
+
+所有 opcode 的生成过程，就隐藏在这一个个函数中。
+
+整体来看，
+- 以 chunk 为入口
+- 分为多个 stat
+- 每个 stat 有独立的结构
+- expr 是重要的组成部分
+
+像一棵树形结构，从上至下。
+
+分析过程，最好以 stat 为单位。
+
+每个 stat 进行独立的分析。
+
+最终再整合为宏观的理解。
+
+*** TODO inspect with tool
+
+ break at chunk
+
+ 观察源代码
+
+ 观察 token
+
+ n/s 观察代码的走向，只关注语法分析的过程
+
+ e.g. localstat
 
 
+ print *ls py extension
 
-ENBF 语法并没有给出完全的限制
-
-subexpr 中进行了比较级的限制（唉，EBNF）
-
-
-虽然是递归下降，但是各个名称和 函数名称不一定是对应的
-
-explist1 -> explist
-
-并没有描述算术运算的优先级，和 number 一样，是在底层另行实现的。
-
-
-函数的流程，像是字面意义上的 ast。
-
-函数名与 left hand 同名，方便理清 ast 层面的逻辑。
-
-但是具体的同义生成过程，还需要一番思索。
-
-*** 递归下降
-    :LOGBOOK:
-    - Note taken on [2020-12-07 一 13:44] \\
-    递归下降法与 LL 1 的关系？
-    :END:
-
- lua 使用上下文无关方法描述，且使用 LL 1 方式，进行递归下降法，进行语法分析。
-
- 和通常所见的不同，直接从这个过程中生成了 opcode，而不是 ast ir 之类。
-
- 由于递归下降的特性，大部分函数名和相应的规则相同，所以相应的过程就比较容易梳理。
- 但是并不完全，也有一些不完美的地方。
-
-可以逐个模块进行分析
-
-
-*** inspect
-
-gdb py 插件的介绍
 
 ** practice
 
