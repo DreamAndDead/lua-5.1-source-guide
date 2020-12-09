@@ -2,30 +2,6 @@
 
 * generate
 
-- generic
-  - expdesc
-  - alloc stack
-  - var type
-    - local
-    - upval
-    - global
-  - k table
-  - proto list
-  - upval list
-- statement
-  - if
-    - jump chain
-  - for
-    - blockCnt
-    - do end, chunk is not block
-  - function
-    - upval
-  - ...
-- opcode
-  - close
-  - ...
-
-
 parser 介绍了整体的语法分析过程
 
 gen 来详细深入，隐藏在语法分析过程之下的代码生成部分
@@ -79,14 +55,10 @@ gen 的这一步，多关乎两者之间的连接过程
 
 #+CAPTION: luaY_parser function
 
-
-
 概念 vs
 - function，是 lua 中的概念，函数
 - proto，是 function 分析之后的同语义结构
 - closure，封装 proto，提供 upval 空间，用于 vm 运行时
-
-
 
 Proto 最终生成的 bytecode 与相关环境
 基本可以将 proto 等同于生成的可执行文件，交给 vm 就可以执行，不过其中有一些结构上的安排。
@@ -113,7 +85,7 @@ function 是基础类型，如果 lua 文件作为一级函数，则其中定义
 
 总体过程如下。
 
-#+CAPTION: ls fs p big picture
+#+CAPTION: ls fs f big picture
 
 可以看出，ls 是单例，向 fs 输入 token，并在不同的 func 层次，对接不同的 fs 结构。
 
@@ -147,7 +119,6 @@ ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用
 
 
 
-
 为什么 local var 和 active local var 存储在两个部分？
 
 因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
@@ -159,6 +130,166 @@ ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用
 active 状态用于辅助 funcstate 生成 bytecode。
 
 
+
+
+
+
+
+
+
+
+
+
+#+CAPTION: lex next -> Y parser -> proto
+
+
+
+#+CAPTION: ls fs f structure, proto and cascade proto for functions
+
+
+
+#+CAPTION: fs f inside
+
+fs->f->sizek 和 fs->nk 是有区别的
+nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
+如 length 和 capacity 的区别
+当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
+
+f k  fs nk
+f p  fs np
+f code  fs pc
+fs actvar  fs nactvar
+f locvars  fs nlocvars
+
+fs upvalues  f nups
+f upvalues  f nups
+
+** tools
+
+make spy
+
+make inspect
+
+chunkspy 中 .local .const 的概念对应
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+[1] return     0   1      
+; end of function
+#+end_example
+
+line 1
+level 1 指的是第一层级
+function [0] 表明是当前层级的第 1 个函数（以 0 开始索引）
+
+line 2
+
+
+
+** TODO expdesc
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 17:34] \\
+      各个状态如何发生作用？
+    :END:
+
+exp desc
+
+exp 基本运作单元
+
+desc 描述其属性，是 ast 到 code 的纽带
+
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
+
+
+** register
+   :LOGBOOK:
+   - Note taken on [2020-12-07 一 14:01] \\
+   如何调度寄存器？
+   :END:
+
+
+how to alloc register
+
+register is stack
+
+
+
+parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
+因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+
+move a b
+
+但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
+因为这是编译时，而不是运行时
+    
+
+
+** statement
+   :LOGBOOK:
+   - Note taken on [2020-12-09 三 13:35] \\
+     先从 stat 开始分析，将得到的经验抽象为内容。
+   :END:
+
+*** local assignment
+
+#+begin_src bnf
+localstat ::= LOCAL NAME {`,' NAME} [`=' explist]
+localstat ::= LOCAL FUNCTION NAME body
+#+end_src
+
+localstat 有两种情况，func 的情况之后到 function 部分再讨论。
+另一种情况是局部变量声明，分为是否赋值两种情况。
+
+**** no assignment
+
+#+begin_src lua
+local a, b, c
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+[1] return     0   1      
+; end of function
+#+end_example
+
+考虑如上代码，声明局部变量 a。
+
+
+
+
+
+**** with assignment
+
+#+begin_src lua
+local a
+#+end_src
+
+将 10 存入 k 表，将 a 存入 locvars 表中（其中存储了名字 "a"）。
+使用 loadk 指令，将 k 中的 10 加载入 reg 中。
+
+
+
+
+
+如果是
+
+```lua
+a = 1
+```
+
+则直接将名字 "a" 和 1 都保存在 k 表。
+
+需要通过 "a" 来索引全局变量。这一点和 local var 完全不同。
 
 
 discharge vars 意思是解析变量，比如
@@ -177,110 +308,32 @@ a = 1
 
 
 
-fs->f->sizek 和 fs->nk 是有区别的
-nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
-如 length 和 capacity 的区别
-当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
-
-
-
-
-
-
-
-- expdesc
-
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
-
-
-
-
-
-#+CAPTION: lex next -> Y parser -> proto
-
-
-
-#+CAPTION: L ls fs p structure
-
-
-** tools
-
-make spy
-
-make inspect
-
-chunkspy 中 .local .const 的概念对应
-
-** TODO expdesc
-    :LOGBOOK:
-    - Note taken on [2020-12-07 一 17:34] \\
-      各个状态如何发生作用？
-    :END:
-
-exp desc
-
-exp 基本运作单元
-
-desc 描述其属性，是 ast 到 code 的纽带
-
-** register
-   :LOGBOOK:
-   - Note taken on [2020-12-07 一 14:01] \\
-   如何调度寄存器？
-   :END:
-
-
-parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
-因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
-
-move a b
-
-但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
-因为这是编译时，而不是运行时
-    
-
-** statement
-
-*** local assignment
-
-```lua
-local a = 10
-```
-
-将 10 存入 k 表，将 a 存入 locvars 表中（其中存储了名字 "a"）。
-使用 loadk 指令，将 k 中的 10 加载入 reg 中。
-
-
-如果是
-
-```lua
-a = 1
-```
-
-则直接将名字 "a" 和 1 都保存在 k 表。
-
-需要通过 "a" 来索引全局变量。这一点和 local var 完全不同。
-
-
 通过 numberK 和 stringK 方法
 
 每个 function 都有一个 k 表，而且可以去重存储。
 
-*** arithmetic
+
+  - var type
+    - local
+    - upval
+    - global
+  - k table
 
 
-*** compare
 
-lua 在进行解析时，没有进行关系运算的实时解析，但是对 constant 算法运算有编译时执行
+*** if
 
-如 `local a = 5 > 2` 和 `local a = 1 + 2` 的区别
+jump chain    
 
-前者需要生成 jmp 指令，但是后者，直接是 loadk 0 0 ; 3
+*** do
 
+*** while & repeat
 
-*** loop
+*** break
 
-**** for
+*** for
+
+- blockCnt
 
 for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
 依然是通过 jmp 来实现的。
@@ -314,9 +367,6 @@ end
 .local  "(for control)"  ; 2
 #+end_example
 
-
-**** while & repeat
-
 *** function
     
 func 有同名和匿名两种
@@ -328,6 +378,35 @@ func 有同名和匿名两种
 包含了参数，函数体等全部
 
 动态类型，名称与值的绑定，所以由 body 来处理全部
+
+
+  - proto list
+
+*** ret
+
+*** expr
+
+
+**** function call
+
+**** assignment
+
+**** arithmetic
+    
+**** compare
+
+ lua 在进行解析时，没有进行关系运算的实时解析，但是对 constant 算法运算有编译时执行
+
+ 如 `local a = 5 > 2` 和 `local a = 1 + 2` 的区别
+
+ 前者需要生成 jmp 指令，但是后者，直接是 loadk 0 0 ; 3
+
+**** constructor
+
+*** upvalue
+
+- upval list
+- close op
 
 ** opcode
     
@@ -346,11 +425,6 @@ exp2reg?
 
 后面的 exp 要经过解析，才能向前赋值
 
-
-
-*** loadnil
-
-luaK_nil()
 
 
 *** table related

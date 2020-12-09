@@ -1,8 +1,10 @@
 -- local stat
 
-local a, b = 1, 2, 3
+-- simple
+local a, b, c
 
-local function f (a, b, ...)
-   return a + b
-end
+-- assignment
+-- local b = 10
+
+-- local a, b = 1, 2, 3
 

@@ -45,64 +45,64 @@
 
 
 #+begin_src bnf
-chunk        ::= { stat [ `;' ] }
+  chunk        ::= { stat [ `;' ] }
 
-stat         ::= ifstat | whilestat | dostat | forstat | repeatstat |
-                 funcstat | localstat | retstat | breakstat | exprstat
+  stat         ::= ifstat | whilestat | dostat | forstat | repeatstat |
+		   funcstat | localstat | retstat | breakstat | exprstat
 
-ifstat       ::= IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
-cond         ::= expr
-block        ::= chunk
+  ifstat       ::= IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+  cond         ::= expr
+  block        ::= chunk
 
-whilestat    ::= WHILE cond DO block END
+  whilestat    ::= WHILE cond DO block END
 
-dostat       ::= DO block END
+  dostat       ::= DO block END
 
-forstat      ::= FOR (fornum | forlist) END
-fornum       ::= NAME = expr `,' expr [`,' expr] forbody
-forlist      ::= NAME {`,' NAME} IN explist forbody
-forbody      ::= DO block
+  forstat      ::= FOR (fornum | forlist) END
+  fornum       ::= NAME = expr `,' expr [`,' expr] forbody
+  forlist      ::= NAME {`,' NAME} IN explist forbody
+  forbody      ::= DO block
 
-repeatstat   ::= REPEAT block UNTIL cond
+  repeatstat   ::= REPEAT block UNTIL cond
 
-funcstat     ::= FUNCTION funcname body
-funcname     ::= NAME {`.' NAME} [`:' NAME]
-body         ::= `(' parlist `)' chunk END
-parlist      ::= [ NAME {`,' NAME} [ DOTS ] ]
+  funcstat     ::= FUNCTION funcname body
+  funcname     ::= NAME {`.' NAME} [`:' NAME]
+  body         ::= `(' parlist `)' chunk END
+  parlist      ::= [ DOTS | NAME {`,' NAME} [`,' DOTS] ]
 
-localstat    ::= LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist]
+  localstat    ::= LOCAL FUNCTION NAME body | LOCAL NAME {`,' NAME} [`=' explist]
 
-retstat      ::= RETURN [explist]
+  retstat      ::= RETURN [explist]
 
-breakstat    ::= BREAK
+  breakstat    ::= BREAK
 
-exprstat     ::= prefixexp (funccallstat | assignstat)
-prefixexp    ::= NAME | `(' expr `)'
+  exprstat     ::= prefixexp (funccallstat | assignstat)
+  prefixexp    ::= NAME | `(' expr `)'
 
-funccallstat ::= primaryexp (`:' NAME funcargs | funcargs)
-funcargs     ::= `(' [ explist ] `)' | constructor | STRING
+  funccallstat ::= primaryexp (`:' NAME funcargs | funcargs)
+  funcargs     ::= `(' [ explist ] `)' | constructor | STRING
 
-assignstat   ::= primaryexp (`.' NAME | `[' expr `]') assignment
-assignment   ::= `,' assignstat | `=' explist
+  assignstat   ::= primaryexp (`.' NAME | `[' expr `]') assignment
+  assignment   ::= `,' assignstat | `=' explist
 
-primaryexp   ::= {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
+  primaryexp   ::= {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
 
 
-explist      ::= expr {`,' expr}
-expr         ::= subexpr
-subexpr      ::= (simpleexp | unop subexpr) {binop subexpr}
+  explist      ::= expr {`,' expr}
+  expr         ::= subexpr
+  subexpr      ::= (simpleexp | unop subexpr) {binop subexpr}
 
-simpleexp    ::= NUMBER | STRING | NIL | TRUE | FALSE | DOTS |
-                 constructor | FUNCTION body | primaryexp
+  simpleexp    ::= NUMBER | STRING | NIL | TRUE | FALSE | DOTS |
+		   constructor | FUNCTION body | primaryexp
 
-binop        ::= `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | CONCAT | 
-	         `<´ | LE | `>´ | GE | EQ | NE | AND | OR
-unop         ::= `-´ | NOT | `#´
+  binop        ::= `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | CONCAT | 
+		   `<´ | LE | `>´ | GE | EQ | NE | AND | OR
+  unop         ::= `-´ | NOT | `#´
 
-constructor  ::= `{' [fieldlist] `}'
-fieldlist    ::= field {fieldsep field} [fieldsep]
-field        ::= `[' expr `]' `=' expr | NAME `=' expr | expr
-fieldsep     ::= `,' | `;'
+  constructor  ::= `{' [fieldlist] `}'
+  fieldlist    ::= field {fieldsep field} [fieldsep]
+  field        ::= `[' expr `]' `=' expr | NAME `=' expr | expr
+  fieldsep     ::= `,' | `;'
 #+end_src
 
 值得注意的是，和 lex 过程中的 RE 一样，没有正确表示 number ，而在 RE 之外进行了判断
