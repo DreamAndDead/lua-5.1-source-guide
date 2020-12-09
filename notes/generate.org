@@ -26,6 +26,15 @@
   - ...
 
 
+parser 介绍了整体的语法分析过程
+
+gen 来详细深入，隐藏在语法分析过程之下的代码生成部分
+
+#+CAPTION: fs f combine picture
+
+生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
+
+
 规则间的同义转换
 
 语法规则    vm opcode 规则
@@ -276,8 +285,49 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
 依然是通过 jmp 来实现的。
 
+两种
+
+
+数字迭代 fornum
+
+#+begin_src lua
+for i = 1, 10, 2 do
+  local j = i * i
+end
+#+end_src
+
+通用迭代 forlist
+
+#+begin_src lua
+for k, v in pairs(t) do
+  print(k, v)
+end
+#+end_src
+
+
+隐式生成的变量，用 ( 来标识，是不会与正常 lua 代码中分析得到的 NAME 冲突的
+因为 lex 规则的限定
+
+#+begin_example
+.local  "(for generator)"  ; 0
+.local  "(for state)"  ; 1
+.local  "(for control)"  ; 2
+#+end_example
+
+
 **** while & repeat
 
+*** function
+    
+func 有同名和匿名两种
+
+从 ebnf 中可以看出，两者只差在 NAME
+
+几乎全部由 body 处理
+
+包含了参数，函数体等全部
+
+动态类型，名称与值的绑定，所以由 body 来处理全部
 
 ** opcode
     

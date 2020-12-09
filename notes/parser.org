@@ -133,7 +133,15 @@ ENBF 语法也存在这样的问题。
 
 最终再整合为宏观的理解。
 
+
+
 *** TODO inspect with tool
+
+luaY parser 是整体的入口
+
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "383-399"
+
+其中从 chunk 入口，递归完成整体分析
 
  break at chunk
 
