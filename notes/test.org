@@ -27,3 +27,17 @@ In line [[(sc)]] we remember the current position.
 
 
 一些中文内容
+
+
+
+
+#+begin_src ditaa :file test.png
++------------------+
+|   hello          |
++------------------+
+#+end_src
+
+#+RESULTS:
+[[file:test.png]]
+
+

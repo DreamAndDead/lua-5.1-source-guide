@@ -2,15 +2,16 @@
 
 * TODO gc
 
-- gc object
+- weaktable?
+- gc
+  - mark meaning
+  - diff rules for diff object
+  - state machine of gc states
 - algo
-
-
-
-gc 和 weaktable 的关系？
-
-
-http://lua-users.org/wiki/EmergencyGarbageCollector
+  - mark sweep
+  - tri color
+  - four color
+  - barrier
 
 
 http://wiki.luajit.org/New-Garbage-Collector
@@ -26,7 +27,6 @@ A write barrier in a garbage collector is a fragment of code emitted by the comp
 https://www.zhihu.com/question/62000722
 
 https://juejin.cn/post/6844903896368824328
-
 
 
 
@@ -62,77 +62,6 @@ Garbage collector states (each collection cycle passes through these states in t
     GCSsweep - The color of each objects in the global rootgc list (this list holds all objects except strings) is checked just like the strings during the GCSsweepstring state. Dead objects are freed and removed from the rootgc list. Live objects have their color reset to the current white. Once all objects have been checked the state is changed to GCSfinalize.
     GCSfinalize - This state will finalize all dead userdata objects by running their "__gc" metamethod. Once all dead userdata objects have been finailzed the state is changed to GCSpause and this completes a cycle of the garbage collector. 
 
-#+begin_src ditaa :file gc.png
-+------------------+
-|   hello      \\\       |
-+---------------------+
-#+end_src
-
-#+RESULTS:
-[[file:gc.png]]
 
 
 
-
-
-#+begin_src ditaa :file t.png
-
-					      +---------+
-         +-------------------+++||||||        |         |
-   ------+---------------------+----|         |         |
-   |	 |    |                |    |         |         |
-   |	 |                     |    |         |         |
-|--|-----+------------------   |    |         |         |
-|	 |                 |   |    |         |         |
-|\	.|......          .|   |    |   .     |         |
-||	.|                 |   |    |    .    |        	|
-| \	.|    .    .       |   |    |     .   |         +---------+
-| |	.|  .          .   |   |    |    .    |         	  |
-|  \	.|. ....        ...|.. |    |   .      \        	  |
-|  |   . |.          .. . .| . |    |   .  /---|        	  |
-|   \ .	 |     .        .  |.  |    /------    |        ij	  |
-----+----+-----------------|  /+----|    .     .\       	  |
-     \	 |.     .      /------ |    |   +---+---+       	  |
-     |	 |    | /------   ... .|    |   |   |  .|      		  |
-      \	 |/---+-      .......  |    |   |   | . |      		  |
-      ---+---------------------+-----   |   |.  |      		  |
-	 |            .                 |   |   |      		  |
-	 |..                            |.  |   |      		  |
-	 +----------------------------/-+   |   +-----------------+
-	      .			  . /-	    |
-	      |		         /--	    |
-	      |		       /-	    |
-	      |		     /-		    |
-+-------------+-+	   -- here is text| |
-|     gs here |s text|                    |
-|             |      |                    |
-|             |      |     -----+         |
-| --- -----+  |      |          |         |
-|    \     |  |      |     jj   |         |     -----------+
-|     jj   |  |      |          |         |                |
-|          |  |      |     ----------+    |                |
-|     --------+-+    |  gs      |    |    |     ere is text|
-|          |    |    |  gs      |    |    |                |
-|          |    |    |  gs      |    |    |                |
-|          |    |    |  gs here is text|     ----+         |
-|               |	               |         |         |
-|               |	               |     j   |         |
-|     gs here is text|  -----+         |         |         |
-|                    |       |         |     ---------+    |
-+-----               |  jj   |         |         |    |    |
-      -----+         |       |         |         |    |    |
-           |         |  ----------+    |         |    |    |
-      jj   |         |       |    |    |     ----+--+ |    |
-           |         |       |    |    |            | |    |
-      ----------+    |       |    |    |       +----+ |   ++---------------------+
-           |    |    |       |    |    |       |    | |   ||         	         |
-           |    |    |       |    |    |       |    | |   ||                     |
-           |    |    |       |    |    |       |    | |   ||                     |
-	    o	|                   |     |    |    | |   ||                     |
-		|                   |     |    +----+ |   ||                     |
-		+-------------------+-----+---------+-+   ||                     |
-		   .		    +-----+---------+-----++---------------------+
-#+end_src
-
-#+RESULTS:
-[[file:t.png]]
