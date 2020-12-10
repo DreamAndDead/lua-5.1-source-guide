@@ -1,10 +1,10 @@
 -- local stat
 
 -- simple
-local a, b, c
+-- local a, b, c
 
 -- assignment
--- local b = 10
+local a, b, c, d, e = 10, "second", nil, true, false
 
 -- local a, b = 1, 2, 3
 

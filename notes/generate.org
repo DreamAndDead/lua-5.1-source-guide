@@ -51,8 +51,6 @@ gen 的这一步，多关乎两者之间的连接过程
 在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
 
 
-
-
 ** big picture
    :LOGBOOK:
    - Note taken on [2020-12-10 四 10:08] \\
@@ -241,6 +239,39 @@ exp 基本运作单元
 desc 描述其属性，是 ast 到 code 的纽带
 
 #+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
+
+
+
+- VVOID 什么都不做
+- VNIL  nil 值
+- VTRUE
+- VFALSE bool
+- VK    在 k 表中的值
+- VKNUM 数字字面量
+
+没有 string 类型，因为在读取的过程中，直接将其放入 k 表中，变成 VK 类型了
+
+
+- 
+- 
+
+
+
+TODO desc 到 reg 的轨迹追踪？
+
+
+discharge2reg
+
+VNIL loadnil 
+VTRUE VFALSE loadbool
+
+
+
+
+全部变成 NONRELOC，并保存 reg 值
+
+VVOID VJMP 不处理
+
 
 
 
@@ -437,6 +468,9 @@ end
 localstat 有两种情况，func 的情况之后到 function 部分再讨论。
 另一种情况是局部变量声明，分为是否赋值两种情况。
 
+localstat vs localfunc
+
+
 **** no assignment
 
 #+begin_src lua
@@ -475,6 +509,7 @@ expdesc 为 VVOID，因为没有 exp，没有赋值
 e 记录的是最后一个 expr 的属性
 
 
+
 nvars = nexps
 
 
@@ -484,12 +519,8 @@ nvars = nexps
 
 TODO 因为 luaK_nil 的优化过程，没有生成代码
 
-调整了 freereg 的值
+调整了 freereg 的值，是进行中间运算的安排的
 
-
-
-
-TODO 有 multret 的再讨论
 
 
 =adjustlocalvars= 调整 nactvar 的值，并设置相应的 startpc
@@ -497,26 +528,115 @@ TODO 有 multret 的再讨论
 
 **** with assignment
 
+***** TODO multret
+
+TODO 有 multret 的再讨论
+
+下面的情况是合法的，只不过前面的 multret 只返回一个值，而最后的可利用多个值
+
 #+begin_src lua
-local a
+local a, b, c = ..., ..., ...
 #+end_src
 
-将 10 存入 k 表，将 a 存入 locvars 表中（其中存储了名字 "a"）。
-使用 loadk 指令，将 k 中的 10 加载入 reg 中。
+***** normal
+
+没有赋值，等于 nexps = 0 的最小情况
+
+var exp 的数量关系
+
+exp 多则舍弃
+var 多则置 nil
+
+#+begin_src lua
+local a, b, c, d, e = 10, "second", nil, true, false
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
+.function  0 0 2 5
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+.local  "d"  ; 3
+.local  "e"  ; 4
+.const  10  ; 0
+.const  "second"  ; 1
+[1] loadk      0   0        ; 10
+[2] loadk      1   1        ; "second"
+[3] loadnil    2   2      
+[4] loadbool   3   1   0    ; true
+[5] loadbool   4   0   0    ; false
+[6] return     0   1      
+; end of function
+#+end_example
+
+
+下面来看赋值的情况，3 个变量均衡赋值。
+
+根据语法描述，左侧 var 结束之后，右侧部分都作为 explist 来解析，最终再完成赋值
+
+是典型的后缀形式的语法制导。
+
+这里先不重点讲 explist -> expr 的解析过程，只用几个基本类型，在 lex 阶段就可以确定的。
+
+lparser.c:599
+
+可确定 expr 的描述 v
 
 
 
 
+使用 luaK_exp2nextreg
 
-如果是
+TODO freereg 的指导作用
+TODO 为何这样是正确的，什么时候进行回收？
 
-```lua
-a = 1
-```
+按照 freereg 所指的顺序，依次向上存储
 
-则直接将名字 "a" 和 1 都保存在 k 表。
+exp2reg freereg
 
-需要通过 "a" 来索引全局变量。这一点和 local var 完全不同。
+discharge2reg，将 exp 对应到 reg 即 local 中
+
+其中 VKNUM 直接存储入 k 表，生成 loadk 指令，使用 k 索引
+
+TK_STRING 在之前已经变成 VK，加在 k 表中的索引，同样生成 loadk 指令
+
+解析之后，exp 类型变为 VNONRELOC，info 中存储结果所在的寄存器
+
+
+在这个过程中，已经生成了 相关的 load 指令，到 freereg 的位置
+因为 exp 出现的顺序，和 var 出现的顺序对应，巧妙完成了赋值
+
+
+***** k table
+
+通过 numberK 和 stringK 方法
+
+在 addk 过程，
+fs->h 是一个 table，用于对 f->k 进行反向索引
+先在 h 中查找，是否已经有相应索引，可以直接返回
+如果没有，则新增一项
+
+fs->nk++
+
+
+lcode.c:229-278
+
+k 表只存储如下几种常量
+- nil
+- bool
+- number
+- string
+
+nil bool 在赋值时并没有使用 loadk，而使用 loadnil loadbool 指令
+
+插入 k 表用在别的地方
+- index
+- binop
+- compare
+
+
 
 
 discharge vars 意思是解析变量，比如
@@ -535,16 +655,22 @@ a = 1
 
 
 
-通过 numberK 和 stringK 方法
 
-每个 function 都有一个 k 表，而且可以去重存储。
+**** globals
 
+将 10 存入 k 表，将 a 存入 locvars 表中（其中存储了名字 "a"）。
+使用 loadk 指令，将 k 中的 10 加载入 reg 中。
 
-  - var type
-    - local
-    - upval
-    - global
-  - k table
+如果是
+
+```lua
+a = 1
+```
+
+则直接将名字 "a" 和 1 都保存在 k 表。
+
+需要通过 "a" 来索引全局变量。这一点和 local var 完全不同。
+
 
 
 
