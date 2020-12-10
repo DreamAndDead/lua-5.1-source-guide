@@ -47,11 +47,22 @@ gen 的这一步，多关乎两者之间的连接过程
 为了达到最终的结果，中间的阶段
 
 
+
+在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
+
+
+
+
 ** big picture
    :LOGBOOK:
+   - Note taken on [2020-12-10 四 10:08] \\
+     why ~function~ concept is important in lua!
    - Note taken on [2020-12-07 一 13:54] \\
    lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
    :END:
+
+
+
 
 #+CAPTION: luaY_parser function
 
@@ -209,6 +220,8 @@ line 4 5 6
 
 line 7
 f->code 指令
+最终一行总是默认生成一条 return 指令
+这里只有一条 return，说明代码并没有生成代码
 
 line 8
 function 结束注释
@@ -284,27 +297,120 @@ local 只在使用时发生作用，而在使用时，已经被记录在 code �
 闭包是带值的函数
 #+end_quote
 
-因为 function 也是基础类型，可以作为普通变量，作为参数，返回值，赋值，而四处流转
+#+begin_src lua :results output
+local function outer()
+   local a = 0
 
+   local function inner()
+      local b = 0
 
-#+begin_src lua
-function add_func(i)
-  local inc = i
-  function add(a)
-    return a + inc
-  end
+      a = a + 1
+      return a
+   end
+
+   inner()
+
+   return inner
 end
+
+local f = outer()
+
+print(f())
+print(f())
+print(f())
+
+local g = outer()
+
+print(g())
+print(g())
+print(g())
 #+end_src
 
+#+RESULTS:
+: 2
+: 3
+: 4
+: 2
+: 3
+: 4
 
+function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转
 
+这种情况下，和 local 作用域机制在一起，就会出现问题
 
-只有 closure 类型的值才有 upvalue。
+a 的作用域在 outer 内部，同时被 inner 引用并修改，最终 outer 返回 inner
 
+调用 outer，赋值给 f
 
+按照语义，f 应该是内部的 inner func，每次调用都得到 a 的自增值
+
+调用 3 次，得到 1 2 3
+
+问题在于，a 只作用在 outer 内部，而 f 在 outer 外部，已经离开了 a 的作用域，
+在这种情况下如何保证语义的正确？
+
+这便是闭包机制的由来，a 对于 inner 而言，不是 local，而是 upvalue 类型。
+
+这也是 lua 中为何 func 不是 func 而是 closure 的原因，func 及 upvalue 组成了 closure，
+所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于分配 upvalue 空间。
+
+#+CAPTION: 17 upvalue at runtime
+
+再调用 outer，赋值给 g，调用 3 次，得到一样的结果，从中可以得到 upvalue 作用于 active 和
+dead 状态的区别。
 
 *** global
 
+前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
+
+其中隐含的一点，外层变量对于内层可见，假如强制设定外层对于内部不可见，便不会有 upvalue 的问题。
+
+对于可见的情况，对于当前引用的变量，自然有一个查找的过程。
+和嵌套相反，是层层向上寻找的过程。
+
+变量
+在本层可以找到的，为 local
+在本层之外可以找到的，为 upvalue
+所有层都无法找到的，为 global
+
+global 的概念解决了两个细节问题
+为什么顶层的 function 是没有 upvalue 的？
+因为在本层找不到的变量，向上已经没有层级，只能是 global
+
+setfenv 的概念
+函数的运行环境，即是 global，在编译的 chunk 运行之前，设定 global 的值，
+可以影响内部对 global 值的引用，从而实现不同的运行效果。
+
+
+在实现中，global 是单独于基层的 closure 存在的，是运行状态的一部分
+所以不存在作用域的问题，始终在顶层。
+
+
+#+begin_src lua :results output
+local function outer()
+  a = 10
+
+  local function inner()
+    a = a + 1
+    return a
+  end
+
+  return inner
+end
+
+local f = outer()
+
+print(f(), a)
+print(f(), a)
+print(f(), a)
+#+end_src
+
+#+RESULTS:
+: 11	11
+: 12	12
+: 13	13
+
+#+CAPTION: 18 global at runtime
 
 ** statement
    :LOGBOOK:
@@ -317,6 +423,15 @@ end
 #+begin_src bnf
 localstat ::= LOCAL NAME {`,' NAME} [`=' explist]
 localstat ::= LOCAL FUNCTION NAME body
+#+end_src
+
+
+#+begin_src lua
+local function f()
+end
+
+local f = function ()
+end
 #+end_src
 
 localstat 有两种情况，func 的情况之后到 function 部分再讨论。
@@ -341,8 +456,43 @@ local a, b, c
 
 考虑如上代码，声明局部变量 a。
 
-#+CAPTION: local no assignment
+没有生成代码，毕竟没有任何运算或者操作
 
+所以只存储了 local 变量的信息
+
+#+CAPTION: 18 local no assignment
+
+lparser.c:143
+=registerlocalvar= 是操作 f->locvars 的过程
+
+lparser.c:163
+=new_localvar= 是操作 fs->actvar 的过程
+
+先注册，再存储相应的索引
+
+
+expdesc 为 VVOID，因为没有 exp，没有赋值
+e 记录的是最后一个 expr 的属性
+
+
+nvars = nexps
+
+
+=adjust_assign= 进行左右数量的调整
+
+多余空间置为 nil
+
+TODO 因为 luaK_nil 的优化过程，没有生成代码
+
+调整了 freereg 的值
+
+
+
+
+TODO 有 multret 的再讨论
+
+
+=adjustlocalvars= 调整 nactvar 的值，并设置相应的 startpc
 
 
 **** with assignment
