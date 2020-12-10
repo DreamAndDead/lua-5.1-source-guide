@@ -261,9 +261,30 @@ TODO desc 到 reg 的轨迹追踪？
 
 
 discharge2reg
+lcode.c:343
 
-VNIL loadnil 
-VTRUE VFALSE loadbool
+操作的只是 exp 相关的类型
+
+reg 是目的地
+
+VRELOCABLE 说明 A 本身还不确定，在 discharge 的时候，补全到 A 位置
+
+VNONRELOC 则说明本身已经解析到栈中 或 A 已经正确
+
+| exp desc   | gen code                                 |
+|------------+------------------------------------------|
+| VNIL       | loadnil                                  |
+| VTRUE      | loadbool                                 |
+| VFALSE     | loadbool                                 |
+| VK         | loadk                                    |
+| VKNUM      | loadk                                    |
+| VRELOCABLE | get its code and change A to reg         |
+| VNONRELOC  | reg != self reg, move; otherwise nothing |
+| VVOID      | nothing                                  |
+| VJMP       | nothing                                    |
+
+
+dischargevars
 
 
 
