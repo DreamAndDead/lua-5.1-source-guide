@@ -9,20 +9,20 @@ inspect:
 	cat -n $(source)
 	$(CURDIR)/install/bin/lua $(CURDIR)/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --brief --source $(source)
 
-lua:
+compile:
 	(cd lua-5.1.5; make linux clean; make linux; make install; cd ..)
 
-compile:
-	$(CURDIR)/install/bin/luac $(source)
+lua:
+	./lua-5.1.5/src/lua
 
 hex:
 	xxd luac.out
 
 debug:
-	gdb -x init.gdb ./lua-5.1.5/src/lua
+	cgdb -x init.gdb --args ./lua-5.1.5/src/lua $(source)
 
 lex:
-	gdb -batch -x lex.gdb --args ./lua-5.1.5/src/luac test/co.lua
+	gdb -batch -x lex.gdb --args ./lua-5.1.5/src/luac $(source)
 	rm luac.out
 
 .PHONY:	test

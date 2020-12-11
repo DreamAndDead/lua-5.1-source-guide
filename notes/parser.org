@@ -76,16 +76,16 @@
 
   breakstat    ::= BREAK
 
-  exprstat     ::= prefixexp (funccallstat | assignstat)
-  prefixexp    ::= NAME | `(' expr `)'
+  exprstat     ::= assignstat | funccallstat
 
-  funccallstat ::= primaryexp (`:' NAME funcargs | funcargs)
-  funcargs     ::= `(' [ explist ] `)' | constructor | STRING
-
-  assignstat   ::= primaryexp (`.' NAME | `[' expr `]') assignment
+  assignstat   ::= (prefixexp | primaryexp (`.' NAME | `[' expr `]')) assignment
   assignment   ::= `,' assignstat | `=' explist
 
-  primaryexp   ::= {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
+  primaryexp   ::= prefixexp {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
+  prefixexp    ::= NAME | `(' expr `)'
+
+  funccallstat ::= prefixexp primaryexp (`:' NAME funcargs | funcargs)
+  funcargs     ::= `(' [ explist ] `)' | constructor | STRING
 
 
   explist      ::= expr {`,' expr}

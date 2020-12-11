@@ -265,6 +265,8 @@ lcode.c:343
 
 操作的只是 exp 相关的类型
 
+exp 需要解析到值，而 var 需要解析到位置
+
 reg 是目的地
 
 VRELOCABLE 说明 A 本身还不确定，在 discharge 的时候，补全到 A 位置
@@ -281,11 +283,19 @@ VNONRELOC 则说明本身已经解析到栈中 或 A 已经正确
 | VRELOCABLE | get its code and change A to reg         |
 | VNONRELOC  | reg != self reg, move; otherwise nothing |
 | VVOID      | nothing                                  |
-| VJMP       | nothing                                    |
+| VJMP       | nothing                                  |
 
 
 dischargevars
 
+| exp desc | discharge                                            |
+|----------+------------------------------------------------------|
+| VLOCAL   | to VNONRELOC                                         |
+| VUPVAL   | gen code GETUPVAL, A is uncertain, to VRELOCABLE     |
+| VGLOBAL  | gen code GETGLOBAL, A is uncertain, to VRELOCABLE    |
+| VINDEXED | free table and idx, gen code GETTABLE, to VRELOCABLE |
+| VCALL    | to VNONRELOC, store call code A value                |
+| VVARARG  | set B to 2? to VRELOCABLE                            |
 
 
 
@@ -470,6 +480,9 @@ print(f(), a)
      先从 stat 开始分析，将得到的经验抽象为内容。
    :END:
 
+local assignment & nonlocal assignment 
+着重于对变量的解析过程 及 内部存储的安排过程
+
 *** local assignment
 
 #+begin_src bnf
@@ -651,7 +664,6 @@ k 表只存储如下几种常量
 - string
 
 nil bool 在赋值时并没有使用 loadk，而使用 loadnil loadbool 指令
-
 插入 k 表用在别的地方
 - index
 - binop
@@ -659,41 +671,100 @@ nil bool 在赋值时并没有使用 loadk，而使用 loadnil loadbool 指令
 
 
 
+*** nonlocal assignment
 
-discharge vars 意思是解析变量，比如
+exprstat -> assignment stat
 
-```
-a = 1
-```
+**** global
 
-在赋值之间，要先解析 1，从 k 表中将 1 加载到栈中，
-然后再设置到全局表。
+#+begin_src lua
+a, b, c = 10, 20, 30
+#+end_src
 
-解析 1 的过程就是 discharge。
+进入 primaryexp prefixexp 查找的时候，TK NAME 要进行 singlevar 查找
 
-生成的 bytecode 也就在 assignment 的前面。
-
-
-
-
-
-**** globals
-
-将 10 存入 k 表，将 a 存入 locvars 表中（其中存储了名字 "a"）。
-使用 loadk 指令，将 k 中的 10 加载入 reg 中。
-
-如果是
-
-```lua
-a = 1
-```
-
-则直接将名字 "a" 和 1 都保存在 k 表。
-
-需要通过 "a" 来索引全局变量。这一点和 local var 完全不同。
+赋值为 VGLOBAL，且 info 存储了名字对应的 k 表索引
+和 expkind 的注释不符合？
 
 
 
+进入 assignment，按照 ebnf ，本身是嵌套的
+进入之前，先将 v prev 设置为 NULL，后面全部链接起来
+
+
+LHS_assign 结构，在 expdesc 的基础上，添加了 prev 指针
+
+在 多个 , 之间的 var 全部链接起来
+
+其中可赋值的类型为
+VLOCAL VUPVAL VGLOBAL VINDEXED
+由 primaryexp 决定
+
+
+赋值阶段，在每个递归层次，用 luaK_storevar 来存储
+
+
+
+var ex
+
+先 discharge ex
+再生成 SETGLOBAL，使用 info 中存储的 k 索引
+gbl[kst[info]] = R(A)
+
+
+
+
+luaK_exp2anyreg
+
+只需要解析到 reg 就可以，临时使用，赋值之后就废弃
+
+
+exp 可能是 var，也可能是 值
+但是通过 dis var 是保险的
+
+默认依然使用 exp2nextreg，只不过在之前，添加了解析 jump 的部分
+
+exp2nextreg，存储在 freereg 之后
+
+exp2reg，存储到指定 reg
+
+其中解析了 jump 相关的内容
+
+最终成为 VNONRELOC
+
+
+
+
+**** indexed
+
+a.b   a['b']
+是相同语义
+
+a 必须是 table，语义才正确
+
+**** upvalue
+
+#+begin_src lua
+local a = 10
+
+function f()
+  a = 20
+end
+#+end_src
+
+和 global 相似
+
+*** TODO freereg & freeexp
+
+freereg 的作用
+
+在栈的特性上，更深入的理解
+
+何时分配，何时回收
+
+根据抽象栈演算的顺序来
+
+和 nactvar 的关系
 
 *** if
 
