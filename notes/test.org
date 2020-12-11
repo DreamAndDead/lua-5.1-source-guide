@@ -1,6 +1,6 @@
 #+SETUPFILE: setup.org
 
-#+STARTUP: logdrawer logdone logreschedule
+#+OPTIONS: html-style: nil
 
 * test
 
@@ -23,7 +23,38 @@ In line [[(sc)]] we remember the current position.
 [[(jump)][Line (jump)]] jumps to point-min.
 
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 287 :lines "287-317"
+#+BEGIN_SRC c -n 287
+/*
+,** Closures
+,*/
+
+#define ClosureHeader \
+	CommonHeader; lu_byte isC; lu_byte nupvalues; GCObject *gclist; \
+	struct Table *env
+
+typedef struct CClosure {
+  ClosureHeader;
+  lua_CFunction f;
+  TValue upvalue[1];
+} CClosure;
+
+
+typedef struct LClosure {
+  ClosureHeader;
+  struct Proto *p;
+  UpVal *upvals[1];
+} LClosure;
+
+
+typedef union Closure {
+  CClosure c;
+  LClosure l;
+} Closure;
+
+
+#define iscfunction(o)	(ttype(o) == LUA_TFUNCTION && clvalue(o)->c.isC)
+#define isLfunction(o)	(ttype(o) == LUA_TFUNCTION && !clvalue(o)->c.isC)
+#+END_SRC
 
 
 一些中文内容

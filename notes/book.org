@@ -56,6 +56,22 @@
 
 #+INCLUDE: "./vm.org"
 
+* c api
+
+#+INCLUDE: "./api.org"
+
+** userdata?
+
+ special chapter for it
+
+* lib
+
+#+INCLUDE: "./lib.org"
+
+* error handling
+
+#+INCLUDE: "./error.org"
+
 * debug
 
 #+INCLUDE: "./debug.org"
@@ -63,22 +79,6 @@
 * gc
 
 #+INCLUDE: "./gc.org"
-
-* c api
-
-#+INCLUDE: "./api.org"
-
-* userdata?
-
-special chapter for it
-
-* error handling
-
-#+INCLUDE: "./error.org"
-
-* lib
-
-#+INCLUDE: "./lib.org"
 
 * work with lua
 

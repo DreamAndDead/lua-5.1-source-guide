@@ -51,6 +51,18 @@ gen 的这一步，多关乎两者之间的连接过程
 在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
 
 
+
+总体原则，
+- 语法制导
+- 后缀方法
+- 栈模拟运算
+
+
+递归结合是无限的
+
+只讲解 atom ，组合交由读者探索
+
+
 ** big picture
    :LOGBOOK:
    - Note taken on [2020-12-10 四 10:08] \\
@@ -754,7 +766,9 @@ end
 
 和 global 相似
 
-*** TODO freereg & freeexp
+*** TODO how freereg & freeexp works
+
+#+CAPTION: page 19 & 20
 
 freereg 的作用
 
@@ -768,13 +782,42 @@ freereg 的作用
 
 *** if
 
-jump chain    
+- code pattern
+- jump chain resolve
+- if
+- if else
+- if elseif
+- if elseif else
 
+  
 *** do
+
+block
+
+虽然 block -> chunk ，但是并不像 function 会影响 fs 结构，只是按照 chunk 的模式来解析
+
+
+和 upval 的结合，主要在 for 语句中发挥作用
+
+
+breakable  0
+breaklist  NO_JUMP
 
 *** while & repeat
 
-*** break
+block
+
+breakable  1
+这样其中才可以生成 break 语句
+
+breaklist
+用于记录 break 语句，chain 到 block 外的第一条语句
+
+
+**** break
+
+如何在 while 中 chain 在一起
+     
 
 *** for
 
@@ -827,14 +870,12 @@ func 有同名和匿名两种
 
   - proto list
 
-*** ret
+**** ret
 
 *** expr
 
-
 **** function call
 
-**** assignment
 
 **** arithmetic
     
@@ -852,7 +893,7 @@ func 有同名和匿名两种
 
 - upval list
 - close op
-
+  
 ** opcode
     
 *** move
