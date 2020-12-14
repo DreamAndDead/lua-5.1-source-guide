@@ -861,7 +861,19 @@ concat
 
 patch
 
+patch to here, concat
+
+patch to list, discharge right now to target
+
+they are the same
+
 dischargejpc
+
+
+
+
+luaK_jump 时，使用 jpc 重置的技巧，防止在生成 jump 时，触发 dischargejpc
+
 
 **** if
 

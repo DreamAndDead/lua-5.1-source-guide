@@ -6,7 +6,7 @@ set print array on
 
 source helper.py
 
-b statement
+tb statement
 
 r
 

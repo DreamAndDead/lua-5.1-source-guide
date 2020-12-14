@@ -72,3 +72,9 @@ typedef union Closure {
 [[file:test.png]]
 
 
+#+begin_src svgbob :file bob.svg
+---------------
+#+end_src
+
+#+RESULTS:
+[[file:bob.svg]]
