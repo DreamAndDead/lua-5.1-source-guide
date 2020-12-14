@@ -849,18 +849,44 @@ loop 情况，到 while for 具体分析。
 
 *** if
 
-- code pattern
+顺序解析的难题之一
+分支
+
 - jump chain resolve
+
+#+CAPTION: 25 if else code pattern
+
+
+concat
+
+patch
+
+dischargejpc
 
 **** if
 
+dischargejpc
+负责从当前 pc 解析 jump chain
+
+隐藏在 luaK_code 中
+
+
+问题添加 return 0 1 的原因
+
+#+CAPTION: 26 if chain
 
 
 **** if else
 
+#+CAPTION: 27 if else chain
+
 **** if elseif
 
+#+CAPTION: 28 if elseif chain
+
 **** if elseif else
+
+#+CAPTION: 29 if elseif else chain
 
 *** while & repeat
 

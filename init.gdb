@@ -6,5 +6,7 @@ set print array on
 
 source helper.py
 
-b chunk
+b statement
+
+r
 
