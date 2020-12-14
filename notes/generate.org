@@ -805,7 +805,6 @@ gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 
 
 如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
 
-
 *** do
 
 - block vs chunk
@@ -836,6 +835,10 @@ block 内新的 local var 会在离开时，全部释放
 
 #+CAPTION: 24 do block
 
+作用域记录在 fs 中，最终要体现到 f 中
+最终在 do 之外，使用 b，会顺着 a 0 的顺序向后，b 1
+说明前面的所有变量已回收
+
 虽然有多个 block 相隔，但是在最内层进行变量查找的时候，上层的所有 act local var 都
 属于同一个 fs，查找 a 的时候，a 的类型为 local，直接进行了修改
 a 并不是 upval，可见 upval 只针对 function 而言
@@ -848,10 +851,16 @@ loop 情况，到 while for 具体分析。
 
 - code pattern
 - jump chain resolve
-- if
-- if else
-- if elseif
-- if elseif else
+
+**** if
+
+
+
+**** if else
+
+**** if elseif
+
+**** if elseif else
 
 *** while & repeat
 

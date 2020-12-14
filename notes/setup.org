@@ -1,4 +1,4 @@
-#+STARTUP: logdrawer logdone logreschedule inlineimages
+#+STARTUP: logdrawer inlineimages
 
 #+TODO: TODO(t) DRAFT(d) | DONE(o)
 

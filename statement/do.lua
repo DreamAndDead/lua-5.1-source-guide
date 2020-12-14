@@ -13,3 +13,4 @@ do
    end
 end
 
+local b = 11
