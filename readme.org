@@ -1,0 +1,14 @@
+* lua source reading guide
+
+** plan
+
+toc
+
+** env
+
+- os
+- make
+- gen book
+  - html
+  - pdf
+

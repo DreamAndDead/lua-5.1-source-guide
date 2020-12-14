@@ -68,6 +68,8 @@
 
 #+INCLUDE: "./lib.org"
 
+* coroutine?
+
 * error handling
 
 #+INCLUDE: "./error.org"

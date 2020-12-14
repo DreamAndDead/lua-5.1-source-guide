@@ -1,7 +1,15 @@
 -- do stat
 
-local a, b = 0, 1
+local a = 0
 
 do
-   local c = a + b
+   local b = 1
+   local c = 2
+   do
+      local d = 3
+      do
+	 a = 10
+      end
+   end
 end
+

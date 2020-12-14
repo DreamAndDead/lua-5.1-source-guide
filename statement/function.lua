@@ -1,8 +1,9 @@
 -- function stat
 
-
-function f(a, b)
+function f()
 end
 
-function g(a, b)
+function g()
+   function h()
+   end
 end

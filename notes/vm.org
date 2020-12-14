@@ -2,6 +2,7 @@
 
 * TODO vm
 
+- G L structure
 - exec
   - how to implement semantic
     - generic process
@@ -11,12 +12,6 @@
     - metatable
     - env
 - coroutine (thread)
-- c api
-  - c to stack
-  - lua to stack
-
-
-
 
 
 #+begin_src c
