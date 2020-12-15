@@ -213,6 +213,10 @@ f upvalues  f nups
  变量有 3 类，local upval global
 
 **** local
+     :LOGBOOK:
+     - Note taken on [2020-12-15 二 11:14] \\
+       变量逆序查找，比如出现 local 覆盖的情况
+     :END:
 
  local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
 
@@ -531,11 +535,64 @@ func 有同名和匿名两种
 #+CAPTION: 29 function
 
 
+
+**** upval
+
 upvalue 的 move 和 getupval
 
+**** vararg
 
-args
+vararg
 
+|        4 |        2 |      1 |
+|----------+----------+--------|
+| NEEDSARG | ISVARARG | HASARG |
+
+
+在 lua5.0 中，没有 ... 的表达式，只能在参数定义时使用
+
+而在内部引用 vararg 时，通过变量 arg 来使用
+
+arg 是一个 table，内部以数组形式存储了 vararg
+
+arg.n 是数组的长度
+
+#+begin_src lua
+function foo(a, b, ...)
+  local arg = {...}
+  arg.n = select("#", ...)
+end
+#+end_src
+
+
+lua5.1 默认有对上面形式的兼容性
+
+NEEDSARG 表明是否在内部构造 arg 的值
+
+ldo.c:215
+
+lua5.1 判断，如果内部出现了 ... exp，就不使用 arg，
+NEEDSARG = 0
+
+lparser.c:756
+
+HASARG 用于在计算 nparam 时很方便，直接使用 & 运算就可以
+
+lparser.c:571
+
+ISVARARG 和 HASARG 应该是相同的？
+chunk main func 只有 ISVARARG 标志
+
+
+无即是 0
+chunk func 是 2
+不引用 arg 是 3
+引用 arg 是 7
+
+
+存储在 proto
+- numparams，vararg 不算一个参数
+- is_vararg
 
 *** local assignment
 
@@ -1054,6 +1111,9 @@ call ins
 **** returns?
 
 **** vararg
+
+
+**** tailcall?
 
 *** ret
 
