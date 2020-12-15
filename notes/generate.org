@@ -539,6 +539,10 @@ func 有同名和匿名两种
 body 过程不过是参数和 chunk 的递归过程
 
 **** upval
+     :LOGBOOK:
+     - Note taken on [2020-12-15 二 14:08] \\
+       需要更明显的图示
+     :END:
 
 和 closure 同一级的变量被引用，使用 move 指令
 >= 级的变量，使用 getupval 指令
@@ -1135,28 +1139,86 @@ upvalue 同 fornum
 
 *** function call
 
-如果不匹配，应该在 vm 时发生作用    
+function call
 
-call ins
+func 在栈的底部，参数向上累加
 
-**** args?
+调用结果，返回值，从栈的 func 处开始向上覆盖
 
-**** returns?
+#+CAPTION: 34 func call
 
-**** vararg
+funcargs()
+lparser.c:609
+
+并不复杂
+
+**** self
+
+#+begin_src lua :results output
+local o = {}
+
+function o.f(self)
+  print(self)
+end
+
+function o:f()
+  print(self)
+end
+
+o.f(o)
+
+o:f()
+#+end_src
+
+#+RESULTS:
+: table: 0x55bb5b89d270
+: table: 0x55bb5b89d270
+
+self 指令，只是一种优化方式
 
 
-**** tailcall?
+
+luaK_self()
+
+lcode.c:503
+
+结合 op self 的语义，并不复杂
+
+#+CAPTION: 35 self
+
+self 只是为 call 做准备，将对象提前放到相应位置
+
 
 *** ret
-
-return ins
 
 return 在 chunk 中发挥作用
 从当前 closure 中返回
 
 return 必须是 chunk 的最后一个语句
 
+按语句含义返回值，至于有多少值被利用，则根据 opcode 生成过程中决定的
+
+opcode 容易理解
+
+retstat()
+lparser.c:1238
+
+**** tailcall
+
+#+begin_src lua
+-- tail call
+return f()
+-- not tail call
+return a, b, f()
+#+end_src
+
+ret 中只有单独的 function call
+
+进行栈优化
+
+lparser.c:1249
+
+tailcall 本身已经有了 return 的语义
 
 
 ** practice

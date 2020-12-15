@@ -1,7 +1,6 @@
 -- return stat
 
+local a, b
 
-function f(a, b)
-   return a, b
-end
+return a, b
 
