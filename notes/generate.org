@@ -216,6 +216,7 @@ f upvalues  f nups
      :LOGBOOK:
      - Note taken on [2020-12-15 二 11:14] \\
        变量逆序查找，比如出现 local 覆盖的情况
+       searchvar() lparser.c:207
      :END:
 
  local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
@@ -535,14 +536,46 @@ func 有同名和匿名两种
 #+CAPTION: 29 function
 
 
+body 过程不过是参数和 chunk 的递归过程
 
 **** upval
 
-upvalue 的 move 和 getupval
+和 closure 同一级的变量被引用，使用 move 指令
+>= 级的变量，使用 getupval 指令
+
+
+move A B
+
+A 无用，B 指代 local 的 active 栈索引
+
+getupval A B
+
+A 无用，B 指代上层 closure 中 upval 表的序号
+
+getupval 一直向上链，总会找到 local 对应的位置
+
+
+Q: f 没有明显引用 a，但是但 a 却存在于 f 的 upval 数组中？
+
+A:
+
+singlevar
+singlevaraux
+
+从底层向上寻找，从 f 向上找到 a，调用 indexupvalue (lparser.c:183)
+作为 upval 使用，而非 local，在 index upval 的过程中，
+添加到 f 的 upval 表中
+
+新增 upval 并返回 upval 对应的索引
+
 
 **** vararg
+     :LOGBOOK:
+     - Note taken on [2020-12-15 二 13:38] \\
+       在 vm 运行时，再详细深入栈过程
+     :END:
 
-vararg
+lobject.h:256
 
 |        4 |        2 |      1 |
 |----------+----------+--------|
