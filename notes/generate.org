@@ -874,7 +874,6 @@ dischargejpc
 
 luaK_jump 时，使用 jpc 重置的技巧，防止在生成 jump 时，触发 dischargejpc
 
-
 **** if
 
 dischargejpc
@@ -886,7 +885,6 @@ dischargejpc
 问题添加 return 0 1 的原因
 
 #+CAPTION: 26 if chain
-
 
 **** if else
 
@@ -900,7 +898,9 @@ dischargejpc
 
 #+CAPTION: 29 if elseif else chain
 
-*** while & repeat
+*** while
+
+#+CAPTION: 30 while pattern
 
 block
 
@@ -910,26 +910,88 @@ breakable  1
 breaklist
 用于记录 break 语句，chain 到 block 外的第一条语句
 
+enterblock 自然生成 0 block
+
+相当于有双层 block
 
 **** break
 
-如何在 while 中 chain 在一起
+#+CAPTION: 30 break in while
      
-*** for
+*** repeat
 
-- blockCnt
+repeat    
+
+#+CAPTION: 31 repeat
+
+break 同 while 时的表现相同
+
+
+不过对于 upval，有自己的处理方式
+
+
+因为 while 在 cond 中不能定义新的 local var
+而 repeat 的 block 中可能先定义 local var
+再被其中的 func 引用，而 i 在不断变化，就需要及时 close
+
+
+
+
+#+begin_src lua :results output
+local t = {}
+
+local c = 0
+
+repeat
+   c = c + 1
+
+   local i = c
+
+   t[i] = function ()
+      return i
+   end
+until i > 10
+
+for i, f in ipairs(t) do
+   print(f())
+end
+#+end_src
+
+#+RESULTS:
+#+begin_example
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+#+end_example
+
+进行 upval 判断的原因
+
+每个 func 记录的都是 i，但是每次 loop 结束都进行了 close，
+
+
+#+CAPTION: 31 repeat upval
+
+
+*** for
 
 for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
 依然是通过 jmp 来实现的。
 
-两种
-
+分为两种
 
 数字迭代 fornum
 
 #+begin_src lua
 for i = 1, 10, 2 do
-  local j = i * i
+  print(i)
 end
 #+end_src
 
@@ -942,6 +1004,8 @@ end
 #+end_src
 
 
+**** fornum
+
 隐式生成的变量，用 ( 来标识，是不会与正常 lua 代码中分析得到的 NAME 冲突的
 因为 lex 规则的限定
 
@@ -950,6 +1014,13 @@ end
 .local  "(for state)"  ; 1
 .local  "(for control)"  ; 2
 #+end_example
+
+
+
+
+
+
+**** forlist
 
 *** ret
 

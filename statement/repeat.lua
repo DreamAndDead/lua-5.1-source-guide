@@ -1,10 +1,8 @@
 -- repeat stat
 
-
-local a, b = 0, 1
+local a, b
 
 repeat
-   a = a + 1
-   break
+   a = 1
 until b
-
+  
