@@ -18,6 +18,8 @@ c api 和 vm 是一样的
 
 都是在操作 lua_State
 
+不过一个是 opcode interface，一个是 c func 接口
+
 这样就保证了和谐的与 c 语言集成的状态。
 
 夸张的说，lua 代码不过是 c api 的一种符号表示

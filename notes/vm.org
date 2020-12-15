@@ -2,17 +2,16 @@
 
 * TODO vm
 
-- G L structure
-- exec
-  - how to implement semantic
-    - generic process
-      - pc, etc
-    - lua_State callinfo stack
-    - upval, open and close
-    - metatable
-    - env
-- coroutine (thread)
+生成图纸之后，按图纸来执行
 
+完全是 proto 内部的东西
+
+
+
+** state
+
+G
+L
 
 #+begin_src c
 struct lua_State {
@@ -44,3 +43,59 @@ struct lua_State {
   ptrdiff_t errfunc;            // 用栈索引表示的 error handling 函数？
 };
 #+end_src
+
+** model
+
+virtual machine
+
+stack
+
+TValue & StkId
+
+
+pc
+
+ci
+
+internal
+
+
+** internal
+
+lua 中各种机制的实现方式
+
+以示例代码的方式来探索
+
+
+多数在绘制图纸的时候，已经得到了解决，虚拟中和实际运行时差别不大
+
+    
+
+*** c closure?
+
+*** closure
+
+args
+
+def and pass
+
+vararg
+
+*** call
+    
+*** tailcall
+    
+*** return
+
+*** upval
+  
+upval, open and close
+
+*** metatable
+
+
+*** env global
+
+*** TODO coroutine
+
+   
