@@ -15,6 +15,10 @@ compile:
 lua:
 	./lua-5.1.5/src/lua
 
+run:
+	cat -n $(source)
+	./lua-5.1.5/src/lua $(source)
+
 hex:
 	xxd luac.out
 

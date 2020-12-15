@@ -530,6 +530,13 @@ func 有同名和匿名两种
 
 #+CAPTION: 29 function
 
+
+upvalue 的 move 和 getupval
+
+
+args
+
+
 *** local assignment
 
 #+begin_src bnf
@@ -1015,21 +1022,26 @@ end
 .local  "(for control)"  ; 2
 #+end_example
 
-
-
-
-
+#+CAPTION: 32 for and upval
 
 **** forlist
 
-*** ret
+#+begin_src lua :results output
+local g, s = pairs({1,2,3})
 
-return ins
+for k, v in g, s, nil do
+  print(k, v)
+end
+#+end_src
 
-return 在 chunk 中发挥作用
-从当前 closure 中返回
+#+RESULTS:
+: 1	1
+: 2	2
+: 3	3
 
-return 必须是 chunk 的最后一个语句
+#+CAPTION: 33 for and upval
+
+upvalue 同 fornum
 
 *** function call
 
@@ -1043,12 +1055,22 @@ call ins
 
 **** vararg
 
-** expr
+*** ret
+
+return ins
+
+return 在 chunk 中发挥作用
+从当前 closure 中返回
+
+return 必须是 chunk 的最后一个语句
+
+
+
+** practice
 
 *** arithmetic
 
 - 优先级
-- 
 
 lua 在进行解析时，没有进行关系运算的实时解析，但是对 constant 算法运算有编译时执行
 
@@ -1063,4 +1085,4 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 *** constructor
 
 - setlist always consistent, diff with settable
-- 
+
