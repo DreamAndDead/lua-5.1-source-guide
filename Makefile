@@ -23,7 +23,7 @@ hex:
 	xxd luac.out
 
 debug:
-	cgdb -x init.gdb --args ./lua-5.1.5/src/lua $(source)
+	gdb -x init.gdb --args ./lua-5.1.5/src/lua $(source)
 
 lex:
 	gdb -batch -x lex.gdb --args ./lua-5.1.5/src/luac $(source)

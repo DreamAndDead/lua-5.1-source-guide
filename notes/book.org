@@ -48,10 +48,6 @@
 
 #+INCLUDE: "./generate.org"
 
-** TODO dump & undump
-
-#+INCLUDE: "./dump.org"
-
 * vm
 
 #+INCLUDE: "./vm.org"
@@ -84,4 +80,8 @@
 
 #+INCLUDE: "./usage.org"
 
+
+* TODO dump & undump
+
+#+INCLUDE: "./dump.org"
 

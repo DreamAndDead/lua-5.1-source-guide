@@ -17,13 +17,23 @@ class TValuePrinter:
         v = self.val['value']
 
         if t == gdb.parse_and_eval("LUA_TNIL"):
-            return "nil"
-        elif t == gdb.parse_and_eval("LUA_TNUMBER"):
-            return f"{v['n']}"
-        elif t == gdb.parse_and_eval("LUA_TSTRING"):
-            return TStringPrinter(v['gc']['ts'].address).to_string()
+            return "<nil>"
         elif t == gdb.parse_and_eval("LUA_TBOOLEAN"):
-            return "true" if v['b'] > 0 else "false"
+            return "<true>" if v['b'] > 0 else "<false>"
+        elif t == gdb.parse_and_eval("LUA_TLIGHTUSERDATA"):
+            return "<light userdata>"
+        elif t == gdb.parse_and_eval("LUA_TNUMBER"):
+            return f"<number> {v['n']}"
+        elif t == gdb.parse_and_eval("LUA_TSTRING"):
+            return "<string> " + TStringPrinter(v['gc']['ts'].address).to_string()
+        elif t == gdb.parse_and_eval("LUA_TTABLE"):
+            return "<table>"
+        elif t == gdb.parse_and_eval("LUA_TFUNCTION"):
+            return "<function>"
+        elif t == gdb.parse_and_eval("LUA_TUSERDATA"):
+            return "<userdata>"
+        elif t == gdb.parse_and_eval("LUA_TTHREAD"):
+            return "<thread>"
 
         # todo: the rest type
         return "*"
@@ -273,9 +283,6 @@ class LexStateCmd(gdb.Command):
     def __init__(self):
         super(LexStateCmd, self).__init__("llex", gdb.COMMAND_USER)
 
-    def complete(self, text, word):
-        return gdb.COMPLETE_SYMBOL
-
     def invoke(self, args, from_tty):
         ls = args if args else 'ls'
         print(gdb.execute(f"print *({ls})", from_tty, True))
@@ -290,9 +297,6 @@ class FuncStateCmd(gdb.Command):
     def __init__(self):
         super(FuncStateCmd, self).__init__("lfunc", gdb.COMMAND_USER)
 
-    def complete(self, text, word):
-        return gdb.COMPLETE_SYMBOL
-
     def invoke(self, args, from_tty):
         fs = args if args else 'fs'
         print(gdb.execute(f"print *({fs})", from_tty, True))
@@ -301,3 +305,58 @@ class FuncStateCmd(gdb.Command):
 
 
 FuncStateCmd()
+
+
+class StackCmd(gdb.Command):
+    def __init__(self):
+        super(StackCmd, self).__init__("lstack", gdb.COMMAND_USER)
+
+    def invoke(self, args, from_tty):
+        L = gdb.parse_and_eval("L")
+        stack_last = L["stack_last"]
+        stack = L["stack"]
+
+        output = []
+
+        for i in range(stack_last - stack):
+            ele = stack + i
+
+            e = list()
+            e.append(i)
+            e.append(TValuePrinter(ele.referenced_value()).to_string())
+
+            if ele == L['base']:
+                e.append('L->base')
+            elif ele == L['top']:
+                e.append('L->top')
+            else:
+                e.append('')
+
+            base_ci = L['base_ci']
+            ci = L['ci']
+
+            idx = 0
+            while True:
+                if ele == base_ci['base']:
+                    e.append(f"ci[{idx}]->base")
+                elif ele == base_ci['top']:
+                    e.append(f"ci[{idx}]->top")
+                elif ele == base_ci['func']:
+                    e.append(f"ci[{idx}]->func")
+                else:
+                    e.append('')
+
+                if base_ci == ci:
+                    break
+
+                base_ci += 1
+                idx += 1
+
+            e.append(i)
+
+            output.append(e)
+
+        print(tabulate(reversed(output)))
+
+
+StackCmd()

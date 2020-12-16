@@ -49,9 +49,7 @@ struct lua_State {
 virtual machine
 
 stack
-
-
-
+TValue & StkId
 
 ldo.c:144
 
@@ -65,10 +63,6 @@ EXTRA_STACK
 relations
 
 
-
-
-
-TValue & StkId
 
 pc
 
@@ -144,7 +138,7 @@ env 又如何在运行时发挥作用呢？
 为 global 概念提供了空间
 
 
-*** args
+*** TODO args
 
 def and pass
 
