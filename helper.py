@@ -34,8 +34,14 @@ class TValuePrinter:
             return "<userdata>"
         elif t == gdb.parse_and_eval("LUA_TTHREAD"):
             return "<thread>"
+        elif t == gdb.parse_and_eval("LUA_TPROTO"):
+            return "<proto>"
+        elif t == gdb.parse_and_eval("LUA_TUPVAL"):
+            return "<upval>"
+        elif t == gdb.parse_and_eval("LUA_TDEADKEY"):
+            return "<deadkey>"
 
-        # todo: the rest type
+        # the rest
         return "*"
 
 
@@ -323,14 +329,6 @@ class StackCmd(gdb.Command):
 
             e = list()
             e.append(i)
-            e.append(TValuePrinter(ele.referenced_value()).to_string())
-
-            if ele == L['base']:
-                e.append('L->base')
-            elif ele == L['top']:
-                e.append('L->top')
-            else:
-                e.append('')
 
             base_ci = L['base_ci']
             ci = L['ci']
@@ -351,6 +349,15 @@ class StackCmd(gdb.Command):
 
                 base_ci += 1
                 idx += 1
+
+            if ele == L['base']:
+                e.append('L->base')
+            elif ele == L['top']:
+                e.append('L->top')
+            else:
+                e.append('')
+
+            e.append(TValuePrinter(ele.referenced_value()).to_string())
 
             e.append(i)
 
