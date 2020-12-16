@@ -101,6 +101,15 @@ continue 不作用于 switch 语句
 
 store proto to closure
 
+and save to stack
+
+
+
+
+**** upval
+  
+ open and close
+
 getupval, just ref pointer
 
 move, using luaF_findupval lfunc.c:53
@@ -115,11 +124,25 @@ pp 是指向 p 中 next 成员的指针
 在这里将 openupval 按 level 顺序链接起来！
 
 
+#+CAPTION: 39 upval open and close
 
-
-and save to stack
 
 *** call
+
+*** return
+
+*** tailcall
+    
+*** env global
+
+既然在 compile 的时候，已经进行了变量的查找
+
+env 又如何在运行时发挥作用呢？
+
+
+作用在 setglobal getglobal 两条指令上
+为 global 概念提供了空间
+
 
 *** args
 
@@ -127,22 +150,9 @@ def and pass
 
 vararg
     
-*** return
-
-*** tailcall
-    
-*** upval
-  
-new in closure process
-
-open and close
-
-*** c closure?
    
 *** metatable
 
 
-*** env global
-
-*** TODO coroutine
+*** c closure?
 

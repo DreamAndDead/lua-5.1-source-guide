@@ -48,7 +48,7 @@
 
 #+INCLUDE: "./generate.org"
 
-** dump & undump
+** TODO dump & undump
 
 #+INCLUDE: "./dump.org"
 
@@ -60,15 +60,13 @@
 
 #+INCLUDE: "./api.org"
 
-** userdata?
-
- special chapter for it
-
 * lib
 
 #+INCLUDE: "./lib.org"
 
-* coroutine?
+* coroutine
+
+* TODO userdata?
 
 * error handling
 
