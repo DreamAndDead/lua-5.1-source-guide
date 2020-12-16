@@ -50,14 +50,39 @@ virtual machine
 
 stack
 
-TValue & StkId
 
+
+
+ldo.c:144
+
+stack
+stack_last
+stacksize
+
+EXTRA_STACK
+1
+
+relations
+
+
+
+
+
+TValue & StkId
 
 pc
 
+
+
 ci
 
-internal
+base_ci
+size_ci
+end_ci
+
+ldo.c:169 157
+
+
 
 
 ** internal
@@ -66,31 +91,54 @@ lua 中各种机制的实现方式
 
 以示例代码的方式来探索
 
-
 多数在绘制图纸的时候，已经得到了解决，虚拟中和实际运行时差别不大
 
-    
 
-*** c closure?
+
+continue 不作用于 switch 语句
 
 *** closure
 
-args
+store proto to closure
+
+getupval, just ref pointer
+
+move, using luaF_findupval lfunc.c:53
+
+71 72 行太隐晦了
+
+pp 是 &p->next
+pp 是指向 p 中 next 成员的指针
+
+所以 *pp = obj2gco(uv) 的时候，修改了 p next 成员的值
+
+在这里将 openupval 按 level 顺序链接起来！
+
+
+
+
+and save to stack
+
+*** call
+
+*** args
 
 def and pass
 
 vararg
-
-*** call
-    
-*** tailcall
     
 *** return
 
+*** tailcall
+    
 *** upval
   
-upval, open and close
+new in closure process
 
+open and close
+
+*** c closure?
+   
 *** metatable
 
 
@@ -98,4 +146,3 @@ upval, open and close
 
 *** TODO coroutine
 
-   
