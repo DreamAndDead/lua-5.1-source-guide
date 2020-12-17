@@ -392,6 +392,7 @@ tagmethod cache
 
 ** TODO weaktable
 
+
 ** practice
 
 new/free
@@ -400,3 +401,4 @@ get/set num/str
 
 考虑将 rehash 的部分放到这里，非重点
 
+*** TODO print table value

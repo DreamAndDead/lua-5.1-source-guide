@@ -17,32 +17,32 @@ class TValuePrinter:
         v = self.val['value']
 
         if t == gdb.parse_and_eval("LUA_TNIL"):
-            return "<nil>"
+            return "<nil> "
         elif t == gdb.parse_and_eval("LUA_TBOOLEAN"):
             return "<true>" if v['b'] > 0 else "<false>"
         elif t == gdb.parse_and_eval("LUA_TLIGHTUSERDATA"):
-            return "<light userdata>"
+            return "<lud>  " + str(v['p'])
         elif t == gdb.parse_and_eval("LUA_TNUMBER"):
-            return f"<number> {v['n']}"
+            return f"<num>  {v['n']}"
         elif t == gdb.parse_and_eval("LUA_TSTRING"):
-            return "<string> " + TStringPrinter(v['gc']['ts'].address).to_string()
+            return "<str>  " + TStringPrinter(v['gc']['ts'].address).to_string()
         elif t == gdb.parse_and_eval("LUA_TTABLE"):
-            return "<table>"
+            return "<tabl> " + str(v['gc'])
         elif t == gdb.parse_and_eval("LUA_TFUNCTION"):
-            return "<function>"
+            return "<func> " + str(v['gc'])
         elif t == gdb.parse_and_eval("LUA_TUSERDATA"):
-            return "<userdata>"
+            return "<ud>   " + str(v['gc'])
         elif t == gdb.parse_and_eval("LUA_TTHREAD"):
-            return "<thread>"
+            return "<thrd> " + str(v['gc'])
         elif t == gdb.parse_and_eval("LUA_TPROTO"):
-            return "<proto>"
+            return "<prot> " + str(v['gc'])
         elif t == gdb.parse_and_eval("LUA_TUPVAL"):
-            return "<upval>"
+            return "<upvl> " + str(v['gc'])
         elif t == gdb.parse_and_eval("LUA_TDEADKEY"):
-            return "<deadkey>"
+            return "<dkey> " + str(v['gc'])
 
         # the rest
-        return "*"
+        return "<?>"
 
 
 class TStringPrinter:
@@ -315,7 +315,7 @@ FuncStateCmd()
 
 class StackCmd(gdb.Command):
     def __init__(self):
-        super(StackCmd, self).__init__("lstack", gdb.COMMAND_USER)
+        super(StackCmd, self).__init__("lstk", gdb.COMMAND_USER)
 
     def invoke(self, args, from_tty):
         L = gdb.parse_and_eval("L")

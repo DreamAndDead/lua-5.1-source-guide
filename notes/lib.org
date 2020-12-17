@@ -29,8 +29,96 @@ lualib.h
 
 
 
-** dynamic load
 
-require
+REGISTRYINDEX . _LOADED 判断是否已经加载
 
-diff file type
+register 是 L->l_G->l_register
+
+luaL_findtable，对 a.b.c 进行 . 分开搜索
+
+找不到则新建 {}，一直向下，最终将相应结果放在栈顶
+
+
+
+
+
+register['_LOADED']['_G'] = global
+
+记录加载情况
+
+
+
+
+GLOBALSINDEX 存储了 global 域，在 index2adr 中可以发现，
+对应 gt(L)  L->l_gt  lua_State 中的 global table （不是 global state）
+
+在完全运行前，这个环境需要加载，所以当前是动态的
+
+
+base_open
+lbaselib.c:628 629
+设置 _G 为 global table 自身
+
+
+
+
+
+*** base
+
+_G = _G
+
+base funcs
+- assert
+- collectgarbage
+- dofile
+- etc.
+
+global _VERSION    
+
+with upvalues
+ipairs
+pairs
+
+
+proxy table??
+
+
+coroutine funcs
+- create
+- etc.
+
+in coroutine chapter
+
+*** math
+
+- abs
+- acos
+- etc.
+
+*** string
+
+*** table
+
+*** io
+
+*** os
+
+*** debug
+
+in debug chapter
+
+*** TODO dynamic load
+
+require function
+
+load diff file type
+- lua
+- so
+
+
+
+
+- loadlib
+- seeall
+- module
+- require
