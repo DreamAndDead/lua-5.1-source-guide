@@ -56,13 +56,17 @@
 
 #+INCLUDE: "./api.org"
 
+* TODO userdata?
+
+gc metamethod
+
 * lib
 
 #+INCLUDE: "./lib.org"
 
 * coroutine
 
-* TODO userdata?
+#+INCLUDE: "./coroutine.org"
 
 * error handling
 
@@ -75,11 +79,6 @@
 * gc
 
 #+INCLUDE: "./gc.org"
-
-* work with lua
-
-#+INCLUDE: "./usage.org"
-
 
 * TODO dump & undump
 

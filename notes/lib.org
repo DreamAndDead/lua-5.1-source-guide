@@ -1,19 +1,36 @@
 * TODO package module lib
 
-- lib protocol
-  - when to register
-  - how to register
-- std lib
-  - lbaselib.c
-  - ldblib.c
-  - liolib.c
-  - lmathlib.c
-  - loslib.c
-  - lstrlib.c
-  - ltablib.c
-- dynamic load
-  - loadlib.c
-- require?
+
+
+std lib
+
+luaL_openlibs 进行注册
+
+使用 c api，对所有模块进行注册
+
+** register
+
+linit.c, luaL_openlibs
+
+lualib.h
+
+根据注册的约定，各个模块分别注册
+
+| file       | module  | desc |
+|------------+---------+------|
+| lbaselib.c |         |      |
+| lmathlib.c | math    |      |
+| lstrlib.c  | string  |      |
+| ltablib.c  | table   |      |
+| liolib.c   | io      |      |
+| loslib.c   | os      |      |
+| ldblib.c   | debug   |      |
+| loadlib.c  | package |      |
 
 
 
+** dynamic load
+
+require
+
+diff file type

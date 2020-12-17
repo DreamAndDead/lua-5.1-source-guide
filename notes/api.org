@@ -2,18 +2,6 @@
 
 * c api
 
-[[http://www.lua.org/manual/5.1/manual.html#3][lua 5.1 ref]]
-
-
-- api vm overview
-
-- c api
-  - c to stack
-  - lua to stack
-
-
-
-
 c api 和 vm 是一样的
 
 都是在操作 lua_State
@@ -22,8 +10,136 @@ c api 和 vm 是一样的
 
 这样就保证了和谐的与 c 语言集成的状态。
 
-夸张的说，lua 代码不过是 c api 的一种符号表示
+lua 代码不过是 c api 的一种符号表示
+
+
+不仅外部使用，也提供给内部使用
 
 
 
+
+
+c api 是一个宽广的范畴
+
+getallocf
+
+dump  load
+
+call pcall error
+
+gc
+
+metatable
+
+
+fenv
+
+newstate
+
+
+newthread resume xmove yield status
+
+
+getupvalue
+
+
+和各个模块相关，api 只是一层接口
+
+
+
+只了解 api.c 和 stack 相关的内容
+
+
+** category
+
+lua.h:117
+
+lauxlib.c
+
+
+func and macro
+
+
+basic mani
+
+- xmove, in coroutine
+
+access stack -> C
+
+
+
+
+push C -> stack
+
+
+
+
+get lua -> stack
+
+set stack -> lua
+
+
+
+
+
+lua <-> stack
+
+stack internal manipulation
+
+
+
+
+
+
+
+
+
+
+lua call c means
+
+a cclosure in lua stack and lua_precall call it
+
+how cclosure mani L stack and return value is what
+base on the rules
+
+
+
+typedef int (*lua_CFunction) (lua_State *L);
+
+c closure protocol
+
+** index
+
+idx2addr
+
++ -
+
+
+Pseudo-Indices??
+
+
+The thread environment (where global variables live) is always at pseudo-index LUA_GLOBALSINDEX. The environment of the running C function is always at pseudo-index LUA_ENVIRONINDEX. 
+
+
+regisTRYINDEX??
+  
+
+lua.h:33
+
+
+
+** api list
+
+[[http://www.lua.org/manual/5.1/manual.html#3][lua 5.1 ref]]
+
+
+** c closure?
+
+   
+
+** how to connect c with lua
+
+- compile with lua
+  - lua as lib
+  - c as lib，maybe registry
 

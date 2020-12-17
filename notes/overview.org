@@ -83,3 +83,10 @@ chunkspy, add is_vararg
 - gdb script
 - how to step
 
+
+- conf
+  - llimits.c
+  - luaconf.c
+- lua standalone interpreter
+- lua compiler
+

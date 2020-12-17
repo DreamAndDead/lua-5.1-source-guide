@@ -24,3 +24,6 @@ It would be very tedious and awkward if all the functions in between had to retu
 
 That's a situation where setjmp/longjmp makes sense. Those situations are similar to situation where exception in other langages (C++, Java) make sense. 
 
+
+
+
