@@ -12,3 +12,9 @@ toc
   - html
   - pdf
 
+** export
+
+[[https://orgmode.org/worg/org-tutorials/org-publish-html-tutorial.html][org publish tutorial]]
+
+
+[[https://opensource.com/article/20/3/blog-emacs][blog with org mode]]   

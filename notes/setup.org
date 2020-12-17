@@ -10,5 +10,3 @@
 #+HTML_DOCTYPE: html5
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="style.css">
 
-# #+OPTIONS: html-style:nil
-

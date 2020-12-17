@@ -1,0 +1,51 @@
+#+SETUPFILE: setup.org
+
+* coroutine
+
+
+** status
+
+L->status VS api define
+
+#+begin_src c
+#define CO_RUN	0	/* running */
+#define CO_SUS	1	/* suspended */
+#define CO_NOR	2	/* 'normal' (it resumed another coroutine) */
+#define CO_DEAD	3
+
+static const char *const statnames[] =
+    {"running", "suspended", "normal", "dead"};
+#+end_src
+
+
+** c func
+
+co 相关的函数都是 c 函数，底层实现并挂载到 global 环境中的
+
+并非 opcode 实现
+
+所以 opcode 中没有 co 相关的内容
+
+
+** lua state
+
+名为 thread 类型
+
+其实不过是另一个 lua state 在运行
+共享 global state
+
+
+单线程，交替控制权
+
+通过 xmove 传递参数
+
+
+
+
+
+
+
+main func 不是 thread，不能直接 yield，这样会导致错误
+
+across c boundary
+

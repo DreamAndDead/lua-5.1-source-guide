@@ -1,7 +1,5 @@
 #+SETUPFILE: setup.org
 
-#+OPTIONS: html-style: nil
-
 * test
 
 test some org feature, such as export, etc.
@@ -25,8 +23,8 @@ In line [[(sc)]] we remember the current position.
 
 #+BEGIN_SRC c -n 287
 /*
-,** Closures
-,*/
+ ** Closures
+ */
 
 #define ClosureHeader \
 	CommonHeader; lu_byte isC; lu_byte nupvalues; GCObject *gclist; \
@@ -59,6 +57,8 @@ typedef union Closure {
 
 一些中文内容
 
+测试
+
 
 
 
@@ -72,9 +72,3 @@ typedef union Closure {
 [[file:test.png]]
 
 
-#+begin_src svgbob :file bob.svg
----------------
-#+end_src
-
-#+RESULTS:
-[[file:bob.svg]]

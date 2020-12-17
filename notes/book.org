@@ -8,79 +8,43 @@
 
 * overview
 
-#+INCLUDE: "./overview.org"
-  
 * basic
 
 ** object
 
-#+INCLUDE: "./object.org"
-
 ** memory
-
-#+INCLUDE: "./mem.org"
 
 ** string
 
-#+INCLUDE: "./string.org"
-
 ** table
 
-#+INCLUDE: "./table.org"
- 
 * compiler
-
-#+INCLUDE: "./compiler.org"
 
 ** lexer
 
-#+INCLUDE: "./lexer.org"
-
 ** parser
-
-#+INCLUDE: "./parser.org"
 
 ** opcode
 
-#+INCLUDE: "./opcode.org"
-
 ** generate
-
-#+INCLUDE: "./generate.org"
 
 * vm
 
-#+INCLUDE: "./vm.org"
-
 * c api
 
-#+INCLUDE: "./api.org"
-
-* TODO userdata?
+** TODO userdata?
 
 gc metamethod
 
 * lib
 
-#+INCLUDE: "./lib.org"
-
 * coroutine
-
-#+INCLUDE: "./coroutine.org"
 
 * error handling
 
-#+INCLUDE: "./error.org"
-
 * debug
-
-#+INCLUDE: "./debug.org"
 
 * gc
 
-#+INCLUDE: "./gc.org"
-
 * TODO dump & undump
-
-#+INCLUDE: "./dump.org"
 

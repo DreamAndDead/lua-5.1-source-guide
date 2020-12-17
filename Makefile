@@ -29,4 +29,7 @@ lex:
 	gdb -batch -x lex.gdb --args ./lua-5.1.5/src/luac $(source)
 	rm luac.out
 
+publish:
+	emacs -u "$(id -un)" --batch --eval '(load user-init-file)' --load publish.el --funcall org-publish-all
+
 .PHONY:	test

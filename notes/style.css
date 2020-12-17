@@ -2,7 +2,6 @@
  * org export html style
  */
 
-label.org-src-name {
+h1, h2, h3 {
     color: red;
 }
-
