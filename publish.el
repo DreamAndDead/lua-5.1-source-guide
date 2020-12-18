@@ -1,6 +1,7 @@
 (require 'ox-publish)
 
-; (setq org-html-htmlize-output-type nil)
+; https://emacs.stackexchange.com/questions/20731/setting-up-ditaa-in-org-mode
+(setq org-ditaa-jar-path "~/project/lua-5.1.5/tool/ditaa.jar")
 
 (setq org-publish-project-alist
       '(
