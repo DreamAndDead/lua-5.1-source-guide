@@ -58,9 +58,9 @@ typedef union Closure {
 一些中文内容
 
 #+begin_src ditaa :file test.png
-+------------------+
-|   hello          |
-+------------------+
+  +------------------+
+  |   hello          |
+  +------------------+
 #+end_src
 
 #+RESULTS:
