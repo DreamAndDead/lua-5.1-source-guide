@@ -318,7 +318,8 @@ class StackCmd(gdb.Command):
         super(StackCmd, self).__init__("lstk", gdb.COMMAND_USER)
 
     def invoke(self, args, from_tty):
-        L = gdb.parse_and_eval("L")
+        state = args if args else "L"
+        L = gdb.parse_and_eval(state)
         stack_last = L["stack_last"]
         stack = L["stack"]
 

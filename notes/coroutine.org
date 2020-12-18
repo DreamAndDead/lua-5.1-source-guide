@@ -2,11 +2,14 @@
 
 * coroutine
 
+#+CAPTION: 41 - 43 coroutine process
 
 ** status
 
 L->status VS api define
 
+
+lbaselib.c
 #+begin_src c
 #define CO_RUN	0	/* running */
 #define CO_SUS	1	/* suspended */
@@ -16,6 +19,54 @@ L->status VS api define
 static const char *const statnames[] =
     {"running", "suspended", "normal", "dead"};
 #+end_src
+
+
+
+lua.h
+#+begin_src c
+/* thread status; 0 is OK */
+#define LUA_YIELD	1
+#define LUA_ERRRUN	2
+#define LUA_ERRSYNTAX	3
+#define LUA_ERRMEM	4
+#define LUA_ERRERR	5
+#+end_src
+
+
+
+
+CO_RUN  running
+在 co 中自己检测自己，必然是 running，因为检测的控制权在自己这里
+
+CO_SUS  suspended
+- 如果 L->status 是 LUA_YIELD，即内部调用了 yield
+- 或者 L->status OK，检测 co 的 frame
+  - 如果有 frame，说明其 resume 了其它协程，状态为 CO_NOR normal，在运行的协程中，
+    检测 resume 它的协程
+  - 没有 frame 且没有参数，说明协程已经运行结束，状态为 CO_DEAD dead
+  - 没有 frame 但有参数，说明其刚刚新建，还没有开始运行，状态也为 CO_SUS
+- 如果 L->status 不 OK，则一律为 CO_DEAD
+    
+
+coroutine.status (co)
+
+Returns the status of coroutine co, as a string: "running", if the coroutine is running (that is, it called status); "suspended", if the coroutine is suspended in a call to yield, or if it has not started running yet; "normal" if the coroutine is active but not running (that is, it has resumed another coroutine); and "dead" if the coroutine has finished its body function, or if it has stopped with an error. 
+
+
+
+** wrap
+
+coroutine.wrap (f)
+
+Creates a new coroutine, with body f. f must be a Lua function. Returns a function that resumes the coroutine each time it is called. Any arguments passed to the function behave as the extra arguments to resume. Returns the same values returned by resume, except the first boolean. In case of error, propagates the error. 
+
+
+** yield
+
+coroutine.yield (···)
+
+Suspends the execution of the calling coroutine. The coroutine cannot be running a C function, a metamethod, or an iterator. Any arguments to yield are passed as extra results to resume. 
+
 
 
 ** c func
