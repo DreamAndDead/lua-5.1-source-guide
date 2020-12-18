@@ -57,8 +57,6 @@ typedef union Closure {
 
 一些中文内容
 
-no cache
-
 #+begin_src ditaa :file test.png
 +------------------+
 |   hello          |

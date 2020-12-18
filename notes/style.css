@@ -2,3 +2,8 @@
  * org export html style
  */
 
+div#content {
+    width: 40%;
+    margin: 0 auto;
+}
+
