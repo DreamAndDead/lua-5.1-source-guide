@@ -34,6 +34,8 @@ lua.h
 
 
 
+调用 status 时，必定是有控制权的一方的行为
+
 
 CO_RUN  running
 在 co 中自己检测自己，必然是 running，因为检测的控制权在自己这里

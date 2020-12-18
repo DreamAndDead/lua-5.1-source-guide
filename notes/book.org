@@ -30,21 +30,23 @@
 
 * vm
 
-* c api
+* api
 
-** TODO userdata?
-
-gc metamethod
+c api
 
 * lib
 
 * coroutine
 
-* error handling
-
 * debug
 
 * gc
 
-* TODO dump & undump
+* error handling
+
+* TODO userdata?
+
+gc metamethod
+
+metatable
 

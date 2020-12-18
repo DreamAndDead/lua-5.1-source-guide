@@ -31,3 +31,18 @@ lua 中的 parse 过程使用 lazy 加载 token 的方式
 
 
 
+** dump
+
+not mentioned here
+
+类比，可执行文件 <-> dump file
+
+
+引入 vm 的好处之一
+在 pc 编译，放入嵌入式执行，可以不编译 compiler 相关代码，只用 vm 就足够了
+lua 生成的二进制格式
+
+
+chunkspy 的原理，就是分析二进制
+
+

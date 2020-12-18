@@ -1,8 +1,153 @@
+#+SETUPFILE: setup.org
+
 * TODO debug
 
-- job
-- hook
+
+
+lua.h:301 -
+
+struct lua_Debug
+
+#+begin_src c
+struct lua_Debug {
+  int event;
+  const char *name;	/* (n) */
+  const char *namewhat;	/* (n) `global', `local', `field', `method' */
+  const char *what;	/* (S) `Lua', `C', `main', `tail' */
+  const char *source;	/* (S) */
+  int currentline;	/* (l) */
+  int nups;		/* (u) number of upvalues */
+  int linedefined;	/* (S) */
+  int lastlinedefined;	/* (S) */
+  char short_src[LUA_IDSIZE]; /* (S) */
+  /* private part */
+  int i_ci;  /* active function */
+};
+#+end_src
 
 
 
+debug info 针对函数而言
+
+
+i_ci is private
+
+lua_getstack
+
+store the i_ci
+
+从当前 frame 开始，向上数 level 层，记录相应在 ci 中的序号
+方便索引 ci
+其中也对 tailcall 进行了过滤
+
+level == 0 means current
+
+
+
+
+lua_getinfo, from i_ci to fetch info to fill other part
+
+- source, function name, @xxx if it's file chunk
+- short_src, printable source
+- linedefined, function start line
+- lastlinedefined, function end line
+- what, lua / c / main / tailcall, tailcall no information
+- currentline,
+- name, found a reasonable name
+- namewhat, explain name, global / local / method / field / upvalue / ""
+- nups, num of upvalues
+
+
+
+
+lua_getinfo
+
+info 对应的字段是字符串，是随意的字符串，代表不同的信息
+
+
+- n
+- S
+- l
+- u
+- f, push the f on top
+- L, collectvalidlines????
+- =>=, first char, pop the closure at stack top and inspect it
+  otherwise, fetch f from ci
+  
+
+
+
+
+lua_getlocal
+
+findlocal
+
+lua_setlocal
+
+
+
+
+
+lua_getupvalue / setupvalue in lapi.c
+
+
+
+
+
+** hook
+
+lua_Hook is function pointer
+
+(*L, *ar)
+
+ar->event store the event type
+
+#+begin_src c
+/*
+,** Event codes
+*/
+#define LUA_HOOKCALL	0
+#define LUA_HOOKRET	1
+#define LUA_HOOKLINE	2
+#define LUA_HOOKCOUNT	3
+#define LUA_HOOKTAILRET 4
+
+
+/*
+,** Event masks
+*/
+#define LUA_MASKCALL	(1 << LUA_HOOKCALL)
+#define LUA_MASKRET	(1 << LUA_HOOKRET)
+#define LUA_MASKLINE	(1 << LUA_HOOKLINE)
+#define LUA_MASKCOUNT	(1 << LUA_HOOKCOUNT)
+#+end_src
+
+
+
+lua_sethook
+
+set
+- L->hook
+- L->basehookcount
+- L->hookcount
+- L->hookmask
+
+mask means which type of event will trigger the hook func
+
+
+- call hook, is called when vm calls a function
+- return hook, called when return
+- line hook, start exe new line of code / jump, only in lua func
+- count hook, called when execute count instruction????
+
+mask to zero, disable hook
+
+
+
+
+L->allowhook, can't call hook in hook
+
+ldo.c:181
+
+luaD_callhook
 
