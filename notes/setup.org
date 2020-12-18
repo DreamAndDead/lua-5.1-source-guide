@@ -8,5 +8,6 @@
 #+LATEX_HEADER: \usepackage{xeCJK}
 
 #+HTML_DOCTYPE: html5
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="htmlize.css">
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="style.css">
 

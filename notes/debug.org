@@ -151,3 +151,19 @@ ldo.c:181
 
 luaD_callhook
 
+
+
+
+** debug api
+
+
+
+db_debug
+
+a repl env to debug status
+
+
+
+
+
+

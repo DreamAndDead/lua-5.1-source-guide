@@ -57,10 +57,7 @@ typedef union Closure {
 
 一些中文内容
 
-测试
-
-
-
+no cache
 
 #+begin_src ditaa :file test.png
 +------------------+
@@ -69,6 +66,6 @@ typedef union Closure {
 #+end_src
 
 #+RESULTS:
-[[file:test.png]]
+[[file:test-word.png]]
 
 
