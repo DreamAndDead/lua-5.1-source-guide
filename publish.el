@@ -16,14 +16,14 @@
 	("posts"
          :base-extension "org"
          :base-directory "book/"
-         :publishing-directory "publish/html/"
+         :publishing-directory "docs/"
          :publishing-function org-html-publish-to-html
          :recursive t
 	 )
 	("assets"
          :base-extension "css\\|png\\|jpg\\|ico"
          :base-directory "book/"
-         :publishing-directory "publish/html/"
+         :publishing-directory "docs/"
          :publishing-function org-publish-attachment
          :recursive t
 	 )

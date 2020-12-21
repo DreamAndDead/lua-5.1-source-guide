@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-21 一 11:26 -->
+<!-- 2020-12-21 一 11:38 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>&lrm;</title>
+<title>overview</title>
 <meta name="generator" content="Org mode">
 <meta name="author" content="DreamAndDead">
 <style type="text/css">
@@ -218,10 +218,172 @@
 </head>
 <body>
 <div id="content">
+<h1 class="title">overview</h1>
 
+<div id="outline-container-orgf3067dd" class="outline-2">
+<h2 id="orgf3067dd"><span class="section-number-2">1</span> overview</h2>
+<div class="outline-text-2" id="text-1">
+</div>
+<div id="outline-container-org1aadc8d" class="outline-3">
+<h3 id="org1aadc8d"><span class="section-number-3">1.1</span> <span class="todo TODO">TODO</span> intro</h3>
+<div class="outline-text-3" id="text-1-1">
+<ul class="org-ul">
+<li>本书目标
+<ul class="org-ul">
+<li>source reading guide</li>
+</ul></li>
+<li>章节规划
+<ul class="org-ul">
+<li>逻辑关系的模块顺序</li>
+<li>只讲核心部分，2 8 原则，只讲 2</li>
+<li>图解
+<ul class="org-ul">
+<li>关键数据结构，及实现过程（从 macro 到 micro，图解是重要的连接点）</li>
+<li>图主导，而非文档主导</li>
+</ul></li>
+<li>对照代码片段</li>
+<li>代码阅读任务</li>
+</ul></li>
+<li>针对读者
+<ul class="org-ul">
+<li>lua user</li>
+<li>c</li>
+<li>linux</li>
+</ul></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org176137a" class="outline-3">
+<h3 id="org176137a"><span class="section-number-3">1.2</span> <span class="todo TODO">TODO</span> big picture</h3>
+<div class="outline-text-3" id="text-1-2">
+<ul class="org-ul">
+<li>from sample code to result</li>
+<li>graph whole process</li>
+<li>big picture of internal</li>
+</ul>
+
+<p>
+把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
+</p>
+
+<p>
+the final step
+</p>
+</div>
+</div>
+
+
+
+
+<div id="outline-container-orgd54208a" class="outline-3">
+<h3 id="orgd54208a"><span class="section-number-3">1.3</span> <span class="todo TODO">TODO</span> how to read source</h3>
+<div class="outline-text-3" id="text-1-3">
+<ul class="org-ul">
+<li>known the language before</li>
+<li>favorite editor/ide</li>
+<li>compile with debug info</li>
+<li>scan from feature to feature</li>
+</ul>
+
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<tbody>
+<tr>
+<td class="org-left">prefix</td>
+<td class="org-left">module</td>
+</tr>
+
+<tr>
+<td class="org-left">:-:</td>
+<td class="org-left">:-:</td>
+</tr>
+
+<tr>
+<td class="org-left">luaX</td>
+<td class="org-left">lex</td>
+</tr>
+
+<tr>
+<td class="org-left">luaK</td>
+<td class="org-left">code</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+<div id="outline-container-org7dc55f5" class="outline-4">
+<h4 id="org7dc55f5"><span class="section-number-4">1.3.1</span> project itself</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<ul class="org-ul">
+<li>lua source itself</li>
+<li>where I modified the source code</li>
+<li>some tool to help</li>
+</ul>
+
+
+<p>
+CFLAGS -&gt; -ggdb3 -O0  (debug macros)
+</p>
+
+
+
+<p>
+makefile -m32
+</p>
+
+<p>
+chunkspy, add is<sub>vararg</sub>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-diff"><span class="org-diff-indicator-added">+</span><span class="org-diff-added">    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",</span>
++      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+</pre>
+</div>
+</div>
+</div>
+
+
+
+<div id="outline-container-org866477c" class="outline-4">
+<h4 id="org866477c"><span class="section-number-4">1.3.2</span> insight</h4>
+<div class="outline-text-4" id="text-1-3-2">
+<ul class="org-ul">
+<li>gcc</li>
+<li>gdb</li>
+<li>gdb script</li>
+<li>how to step</li>
+</ul>
+
+
+<ul class="org-ul">
+<li>conf
+<ul class="org-ul">
+<li>llimits.c</li>
+<li>luaconf.c</li>
+</ul></li>
+<li>lua standalone interpreter</li>
+<li>lua compiler</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="postamble" class="status">
-<p>Author: a</p><p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p><p>Created at </p><p>Updated at 2020-12-21 一 11:25</p>
+
+<p>Updated at 2020-12-21 一 10:42</p>
+<p>Created at 2020-12-21 一 10:40</p>
+<p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
 </body>
 </html>
