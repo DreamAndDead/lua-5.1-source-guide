@@ -28,3 +28,4 @@
          :recursive t
 	 )
         ("all" :components ("posts" "assets"))))
+

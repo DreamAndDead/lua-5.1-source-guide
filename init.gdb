@@ -4,11 +4,10 @@ set print pretty on
 set print array on
 
 
-source luagdb.gdb
-
+source tool/lua-gdb-helper/luagdb.txt
 source helper.py
 
-tb luaV_execute
+tb chunk
 
 r
 

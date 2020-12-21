@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-21 一 14:58 -->
+<!-- 2020-12-21 一 17:13 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>overview</title>
@@ -220,26 +220,28 @@
 <div id="content">
 <h1 class="title">overview</h1>
 
-<div id="outline-container-orgf3067dd" class="outline-2">
-<h2 id="orgf3067dd"><span class="section-number-2">1</span> overview</h2>
+<div id="outline-container-org124efe0" class="outline-2">
+<h2 id="org124efe0"><span class="section-number-2">1</span> goal</h2>
 <div class="outline-text-2" id="text-1">
 <ul class="org-ul">
 <li>本书目标
 <ul class="org-ul">
 <li>source reading guide</li>
 </ul></li>
-<li>章节规划
+</ul>
+
+<p>
+原则
+</p>
 <ul class="org-ul">
-<li>逻辑关系的模块顺序</li>
-<li>只讲核心部分，2 8 原则，只讲 2</li>
-<li>图解
+<li>二八原则，只讲重点</li>
+<li>一图胜千言，尽量使用图解</li>
+<li>关联阅读源代码</li>
+<li>阅读练习</li>
+</ul>
+
+
 <ul class="org-ul">
-<li>关键数据结构，及实现过程（从 macro 到 micro，图解是重要的连接点）</li>
-<li>图主导，而非文档主导</li>
-</ul></li>
-<li>对照代码片段</li>
-<li>代码阅读任务</li>
-</ul></li>
 <li>针对读者
 <ul class="org-ul">
 <li>lua user</li>
@@ -248,17 +250,15 @@
 </ul></li>
 </ul>
 </div>
+</div>
 
-<div id="outline-container-orgd54208a" class="outline-3">
-<h3 id="orgd54208a"><span class="section-number-3">1.1</span> <span class="todo TODO">TODO</span> how to read source</h3>
-<div class="outline-text-3" id="text-1-1">
-<ul class="org-ul">
-<li>known the language before</li>
-<li>favorite editor/ide</li>
-<li>compile with debug info</li>
-<li>scan from feature to feature</li>
-</ul>
-
+<div id="outline-container-org1a40320" class="outline-2">
+<h2 id="org1a40320"><span class="section-number-2">2</span> project</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org446a21b" class="outline-3">
+<h3 id="org446a21b"><span class="section-number-3">2.1</span> file structure</h3>
+<div class="outline-text-3" id="text-2-1">
 <table>
 
 
@@ -267,94 +267,418 @@
 
 <col  class="org-left">
 </colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">file/dir</th>
+<th scope="col" class="org-left">desc</th>
+</tr>
+</thead>
 <tbody>
 <tr>
-<td class="org-left">prefix</td>
-<td class="org-left">module</td>
+<td class="org-left">lua-5.1.5/</td>
+<td class="org-left">lua 源代码</td>
 </tr>
 
 <tr>
-<td class="org-left">:-:</td>
-<td class="org-left">:-:</td>
+<td class="org-left">install/</td>
+<td class="org-left">编译 lua 源代码的结果，安装当前目录</td>
 </tr>
 
+<tr>
+<td class="org-left">tool/</td>
+<td class="org-left">一些第三方辅助工具</td>
+</tr>
+
+<tr>
+<td class="org-left">draft/</td>
+<td class="org-left">本书草稿</td>
+</tr>
+
+<tr>
+<td class="org-left">book/</td>
+<td class="org-left">本书发布内容，org 格式</td>
+</tr>
+
+<tr>
+<td class="org-left">docs/</td>
+<td class="org-left">本书发布内容，html 格式</td>
+</tr>
+
+<tr>
+<td class="org-left">opcode/</td>
+<td class="org-left">关于 opcode 的测试代码</td>
+</tr>
+
+<tr>
+<td class="org-left">statement/</td>
+<td class="org-left">关于 statement 的测试代码</td>
+</tr>
+
+<tr>
+<td class="org-left">test/</td>
+<td class="org-left">关于其它功能的测试代码</td>
+</tr>
+
+<tr>
+<td class="org-left">helper.py</td>
+<td class="org-left">gdb 脚本，辅助打印数据结构</td>
+</tr>
+
+<tr>
+<td class="org-left">init.gdb</td>
+<td class="org-left">gdb 脚本，用作调试入口</td>
+</tr>
+
+<tr>
+<td class="org-left">lex.gdb</td>
+<td class="org-left">gdb 脚本，实现粗糙的词法分析器</td>
+</tr>
+
+<tr>
+<td class="org-left">publish.el</td>
+<td class="org-left">org 生成 html 的配置文件</td>
+</tr>
+
+<tr>
+<td class="org-left">Makefile</td>
+<td class="org-left">makefile，简化一些命令调用</td>
+</tr>
+
+<tr>
+<td class="org-left">readme.org</td>
+<td class="org-left">readme</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org441d007" class="outline-3">
+<h3 id="org441d007"><span class="section-number-3">2.2</span> source code</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+出于方便修改源代码进行调试的原因，将 <a href="https://www.lua.org/versions.html">lua 5.1 source code</a> 下载并保存在项目的 <code>lua-5.1.5/</code> 目录中，
+统一管理。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-diff"><span class="org-diff-header">diff -ur /home/manjaro/temp/lua-5.1.5/Makefile ../lua-5.1.5/Makefile</span>
+<span class="org-diff-header">--- </span><span class="org-diff-header"><span class="org-diff-file-header">/home/manjaro/temp/lua-5.1.5/Makefile</span></span><span class="org-diff-header">       2012-02-10 17:50:23.000000000 +0800</span>
+<span class="org-diff-header">+++ </span><span class="org-diff-header"><span class="org-diff-file-header">../lua-5.1.5/Makefile</span></span><span class="org-diff-header">       2020-09-16 16:59:20.010277348 +0800</span>
+<span class="org-diff-hunk-header">@@ -9,7 +9,7 @@</span>
+
+<span class="org-diff-context"> # Where to install. The installation starts in the src and doc directories,</span>
+<span class="org-diff-context"> # so take care if INSTALL_TOP is not an absolute path.</span>
+<span class="org-diff-indicator-removed">-</span><span class="org-diff-removed">INSTALL_TOP= /</span><span class="org-diff-removed"><span class="org-diff-refine-removed">usr</span></span><span class="org-diff-removed">/</span><span class="org-diff-removed"><span class="org-diff-refine-removed">local</span></span>
+<span class="org-diff-indicator-added">+</span><span class="org-diff-added">INSTALL_TOP= </span><span class="org-diff-added"><span class="org-diff-refine-added">$(CURDIR)</span></span><span class="org-diff-added">/</span><span class="org-diff-added"><span class="org-diff-refine-added">..</span></span><span class="org-diff-added">/</span><span class="org-diff-added"><span class="org-diff-refine-added">install</span></span>
+<span class="org-diff-context"> INSTALL_BIN= $(INSTALL_TOP)/bin</span>
+<span class="org-diff-context"> INSTALL_INC= $(INSTALL_TOP)/include</span>
+<span class="org-diff-context"> INSTALL_LIB= $(INSTALL_TOP)/lib</span>
+<span class="org-diff-header">diff -ur /home/manjaro/temp/lua-5.1.5/src/Makefile ../lua-5.1.5/src/Makefile</span>
+<span class="org-diff-header">--- </span><span class="org-diff-header"><span class="org-diff-file-header">/home/manjaro/temp/lua-5.1.5/src/Makefile</span></span><span class="org-diff-header">   2012-02-14 04:41:22.000000000 +0800</span>
+<span class="org-diff-header">+++ </span><span class="org-diff-header"><span class="org-diff-file-header">../lua-5.1.5/src/Makefile</span></span><span class="org-diff-header">   2020-11-18 14:45:06.879322946 +0800</span>
+<span class="org-diff-hunk-header">@@ -8,7 +8,7 @@</span>
+<span class="org-diff-context"> PLAT= none</span>
+
+<span class="org-diff-context"> CC= gcc</span>
+<span class="org-diff-indicator-removed">-</span><span class="org-diff-removed">CFLAGS= -O</span><span class="org-diff-removed"><span class="org-diff-refine-removed">2</span></span><span class="org-diff-removed"> -Wall $(MYCFLAGS)</span>
+<span class="org-diff-indicator-added">+</span><span class="org-diff-added">CFLAGS= -</span><span class="org-diff-added"><span class="org-diff-refine-added">m32 -ggdb3 -</span></span><span class="org-diff-added">O</span><span class="org-diff-added"><span class="org-diff-refine-added">0</span></span><span class="org-diff-added"> -Wall $(MYCFLAGS)</span>
+<span class="org-diff-context"> AR= ar rcu</span>
+<span class="org-diff-context"> RANLIB= ranlib</span>
+<span class="org-diff-context"> RM= rm -f</span>
+<span class="org-diff-hunk-header">@@ -30,7 +30,7 @@</span>
+<span class="org-diff-context">        lstrlib.o loadlib.o linit.o</span>
+
+<span class="org-diff-context"> LUA_T= lua</span>
+<span class="org-diff-indicator-removed">-</span><span class="org-diff-removed">LUA_O= lua.o</span>
+<span class="org-diff-indicator-added">+</span><span class="org-diff-added">LUA_O= lua.o </span><span class="org-diff-added"><span class="org-diff-refine-added">print.o</span></span>
+
+<span class="org-diff-context"> LUAC_T=        luac</span>
+<span class="org-diff-context"> LUAC_O=        luac.o print.o</span>
+<span class="org-diff-hunk-header">@@ -52,10 +52,10 @@</span>
+<span class="org-diff-context">        $(RANLIB) $@</span>
+
+<span class="org-diff-context"> $(LUA_T): $(LUA_O) $(LUA_A)</span>
+<span class="org-diff-indicator-removed">-</span><span class="org-diff-removed">       $(CC) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)</span>
+<span class="org-diff-indicator-added">+</span><span class="org-diff-added">       $(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)</span>
+
+<span class="org-diff-context"> $(LUAC_T): $(LUAC_O) $(LUA_A)</span>
+<span class="org-diff-indicator-removed">-</span><span class="org-diff-removed">       $(CC) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)</span>
+<span class="org-diff-indicator-added">+</span><span class="org-diff-added">       $(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)</span>
+
+<span class="org-diff-context"> clean:</span>
+        $(RM) $(ALL_T) $(ALL_O)
+</pre>
+</div>
+
+<p>
+其中对 <code>./lua-5.1.5/src/Makefile</code> 做了 5 处修改，
+</p>
+<ul class="org-ul">
+<li>将 lua 安装目录修改到本地 <code>./install/</code></li>
+<li>增加编译选项
+<ul class="org-ul">
+<li><code>-m32</code> 使用 32 位编译</li>
+<li><code>-ggdb3 -O0</code> 提供更多调试信息，可调试 <code>#define</code> 宏</li>
+</ul></li>
+<li>将 <code>print.c</code> 编译到 lua 解释器中</li>
+<li>使用新编译选项，编译 lua 解释器</li>
+<li>使用新编译选项，编译 lua 编译器</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org5d2c669" class="outline-3">
+<h3 id="org5d2c669"><span class="section-number-3">2.3</span> tool</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+在分析代码的过程中，使用了一些三方工具。
+</p>
+
+<p>
+出于方便环境配置的原因，将其拷贝放置在了 <code>tool/</code> 目录中。
+</p>
+
+<p>
+<a href="http://chunkspy.luaforge.net/">ChunkSpy</a> 是一个 lua 项目，用于分析并显示由 <code>luac</code> 编译得来的二进制 chunk 的内部结构，
+可以方便的了解编译结果，尤其是生成的字节码。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-diff"><span class="org-diff-context">&#21482;&#22312; /home/manjaro/temp/ChunkSpy-0.9.8 &#23384;&#22312;&#65306;5.0.2</span>
+<span class="org-diff-header">diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua</span>
+<span class="org-diff-header">--- </span><span class="org-diff-header"><span class="org-diff-file-header">/home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua</span></span><span class="org-diff-header">  2006-03-07 18:56:48.000000000 +0800</span>
+<span class="org-diff-header">+++ </span><span class="org-diff-header"><span class="org-diff-file-header">../tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua</span></span><span class="org-diff-header">     2020-10-30 11:55:50.229435825 +0800</span>
+<span class="org-diff-hunk-header">@@ -1631,8 +1631,8 @@</span>
+<span class="org-diff-context">     FormatLine(1, "numparams ("..func.numparams..")", pos + 1)</span>
+<span class="org-diff-context">     FormatLine(1, "is_vararg ("..func.is_vararg..")", pos + 2)</span>
+<span class="org-diff-context">     FormatLine(1, "maxstacksize ("..func.maxstacksize..")", pos + 3)</span>
+<span class="org-diff-indicator-removed">-</span><span class="org-diff-removed">    BriefLine(string.format("; %d upvalues, %d params, %d stacks",</span>
+<span class="org-diff-indicator-removed">-</span><span class="org-diff-removed">      func.nups, func.numparams, func.maxstacksize))</span>
+<span class="org-diff-indicator-added">+</span><span class="org-diff-added">    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",</span>
+<span class="org-diff-indicator-added">+</span><span class="org-diff-added">      func.nups, func.numparams, func.is_vararg, func.maxstacksize))</span>
+<span class="org-diff-context">     BriefLine(string.format(".function%s%d %d %d %d", config.DISPLAY_SEP,</span>
+       func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+</pre>
+</div>
+
+<p>
+同样的，对源代码做了些许修改
+</p>
+<ul class="org-ul">
+<li>删除不需要的 5.0.2 版本代码</li>
+<li>增加显示 <code>is_vararg</code> 字段</li>
+</ul>
+
+
+<p>
+<a href="http://ditaa.sourceforge.net/">ditaa</a> 是一个命令行工具，用于将 ascii art 图形转化为图片，用于生成大部分图解图片。
+</p>
+
+
+<p>
+<a href="https://github.com/mkottman/lua-gdb-helper">lua-gdb-helper</a> 是一个 gdb 脚本项目，用于辅助调试，打印关键数据结构。
+在进行本书编写过程中，借鉴了其中的思想，使用 gdb 提供的 python api，
+编写了 <code>helper.py</code> 来辅助显示数据结构。
+</p>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org9dc28ae" class="outline-2">
+<h2 id="org9dc28ae"><span class="section-number-2">3</span> usage</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+在分析代码的过程，经常使用一些分析过程，全部整理在 <code>Makefile</code> 中。
+</p>
+
+<p>
+在此做一些介绍，对理解代码是非常有用的。
+</p>
+</div>
+
+<div id="outline-container-orgd0dca5f" class="outline-3">
+<h3 id="orgd0dca5f"><span class="section-number-3">3.1</span> compile</h3>
+<div class="outline-text-3" id="text-3-1">
+<pre class="example" id="org1810ca0">
+$ make compile
+</pre>
+
+<p>
+在 linux 系统上，使用 gcc 编译 lua 源代码，生成
+</p>
+<ul class="org-ul">
+<li>lua 解释器 <code>./lua-5.1.5/src/lua</code></li>
+<li>lua 编译器 <code>./lua-5.1.5/src/luac</code></li>
+</ul>
+<p>
+并将相关文件安装到 <code>./install</code> 目录
+</p>
+
+<pre class="example" id="orgd928fc0">
+$ make clean
+</pre>
+
+<p>
+删除 gcc 编译生成结果
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgd5a1e3f" class="outline-3">
+<h3 id="orgd5a1e3f"><span class="section-number-3">3.2</span> run</h3>
+<div class="outline-text-3" id="text-3-2">
+<pre class="example" id="org144a378">
+$ make lua
+</pre>
+
+<p>
+交互模式，执行 lua 解释器
+</p>
+
+<pre class="example" id="orga25a5af">
+$ make run source=opcode/move.lua
+</pre>
+
+<p>
+使用 lua 解释器执行文件 <code>opcode/move.lua</code>
+</p>
+</div>
+</div>
+
+<div id="outline-container-org319d31c" class="outline-3">
+<h3 id="org319d31c"><span class="section-number-3">3.3</span> inspect</h3>
+<div class="outline-text-3" id="text-3-3">
+<pre class="example" id="org9173ded">
+$ make lex source=opcode/move.lua
+</pre>
+
+<p>
+对文件进行词法分析
+</p>
+
+<pre class="example" id="org36e5a86">
+$ make spy
+</pre>
+
+<p>
+交互模式，执行 ChunkSpy
+</p>
+
+<pre class="example" id="org01494b3">
+$ make inspect source=opcode/move.lua
+</pre>
+
+<p>
+使用 ChunkSpy 分析文件
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org49e87b1" class="outline-3">
+<h3 id="org49e87b1"><span class="section-number-3">3.4</span> debug</h3>
+<div class="outline-text-3" id="text-3-4">
+<pre class="example" id="org400fe99">
+$ make debug source=opcode/move.lua
+</pre>
+
+<p>
+开始调试文件，临时断点在 <code>function chunk()</code>
+</p>
+</div>
+</div>
+
+<div id="outline-container-org1167ba4" class="outline-3">
+<h3 id="org1167ba4"><span class="section-number-3">3.5</span> publish</h3>
+<div class="outline-text-3" id="text-3-5">
+<pre class="example" id="orgf6f122a">
+$ make publish
+</pre>
+
+<p>
+将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件
+</p>
+
+<pre class="example" id="org7e2f044">
+$ make server
+</pre>
+
+<p>
+在本地开启 <a href="http://localhost:8000">http server</a>，阅读生成的 html 文件
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orga7a2310" class="outline-2">
+<h2 id="orga7a2310"><span class="section-number-2">4</span> naming rule</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li>scan from feature to feature</li>
+</ul>
+
+<p>
+lua func rule
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">prefix</th>
+<th scope="col" class="org-left">module</th>
+<th scope="col" class="org-left">file</th>
+</tr>
+</thead>
+<tbody>
 <tr>
 <td class="org-left">luaX</td>
 <td class="org-left">lex</td>
+<td class="org-left">llex.c</td>
 </tr>
 
 <tr>
 <td class="org-left">luaK</td>
 <td class="org-left">code</td>
+<td class="org-left">lcode.c</td>
+</tr>
+
+<tr>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
 </tr>
 </tbody>
 </table>
 </div>
-
-
-<div id="outline-container-org7dc55f5" class="outline-4">
-<h4 id="org7dc55f5"><span class="section-number-4">1.1.1</span> project itself</h4>
-<div class="outline-text-4" id="text-1-1-1">
-<ul class="org-ul">
-<li>lua source itself</li>
-<li>where I modified the source code</li>
-<li>some tools to help</li>
-</ul>
-
-
-<p>
-CFLAGS -&gt; -ggdb3 -O0  (debug macros)
-</p>
-
-
-
-<p>
-makefile -m32
-</p>
-
-<p>
-chunkspy, add is<sub>vararg</sub>
-</p>
-
-<div class="org-src-container">
-<pre class="src src-diff"><span class="org-diff-indicator-added">+</span><span class="org-diff-added">    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",</span>
-+      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
-</pre>
-</div>
-</div>
 </div>
 
 
-<div id="outline-container-org866477c" class="outline-4">
-<h4 id="org866477c"><span class="section-number-4">1.1.2</span> insight</h4>
-<div class="outline-text-4" id="text-1-1-2">
+<div id="outline-container-org176137a" class="outline-2">
+<h2 id="org176137a"><span class="section-number-2">5</span> <span class="todo TODO">TODO</span> big picture</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+编译器 和 解释器 的命名来源
+</p>
 <ul class="org-ul">
-<li>gcc</li>
-<li>gdb</li>
-<li>gdb script</li>
-<li>how to step</li>
-</ul>
-
-
-<ul class="org-ul">
-<li>conf
-<ul class="org-ul">
-<li>llimits.c</li>
-<li>luaconf.c</li>
-</ul></li>
 <li>lua standalone interpreter</li>
 <li>lua compiler</li>
 </ul>
-</div>
-</div>
-</div>
 
-<div id="outline-container-org176137a" class="outline-3">
-<h3 id="org176137a"><span class="section-number-3">1.2</span> <span class="todo TODO">TODO</span> big picture</h3>
-<div class="outline-text-3" id="text-1-2">
+
 <ul class="org-ul">
 <li>from sample code to result</li>
-<li>graph whole process</li>
+<li>Graph whole process</li>
 <li>big picture of internal</li>
 </ul>
 
@@ -368,10 +692,9 @@ the final step
 </div>
 </div>
 </div>
-</div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-21 一 14:44</p>
+<p>Updated: 2020-12-21 一 17:13</p>
 <p>Created: 2020-12-21 一 10:40</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

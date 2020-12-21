@@ -7,83 +7,258 @@
    
 - 本书目标
   - source reading guide
-- 章节规划
-  - 逻辑关系的模块顺序
-  - 只讲核心部分，2 8 原则，只讲 2
-  - 图解
-    - 关键数据结构，及实现过程（从 macro 到 micro，图解是重要的连接点）
-    - 图主导，而非文档主导
-  - 对照代码片段
-  - 代码阅读任务
+
+原则
+- 二八原则，只讲重点
+- 一图胜千言，尽量使用图解
+- 关联阅读源代码
+- 阅读练习
+
+
 - 针对读者
   - lua user
   - c
   - linux
 
-** TODO how to read source
+* project
 
-- known the language before
-- favorite editor/ide
-- compile with debug info
-- scan from feature to feature
+** file structure
 
-|prefix|module|
-|:-:|:-:|
-|luaX|lex|
-|luaK|code|
+| file/dir   | desc                                |
+|------------+-------------------------------------|
+| lua-5.1.5/ | lua 源代码                          |
+| install/   | 编译 lua 源代码的结果，安装当前目录 |
+| tool/      | 一些第三方辅助工具                  |
+| draft/     | 本书草稿                            |
+| book/      | 本书发布内容，org 格式              |
+| docs/      | 本书发布内容，html 格式             |
+| opcode/    | 关于 opcode 的测试代码              |
+| statement/ | 关于 statement 的测试代码           |
+| test/      | 关于其它功能的测试代码              |
+| helper.py  | gdb 脚本，辅助打印数据结构          |
+| init.gdb   | gdb 脚本，用作调试入口              |
+| lex.gdb    | gdb 脚本，实现粗糙的词法分析器      |
+| publish.el | org 生成 html 的配置文件            |
+| Makefile   | makefile，简化一些命令调用          |
+| readme.org | readme                              |
 
+** source code
 
-*** project itself
-
-- lua source itself
-- where I modified the source code
-- some tools to help
-
-
-CFLAGS -> -ggdb3 -O0  (debug macros)
-
-
-
-makefile -m32
-
-chunkspy, add is_vararg
+出于方便修改源代码进行调试的原因，将 [[https://www.lua.org/versions.html][lua 5.1 source code]] 下载并保存在项目的 =lua-5.1.5/= 目录中，
+统一管理。
 
 #+begin_src diff
-+    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",
-+      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+diff -ur /home/manjaro/temp/lua-5.1.5/Makefile ../lua-5.1.5/Makefile
+--- /home/manjaro/temp/lua-5.1.5/Makefile	2012-02-10 17:50:23.000000000 +0800
++++ ../lua-5.1.5/Makefile	2020-09-16 16:59:20.010277348 +0800
+@@ -9,7 +9,7 @@
+ 
+ # Where to install. The installation starts in the src and doc directories,
+ # so take care if INSTALL_TOP is not an absolute path.
+-INSTALL_TOP= /usr/local
++INSTALL_TOP= $(CURDIR)/../install
+ INSTALL_BIN= $(INSTALL_TOP)/bin
+ INSTALL_INC= $(INSTALL_TOP)/include
+ INSTALL_LIB= $(INSTALL_TOP)/lib
+diff -ur /home/manjaro/temp/lua-5.1.5/src/Makefile ../lua-5.1.5/src/Makefile
+--- /home/manjaro/temp/lua-5.1.5/src/Makefile	2012-02-14 04:41:22.000000000 +0800
++++ ../lua-5.1.5/src/Makefile	2020-11-18 14:45:06.879322946 +0800
+@@ -8,7 +8,7 @@
+ PLAT= none
+ 
+ CC= gcc
+-CFLAGS= -O2 -Wall $(MYCFLAGS)
++CFLAGS= -m32 -ggdb3 -O0 -Wall $(MYCFLAGS)
+ AR= ar rcu
+ RANLIB= ranlib
+ RM= rm -f
+@@ -30,7 +30,7 @@
+ 	lstrlib.o loadlib.o linit.o
+ 
+ LUA_T=	lua
+-LUA_O=	lua.o
++LUA_O=	lua.o print.o
+ 
+ LUAC_T=	luac
+ LUAC_O=	luac.o print.o
+@@ -52,10 +52,10 @@
+ 	$(RANLIB) $@
+ 
+ $(LUA_T): $(LUA_O) $(LUA_A)
+-	$(CC) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
++	$(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
+ 
+ $(LUAC_T): $(LUAC_O) $(LUA_A)
+-	$(CC) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
++	$(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
+ 
+ clean:
+ 	$(RM) $(ALL_T) $(ALL_O)
 #+end_src
 
+其中对 =./lua-5.1.5/src/Makefile= 做了 5 处修改，
+- 将 lua 安装目录修改到本地 =./install/=
+- 增加编译选项
+  - =-m32= 使用 32 位编译
+  - =-ggdb3 -O0= 提供更多调试信息，可调试 =#define= 宏
+- 将 =print.c= 编译到 lua 解释器中
+- 使用新编译选项，编译 lua 解释器
+- 使用新编译选项，编译 lua 编译器
 
-*** insight
+** tool
 
-- gcc
-- gdb
-- gdb script
-- how to step
+在分析代码的过程中，使用了一些三方工具。
+
+出于方便环境配置的原因，将其拷贝放置在了 =tool/= 目录中。
+
+[[http://chunkspy.luaforge.net/][ChunkSpy]] 是一个 lua 项目，用于分析并显示由 =luac= 编译得来的二进制 chunk 的内部结构，
+可以方便的了解编译结果，尤其是生成的字节码。
+
+#+begin_src diff
+只在 /home/manjaro/temp/ChunkSpy-0.9.8 存在：5.0.2
+diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua
+--- /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua	2006-03-07 18:56:48.000000000 +0800
++++ ../tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua	2020-10-30 11:55:50.229435825 +0800
+@@ -1631,8 +1631,8 @@
+     FormatLine(1, "numparams ("..func.numparams..")", pos + 1)
+     FormatLine(1, "is_vararg ("..func.is_vararg..")", pos + 2)
+     FormatLine(1, "maxstacksize ("..func.maxstacksize..")", pos + 3)
+-    BriefLine(string.format("; %d upvalues, %d params, %d stacks",
+-      func.nups, func.numparams, func.maxstacksize))
++    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",
++      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+     BriefLine(string.format(".function%s%d %d %d %d", config.DISPLAY_SEP,
+       func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+#+end_src
+
+同样的，对源代码做了些许修改
+- 删除不需要的 5.0.2 版本代码
+- 增加显示 =is_vararg= 字段
 
 
-- conf
-  - llimits.c
-  - luaconf.c
+[[http://ditaa.sourceforge.net/][ditaa]] 是一个命令行工具，用于将 ascii art 图形转化为图片，用于生成大部分图解图片。
+
+
+[[https://github.com/mkottman/lua-gdb-helper][lua-gdb-helper]] 是一个 gdb 脚本项目，用于辅助调试，打印关键数据结构。
+在进行本书编写过程中，借鉴了其中的思想，使用 gdb 提供的 python api，
+编写了 =helper.py= 来辅助显示数据结构。
+
+
+** usage
+
+ 在分析代码的过程，经常使用一些分析过程，全部整理在 =Makefile= 中。
+
+ 在此做一些介绍，对理解代码是非常有用的。
+
+*** compile
+
+ #+begin_example
+ $ make compile
+ #+end_example
+
+ 在 linux 系统上，使用 gcc 编译 lua 源代码，生成
+ - lua 解释器 =./lua-5.1.5/src/lua= 
+ - lua 编译器 =./lua-5.1.5/src/luac=
+ 并将相关文件安装到 =./install= 目录
+
+ #+begin_example
+ $ make clean
+ #+end_example
+
+ 删除 gcc 编译生成结果
+
+*** run
+
+ #+begin_example
+ $ make lua
+ #+end_example
+
+ 交互模式，执行 lua 解释器
+
+ #+begin_example
+ $ make run source=opcode/move.lua
+ #+end_example
+
+ 使用 lua 解释器执行文件 =opcode/move.lua=
+
+*** inspect
+
+ #+begin_example
+ $ make lex source=opcode/move.lua
+ #+end_example
+
+ 对文件进行词法分析
+
+ #+begin_example
+ $ make spy
+ #+end_example
+
+ 交互模式，执行 ChunkSpy
+
+ #+begin_example
+ $ make inspect source=opcode/move.lua
+ #+end_example
+
+ 使用 ChunkSpy 分析文件
+
+
+*** debug
+
+ #+begin_example
+ $ make debug source=opcode/move.lua
+ #+end_example
+
+ 开始调试文件，临时断点在 =function chunk()=
+
+*** publish
+
+ #+begin_example
+ $ make publish
+ #+end_example
+
+ 将 =book/= 下 org 文件发布为 =docs/= 目录下的 html 文件
+
+ #+begin_example
+ $ make server
+ #+end_example
+
+ 在本地开启 [[http://localhost:8000][http server]]，阅读生成的 html 文件
+
+
+
+* TODO big picture
+
+** interpreter vs compiler
+
+编译器 和 解释器 的命名来源
 - lua standalone interpreter
 - lua compiler
 
-** TODO big picture
-   :LOGBOOK:
-   - Note taken on [2020-12-03 四 09:57] \\
-     lua api name convenience. lua*_ for outside, static for inside
-     every module, outside method in h file, inside method in c file
-   - Note taken on [2020-12-02 三 17:39] \\
-     talk about lua state and global state
-     state scope and graph them
-   :END:
 
 - from sample code to result
-- graph whole process
+- Graph whole process
 - big picture of internal
 
 把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
 
 the final step
+   
+     talk about lua state and global state
+     state scope and graph them
 
 
+** source file
+
+- scan from feature to feature
+
+     lua api name convenience. lua*_ for outside, static for inside
+     every module, outside method in h file, inside method in c file
+
+lua func rule
+
+| prefix | module | file    |
+|--------+--------+---------|
+| luaX   | lex    | llex.c  |
+| luaK   | code   | lcode.c |
+|        |        |         |
+  
