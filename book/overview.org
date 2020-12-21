@@ -3,10 +3,8 @@
 #+TITLE: overview
 #+DATE: <2020-12-21 一 10:40>
 
-* overview
-
-** TODO intro
-
+* goal
+   
 - 本书目标
   - source reading guide
 - 章节规划
@@ -21,6 +19,54 @@
   - lua user
   - c
   - linux
+
+** TODO how to read source
+
+- known the language before
+- favorite editor/ide
+- compile with debug info
+- scan from feature to feature
+
+|prefix|module|
+|:-:|:-:|
+|luaX|lex|
+|luaK|code|
+
+
+*** project itself
+
+- lua source itself
+- where I modified the source code
+- some tools to help
+
+
+CFLAGS -> -ggdb3 -O0  (debug macros)
+
+
+
+makefile -m32
+
+chunkspy, add is_vararg
+
+#+begin_src diff
++    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",
++      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+#+end_src
+
+
+*** insight
+
+- gcc
+- gdb
+- gdb script
+- how to step
+
+
+- conf
+  - llimits.c
+  - luaconf.c
+- lua standalone interpreter
+- lua compiler
 
 ** TODO big picture
    :LOGBOOK:
@@ -40,56 +86,4 @@
 
 the final step
 
-
-
-
-** TODO how to read source
-
-- known the language before
-- favorite editor/ide
-- compile with debug info
-- scan from feature to feature
-
-
-|prefix|module|
-|:-:|:-:|
-|luaX|lex|
-|luaK|code|
-
-
-*** project itself
-
-- lua source itself
-- where I modified the source code
-- some tool to help
-
-
-CFLAGS -> -ggdb3 -O0  (debug macros)
-
-
-
-makefile -m32
-
-chunkspy, add is_vararg
-
-#+begin_src diff
-+    BriefLine(string.format("; %d upvalues, %d params, %d is_vararg, %d stacks",
-+      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
-#+end_src
-
-
-
-*** insight
-
-- gcc
-- gdb
-- gdb script
-- how to step
-
-
-- conf
-  - llimits.c
-  - luaconf.c
-- lua standalone interpreter
-- lua compiler
 
