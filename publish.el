@@ -2,8 +2,8 @@
 
 ; https://stackoverflow.com/questions/9742836/how-do-i-format-the-postamble-in-html-export-with-org-mode
 (setq org-html-postamble "
-<p>Updated at %C</p>
-<p>Created at %d</p>
+<p>Updated: %C</p>
+<p>Created: %d</p>
 <p>Contact: %a %e</p>
 ")
 

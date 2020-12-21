@@ -19,9 +19,6 @@ run:
 	cat -n $(source)
 	./lua-5.1.5/src/lua $(source)
 
-hex:
-	xxd luac.out
-
 debug:
 	gdb -x init.gdb --args ./lua-5.1.5/src/lua $(source)
 

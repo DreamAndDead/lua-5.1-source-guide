@@ -1,4 +1,13 @@
 * lua 5.1 source guide
 
-This is a 
+这是一本关于 lua 5.1 源代码的小书。
+
+主要描述 lua 语言的内部实现，并和相应源代码关联，
+希望能帮助更多人体会探索 lua 本身的乐趣。
+
+
+另，本书尚处于 working 状态，点击 [[https://dreamanddead.github.io/lua-5.1-source-guide/index.html][Read]] 可以了解到
+本书的大纲和进度。
+
+如果有相关问题和建议，welcome issues。
 

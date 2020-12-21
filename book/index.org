@@ -6,27 +6,29 @@
 
 * outline
 
-- [[file:overview.org][overview]]
-- [[file:object.org][object]]
-- memory
-- string
-- table
-- compiler
-- lexer
-- parser
-- opcode
-- generate
-- vm
-- c api
-- lib
-- coroutine
-- debug
-- gc
-- error handling
-- userdata
+| subject        | desc | progress | link |
+|----------------+------+----------+------|
+| overview       |      |      20% | [[file:overview.org][read]] |
+| object         |      |      30% | [[file:object.org][read]] |
+| memory         |      |       0% |      |
+| string         |      |       0% |      |
+| table          |      |       0% |      |
+| compiler       |      |       0% |      |
+| lexer          |      |       0% |      |
+| opcode         |      |       0% |      |
+| generator      |      |       0% |      |
+| vm             |      |       0% |      |
+| c api          |      |       0% |      |
+| lib            |      |       0% |      |
+| coroutine      |      |       0% |      |
+| debug          |      |       0% |      |
+| gc             |      |       0% |      |
+| error handling |      |       0% |      |
+| userdata       |      |       0% |      |
 
-| subject  | desc | link |
-|----------+------+------|
-| overview |      | [[file:overview.org][read]] |
-| object   |      | [[file:object.org][read]] |
-| memory   |      |      |
+
+
+
+
+
+
