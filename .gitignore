@@ -5,9 +5,3 @@
 lua-5.1.5/src/lua
 lua-5.1.5/src/luac
 
-install/
-html/
-
-GPATH
-GTAGS
-GRTAGS
