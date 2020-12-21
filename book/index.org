@@ -8,8 +8,8 @@
 
 | subject        | desc                 | progress | link |
 |----------------+----------------------+----------+------|
-| overview       | 全书总览             |      20% | [[file:overview.org][read]] |
-| object         | 关键数据结构         |      30% | [[file:object.org][read]] |
+| overview       | 全书总览             |      50% | [[file:overview.org][read]] |
+| object         | 关键数据结构         |      20% | [[file:object.org][read]] |
 | memory         | 内存模块             |       0% |      |
 | string         | 字符串结构           |       0% |      |
 | table          | 表结构               |       0% |      |
@@ -24,7 +24,7 @@
 | debug          | debug 模块           |       0% |      |
 | gc             | gc 模块              |       0% |      |
 | error handling | 错误处理机制         |       0% |      |
-| userdata       | userdata 结构          |       0% |      |
+| userdata       | userdata 结构        |       0% |      |
 
 
 

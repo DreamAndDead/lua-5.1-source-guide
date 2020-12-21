@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-21 一 17:13 -->
+<!-- 2020-12-21 一 17:41 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>overview</title>
@@ -483,12 +483,11 @@
 </p>
 </div>
 </div>
-</div>
 
 
-<div id="outline-container-org9dc28ae" class="outline-2">
-<h2 id="org9dc28ae"><span class="section-number-2">3</span> usage</h2>
-<div class="outline-text-2" id="text-3">
+<div id="outline-container-org9dc28ae" class="outline-3">
+<h3 id="org9dc28ae"><span class="section-number-3">2.4</span> usage</h3>
+<div class="outline-text-3" id="text-2-4">
 <p>
 在分析代码的过程，经常使用一些分析过程，全部整理在 <code>Makefile</code> 中。
 </p>
@@ -498,10 +497,10 @@
 </p>
 </div>
 
-<div id="outline-container-orgd0dca5f" class="outline-3">
-<h3 id="orgd0dca5f"><span class="section-number-3">3.1</span> compile</h3>
-<div class="outline-text-3" id="text-3-1">
-<pre class="example" id="org1810ca0">
+<div id="outline-container-orgd0dca5f" class="outline-4">
+<h4 id="orgd0dca5f"><span class="section-number-4">2.4.1</span> compile</h4>
+<div class="outline-text-4" id="text-2-4-1">
+<pre class="example" id="orgd4c3fdb">
 $ make compile
 </pre>
 
@@ -516,7 +515,7 @@ $ make compile
 并将相关文件安装到 <code>./install</code> 目录
 </p>
 
-<pre class="example" id="orgd928fc0">
+<pre class="example" id="org642c1f6">
 $ make clean
 </pre>
 
@@ -526,10 +525,10 @@ $ make clean
 </div>
 </div>
 
-<div id="outline-container-orgd5a1e3f" class="outline-3">
-<h3 id="orgd5a1e3f"><span class="section-number-3">3.2</span> run</h3>
-<div class="outline-text-3" id="text-3-2">
-<pre class="example" id="org144a378">
+<div id="outline-container-orgd5a1e3f" class="outline-4">
+<h4 id="orgd5a1e3f"><span class="section-number-4">2.4.2</span> run</h4>
+<div class="outline-text-4" id="text-2-4-2">
+<pre class="example" id="org279c72e">
 $ make lua
 </pre>
 
@@ -537,7 +536,7 @@ $ make lua
 交互模式，执行 lua 解释器
 </p>
 
-<pre class="example" id="orga25a5af">
+<pre class="example" id="org16dfcb4">
 $ make run source=opcode/move.lua
 </pre>
 
@@ -547,10 +546,10 @@ $ make run source=opcode/move.lua
 </div>
 </div>
 
-<div id="outline-container-org319d31c" class="outline-3">
-<h3 id="org319d31c"><span class="section-number-3">3.3</span> inspect</h3>
-<div class="outline-text-3" id="text-3-3">
-<pre class="example" id="org9173ded">
+<div id="outline-container-org319d31c" class="outline-4">
+<h4 id="org319d31c"><span class="section-number-4">2.4.3</span> inspect</h4>
+<div class="outline-text-4" id="text-2-4-3">
+<pre class="example" id="org2a789e3">
 $ make lex source=opcode/move.lua
 </pre>
 
@@ -558,7 +557,7 @@ $ make lex source=opcode/move.lua
 对文件进行词法分析
 </p>
 
-<pre class="example" id="org36e5a86">
+<pre class="example" id="org43ad571">
 $ make spy
 </pre>
 
@@ -566,7 +565,7 @@ $ make spy
 交互模式，执行 ChunkSpy
 </p>
 
-<pre class="example" id="org01494b3">
+<pre class="example" id="org9bb4768">
 $ make inspect source=opcode/move.lua
 </pre>
 
@@ -577,10 +576,10 @@ $ make inspect source=opcode/move.lua
 </div>
 
 
-<div id="outline-container-org49e87b1" class="outline-3">
-<h3 id="org49e87b1"><span class="section-number-3">3.4</span> debug</h3>
-<div class="outline-text-3" id="text-3-4">
-<pre class="example" id="org400fe99">
+<div id="outline-container-org49e87b1" class="outline-4">
+<h4 id="org49e87b1"><span class="section-number-4">2.4.4</span> debug</h4>
+<div class="outline-text-4" id="text-2-4-4">
+<pre class="example" id="orgc6546b8">
 $ make debug source=opcode/move.lua
 </pre>
 
@@ -590,10 +589,10 @@ $ make debug source=opcode/move.lua
 </div>
 </div>
 
-<div id="outline-container-org1167ba4" class="outline-3">
-<h3 id="org1167ba4"><span class="section-number-3">3.5</span> publish</h3>
-<div class="outline-text-3" id="text-3-5">
-<pre class="example" id="orgf6f122a">
+<div id="outline-container-org1167ba4" class="outline-4">
+<h4 id="org1167ba4"><span class="section-number-4">2.4.5</span> publish</h4>
+<div class="outline-text-4" id="text-2-4-5">
+<pre class="example" id="org2db6188">
 $ make publish
 </pre>
 
@@ -601,7 +600,7 @@ $ make publish
 将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件
 </p>
 
-<pre class="example" id="org7e2f044">
+<pre class="example" id="org1828953">
 $ make server
 </pre>
 
@@ -611,90 +610,11 @@ $ make server
 </div>
 </div>
 </div>
-
-<div id="outline-container-orga7a2310" class="outline-2">
-<h2 id="orga7a2310"><span class="section-number-2">4</span> naming rule</h2>
-<div class="outline-text-2" id="text-4">
-<ul class="org-ul">
-<li>scan from feature to feature</li>
-</ul>
-
-<p>
-lua func rule
-</p>
-
-<table>
-
-
-<colgroup>
-<col  class="org-left">
-
-<col  class="org-left">
-
-<col  class="org-left">
-</colgroup>
-<thead>
-<tr>
-<th scope="col" class="org-left">prefix</th>
-<th scope="col" class="org-left">module</th>
-<th scope="col" class="org-left">file</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="org-left">luaX</td>
-<td class="org-left">lex</td>
-<td class="org-left">llex.c</td>
-</tr>
-
-<tr>
-<td class="org-left">luaK</td>
-<td class="org-left">code</td>
-<td class="org-left">lcode.c</td>
-</tr>
-
-<tr>
-<td class="org-left">&#xa0;</td>
-<td class="org-left">&#xa0;</td>
-<td class="org-left">&#xa0;</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-
-
-<div id="outline-container-org176137a" class="outline-2">
-<h2 id="org176137a"><span class="section-number-2">5</span> <span class="todo TODO">TODO</span> big picture</h2>
-<div class="outline-text-2" id="text-5">
-<p>
-编译器 和 解释器 的命名来源
-</p>
-<ul class="org-ul">
-<li>lua standalone interpreter</li>
-<li>lua compiler</li>
-</ul>
-
-
-<ul class="org-ul">
-<li>from sample code to result</li>
-<li>Graph whole process</li>
-<li>big picture of internal</li>
-</ul>
-
-<p>
-把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
-</p>
-
-<p>
-the final step
-</p>
-</div>
 </div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-21 一 17:13</p>
+<p>Updated: 2020-12-21 一 17:38</p>
 <p>Created: 2020-12-21 一 10:40</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

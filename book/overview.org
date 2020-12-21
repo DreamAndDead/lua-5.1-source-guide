@@ -225,10 +225,54 @@ diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9
  在本地开启 [[http://localhost:8000][http server]]，阅读生成的 html 文件
 
 
+* big picture                                                      :noexport:
 
-* TODO big picture
+** source file
 
-** interpreter vs compiler
+lua func rule
+
+| file       | prefix | desc |
+|------------+--------+------|
+| llex.c     | luaX   |      |
+| lcode.c    | luaK   |      |
+| lapi.c     | luaA   |      |
+| lauxlib.c  | luaL   |      |
+| lbaselib.c |        |      |
+| ldblib.c   |        |      |
+| ldebug.c   |        |      |
+| ldo.c      |        |      |
+| ldump.c    |        |      |
+| lfunc.c    |        |      |
+| lgc.c      |        |      |
+| linit.c    |        |      |
+| liolib.c   |        |      |
+| lmathlib.c |        |      |
+| lmem.c     |        |      |
+| loadlib.c  |        |      |
+| lobject.c  |        |      |
+| lopcodes.c |        |      |
+| loslib.c   |        |      |
+| lparser.c  |        |      |
+| lstate.c   |        |      |
+| lstring.c  |        |      |
+| lstrlib.c  |        |      |
+| ltable.c   |        |      |
+| ltablib.c  |        |      |
+| ltm.c      |        |      |
+| lua.c      |        |      |
+| luac.c     |        |      |
+| lundump.c  |        |      |
+| lvm.c      |        |      |
+| lzio.c     |        |      |
+| print.c    |        |      |
+
+
+scan from feature to feature
+
+lua api name convenience. lua*_ for outside, static for inside
+every module, outside method in h file, inside method in c file
+
+** execution
 
 编译器 和 解释器 的命名来源
 - lua standalone interpreter
@@ -247,18 +291,3 @@ the final step
      state scope and graph them
 
 
-** source file
-
-- scan from feature to feature
-
-     lua api name convenience. lua*_ for outside, static for inside
-     every module, outside method in h file, inside method in c file
-
-lua func rule
-
-| prefix | module | file    |
-|--------+--------+---------|
-| luaX   | lex    | llex.c  |
-| luaK   | code   | lcode.c |
-|        |        |         |
-  
