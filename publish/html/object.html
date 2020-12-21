@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2020-12-21 一 10:44 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>object</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="DreamAndDead">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="htmlize.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">object</h1>
+
+<div id="outline-container-org81eb715" class="outline-2">
+<h2 id="org81eb715"><span class="section-number-2">1</span> <span class="todo DRAFT">DRAFT</span> types &amp; values</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
+</p>
+
+<p>
+lua 中有 8 种类型的值
+</p>
+<ul class="org-ul">
+<li>nil</li>
+<li>bool</li>
+<li>number</li>
+<li>string</li>
+<li>table</li>
+<li>function</li>
+<li>userdata</li>
+<li>thread</li>
+</ul>
+
+<p>
+从某种角度而言，程序就是“数据”与“操作数据的方法”。
+所以第一步，先来了解 lua 类型与值的实现。
+</p>
+</div>
+
+<div id="outline-container-orgeaf1294" class="outline-3">
+<h3 id="orgeaf1294"><span class="section-number-3">1.1</span> <span class="todo TODO">TODO</span> review struct &amp; union</h3>
+<div class="outline-text-3" id="text-1-1">
+<ul class="org-ul">
+<li>struct memory</li>
+<li>union memory</li>
+<li>how TString alignment? where dummy is smaller than tsv</li>
+<li>struct in union, gcobject hack</li>
+<li>union in array? 如何对齐</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgcf3b264" class="outline-3">
+<h3 id="orgcf3b264"><span class="section-number-3">1.2</span> tagged value</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+一开始就提到，类型存在于值本身。
+在 lua 内部，用 TValue（tagged value）表示值的概念。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="linenr">67: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">68: </span><span class="org-comment">** Tagged Values</span>
+<span class="linenr">69: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">70: </span>
+<span class="linenr">71: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">TValuefields</span>    <span class="org-type">Value</span> <span class="org-variable-name">value</span>; <span class="org-type">int</span> <span class="org-variable-name">tt</span>
+<span class="linenr">72: </span>
+<span class="linenr">73: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">lua_TValue</span> {
+<span class="linenr">74: </span>  TValuefields;
+<span class="linenr">75: </span>} <span class="org-type">TValue</span>;
+</pre>
+</div>
+
+<p>
+tt 表示值的类型，value 表示值的数据。
+很明显，类型是值的一部分。
+</p>
+
+<p>
+fig.tvalue simple
+</p>
+</div>
+
+<div id="outline-container-org432127f" class="outline-4">
+<h4 id="org432127f"><span class="section-number-4">1.2.1</span> <span class="todo TODO">TODO</span> type</h4>
+<div class="outline-text-4" id="text-1-2-1">
+<p>
+在 TValue 中，类型用 int 数字来标识，可以找到所有基础类型的宏定义
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** basic types</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TNONE</span>               (-1)
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TNIL</span>                0
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TBOOLEAN</span>            1
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TLIGHTUSERDATA</span>      2
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TNUMBER</span>             3
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TSTRING</span>             4
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TTABLE</span>              5
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TFUNCTION</span>           6
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TUSERDATA</span>           7
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TTHREAD</span>             8
+</pre>
+</div>
+
+<p>
+完全对应lua 中的 8 种类型。
+</p>
+
+<p>
+同样地，lua 定义了相应的宏，方便类型的检测。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="linenr">78: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">Macros to test type</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">79: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisnil</span>(<span class="org-variable-name">o</span>)      (ttype(o) == LUA_TNIL)
+<span class="linenr">80: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisnumber</span>(<span class="org-variable-name">o</span>)   (ttype(o) == LUA_TNUMBER)
+<span class="linenr">81: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisstring</span>(<span class="org-variable-name">o</span>)   (ttype(o) == LUA_TSTRING)
+<span class="linenr">82: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttistable</span>(<span class="org-variable-name">o</span>)    (ttype(o) == LUA_TTABLE)
+<span class="linenr">83: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisfunction</span>(<span class="org-variable-name">o</span>) (ttype(o) == LUA_TFUNCTION)
+<span class="linenr">84: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisboolean</span>(<span class="org-variable-name">o</span>)  (ttype(o) == LUA_TBOOLEAN)
+<span class="linenr">85: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisuserdata</span>(<span class="org-variable-name">o</span>) (ttype(o) == LUA_TUSERDATA)
+<span class="linenr">86: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisthread</span>(<span class="org-variable-name">o</span>)   (ttype(o) == LUA_TTHREAD)
+<span class="linenr">87: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttislightuserdata</span>(<span class="org-variable-name">o</span>)    (ttype(o) == LUA_TLIGHTUSERDATA)
+<span class="linenr">88: </span>
+<span class="linenr">89: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">Macros to access values</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">90: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttype</span>(<span class="org-variable-name">o</span>)        ((o)-&gt;tt)
+</pre>
+</div>
+
+<p>
+细心如你，一定发现多了一种 lightuserdata 类型。
+userdata 类型有 light 和 non-light 两种类型定义，这一点先不做细致的解释，
+先带着问题前进，之后再解释为什么。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org7fb10f4" class="outline-4">
+<h4 id="org7fb10f4"><span class="section-number-4">1.2.2</span> data</h4>
+<div class="outline-text-4" id="text-1-2-2">
+<p>
+至于值的数据，TValue 用一个 union 结构来表示，有效利用内存空间。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Union of all Lua values</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-keyword">typedef</span> <span class="org-keyword">union</span> {
+  <span class="org-type">GCObject</span> *<span class="org-variable-name">gc</span>;
+  <span class="org-type">void</span> *<span class="org-variable-name">p</span>;
+  <span class="org-type">lua_Number</span> <span class="org-variable-name">n</span>;
+  <span class="org-type">int</span> <span class="org-variable-name">b</span>;
+} <span class="org-type">Value</span>;
+</pre>
+</div>
+
+<p>
+不同类型的数据使用不同的键值来存取。
+</p>
+
+<p>
+fig.value
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc6f29f8" class="outline-3">
+<h3 id="orgc6f29f8"><span class="section-number-3">1.3</span> detail</h3>
+<div class="outline-text-3" id="text-1-3">
+</div>
+<div id="outline-container-orga8ea4ee" class="outline-4">
+<h4 id="orga8ea4ee"><span class="section-number-4">1.3.1</span> nil</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<p>
+nil 是最简单的值，表示没有值。由于不需要数据，只需用 tt 表示类型即可。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-preprocessor">#define</span> <span class="org-variable-name">luaO_nilobject</span>          (&amp;luaO_nilobject_)
+
+<span class="org-type">LUAI_DATA</span> <span class="org-keyword">const</span> <span class="org-variable-name">TValue</span> luaO_nilobject_;
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-keyword">const</span> <span class="org-type">TValue</span> <span class="org-variable-name">luaO_nilobject_</span> = {{<span class="org-constant">NULL</span>}, LUA_TNIL};
+</pre>
+</div>
+
+<p>
+重要的是，nil 是一个单例值，所有使用 nil 的地方，都通过 <code>luaO_nilobject</code> 来引用。
+</p>
+
+<p>
+fig.nil
+</p>
+</div>
+</div>
+
+<div id="outline-container-org13d5e53" class="outline-4">
+<h4 id="org13d5e53"><span class="section-number-4">1.3.2</span> bool</h4>
+<div class="outline-text-4" id="text-1-3-2">
+<p>
+lua 中的 bool 值是 true 和 false。
+</p>
+
+<p>
+在 tt 记录类型之后，用 int b = 1/0 表示 true/false。
+</p>
+
+<p>
+fig.bool
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge4054cb" class="outline-4">
+<h4 id="orge4054cb"><span class="section-number-4">1.3.3</span> <span class="todo TODO">TODO</span> light userdata</h4>
+<div class="outline-text-4" id="text-1-3-3">
+<p>
+light userdata 表示 c 和 lua 协同的时候，由 c 语言一方传入的数据。
+</p>
+
+<p>
+相应的，lua 内部只负责引用，而不负责其生命周期管理，什么时候释放，lua 并不清楚，也不过问。
+</p>
+
+<p>
+所以只用 void * p 引用即可
+</p>
+
+<p>
+fig.light userdata
+</p>
+</div>
+</div>
+
+<div id="outline-container-org6a0c976" class="outline-4">
+<h4 id="org6a0c976"><span class="section-number-4">1.3.4</span> number</h4>
+<div class="outline-text-4" id="text-1-3-4">
+<p>
+默认设定下，lua 中所有数字都用 double 来表示。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** {==================================================================</span>
+<span class="org-comment">@@ LUA_NUMBER is the type of numbers in Lua.</span>
+<span class="org-comment">** CHANGE the following definitions only if you want to build Lua</span>
+<span class="org-comment">** with a number type different from double. You may also need to</span>
+<span class="org-comment">** change lua_number2int &amp; lua_number2integer.</span>
+<span class="org-comment">** ===================================================================</span>
+<span class="org-comment-delimiter">*/</span>
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_NUMBER_DOUBLE</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_NUMBER</span>      <span class="org-type">double</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/* </span><span class="org-comment">type of numbers in Lua</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">typedef</span> <span class="org-type">LUA_NUMBER</span> <span class="org-type">lua_Number</span>;
+</pre>
+</div>
+
+<p>
+相应地，tt 表示数字，用 lua<sub>Number</sub> n 来存取数字内容
+</p>
+
+<p>
+fig.number
+</p>
+</div>
+</div>
+
+<div id="outline-container-org96b23c5" class="outline-4">
+<h4 id="org96b23c5"><span class="section-number-4">1.3.5</span> collectable</h4>
+<div class="outline-text-4" id="text-1-3-5">
+<p>
+上面的数据表示都相对简单，其余类型的数据就相对复杂一些。
+但是有一点是共通的，它们都属于可 gc 的对象。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-preprocessor">#define</span> <span class="org-function-name">iscollectable</span>(<span class="org-variable-name">o</span>)        (ttype(o) &gt;= LUA_TSTRING)
+</pre>
+</div>
+
+<p>
+lua 内建了 gc 机制，其中关键的结构是 <code>GCObject</code> 。
+其本身是 union 结构，内部键值表明了可存取其它类型的数据。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Union of all collectable objects</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-keyword">union</span> <span class="org-type">GCObject</span> {
+  <span class="org-type">GCheader</span> <span class="org-variable-name">gch</span>;
+  <span class="org-keyword">union</span> <span class="org-type">TString</span> <span class="org-variable-name">ts</span>;
+  <span class="org-keyword">union</span> <span class="org-type">Udata</span> <span class="org-variable-name">u</span>;
+  <span class="org-keyword">union</span> <span class="org-type">Closure</span> <span class="org-variable-name">cl</span>;
+  <span class="org-keyword">struct</span> <span class="org-type">Table</span> <span class="org-variable-name">h</span>;
+  <span class="org-keyword">struct</span> <span class="org-type">Proto</span> <span class="org-variable-name">p</span>;
+  <span class="org-keyword">struct</span> <span class="org-type">UpVal</span> <span class="org-variable-name">uv</span>;
+  <span class="org-keyword">struct</span> <span class="org-type">lua_State</span> <span class="org-variable-name">th</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">thread</span><span class="org-comment-delimiter"> */</span>
+};
+</pre>
+</div>
+
+<p>
+所有这些数据都有一个共同点，它们都是 struct，且头部的字段都是 CommonHeader。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Common Header for all collectable objects (in macro form, to be</span>
+<span class="org-comment">** included in other objects)</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">CommonHeader</span>    <span class="org-type">GCObject</span> *<span class="org-variable-name">next</span>; <span class="org-type">lu_byte</span> <span class="org-variable-name">tt</span>; <span class="org-type">lu_byte</span> <span class="org-variable-name">marked</span>
+
+
+<span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Common header in struct form</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">GCheader</span> {
+  CommonHeader;
+} <span class="org-type">GCheader</span>;
+</pre>
+</div>
+
+<p>
+其中 tt 和 TValue 中的 tt 是相同的。
+</p>
+
+<p>
+这样就可以利用内存结构的特性，引用 GCHeader gch 来读取 tt，再根据 tt 来引用不同的键值。
+</p>
+
+<p>
+fig.gcobject
+</p>
+
+<p>
+这一点在取数据的宏定义中可以清晰的看到
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/* </span><span class="org-comment">macros to convert a GCObject into a specific value</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-function-name">rawgco2ts</span>(<span class="org-variable-name">o</span>)    check_exp((o)-&gt;gch.tt == LUA_TSTRING, &amp;((o)-&gt;ts))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">gco2ts</span>(<span class="org-variable-name">o</span>)       (&amp;rawgco2ts(o)-&gt;tsv)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">rawgco2u</span>(<span class="org-variable-name">o</span>)     check_exp((o)-&gt;gch.tt == LUA_TUSERDATA, &amp;((o)-&gt;u))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">gco2u</span>(<span class="org-variable-name">o</span>)        (&amp;rawgco2u(o)-&gt;uv)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">gco2cl</span>(<span class="org-variable-name">o</span>)       check_exp((o)-&gt;gch.tt == LUA_TFUNCTION, &amp;((o)-&gt;cl))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">gco2h</span>(<span class="org-variable-name">o</span>)        check_exp((o)-&gt;gch.tt == LUA_TTABLE, &amp;((o)-&gt;h))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">gco2p</span>(<span class="org-variable-name">o</span>)        check_exp((o)-&gt;gch.tt == LUA_TPROTO, &amp;((o)-&gt;p))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">gco2uv</span>(<span class="org-variable-name">o</span>)       check_exp((o)-&gt;gch.tt == LUA_TUPVAL, &amp;((o)-&gt;uv))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">ngcotouv</span>(<span class="org-variable-name">o</span>) \
+        check_exp((o) == <span class="org-constant">NULL</span> || (o)-&gt;gch.tt == LUA_TUPVAL, &amp;((o)-&gt;uv))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">gco2th</span>(<span class="org-variable-name">o</span>)       check_exp((o)-&gt;gch.tt == LUA_TTHREAD, &amp;((o)-&gt;th))
+</pre>
+</div>
+
+<p>
+至于剩下的类型，
+</p>
+<ul class="org-ul">
+<li>string</li>
+<li>table</li>
+<li>function</li>
+<li>userdata</li>
+<li>thread</li>
+</ul>
+
+<p>
+其数据管理在后续，单独分拆为独立章节来讲解。这里先略过不表。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgf4ac917" class="outline-4">
+<h4 id="orgf4ac917"><span class="section-number-4">1.3.6</span> <span class="todo TODO">TODO</span> internal</h4>
+<div class="outline-text-4" id="text-1-3-6">
+<p>
+细心如你，一定又发现了，GCObject 中除了 gch，有 7 个键值，而不是 5 个。
+</p>
+
+<p>
+事实上，在 thread 之后，新定义了 3 个类型，
+</p>
+<ul class="org-ul">
+<li>proto</li>
+<li>upval</li>
+<li>deadkey</li>
+</ul>
+
+<p>
+用于内部实现使用
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/* </span><span class="org-comment">tags for values visible from Lua</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LAST_TAG</span>        LUA_TTHREAD
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">NUM_TAGS</span>        (LAST_TAG+1)
+
+
+<span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Extra tags for non-values</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TPROTO</span>      (LAST_TAG+1)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TUPVAL</span>      (LAST_TAG+2)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TDEADKEY</span>    (LAST_TAG+3)
+</pre>
+</div>
+
+<p>
+proto 和 upval 就对应 GCObject 中多出的 2 个键值。
+至于 deadkey，后续再说（现在还不清楚）。
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgede1483" class="outline-3">
+<h3 id="orgede1483"><span class="section-number-3">1.4</span> <span class="todo TODO">TODO</span> practice</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+根据不同类型，从 TValue 中取数据的宏
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-preprocessor">#define</span> <span class="org-function-name">gcvalue</span>(<span class="org-variable-name">o</span>)      check_exp(iscollectable(o), (o)-&gt;value.gc)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">pvalue</span>(<span class="org-variable-name">o</span>)       check_exp(ttislightuserdata(o), (o)-&gt;value.p)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">nvalue</span>(<span class="org-variable-name">o</span>)       check_exp(ttisnumber(o), (o)-&gt;value.n)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">rawtsvalue</span>(<span class="org-variable-name">o</span>)   check_exp(ttisstring(o), &amp;(o)-&gt;value.gc-&gt;ts)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">tsvalue</span>(<span class="org-variable-name">o</span>)      (&amp;rawtsvalue(o)-&gt;tsv)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">rawuvalue</span>(<span class="org-variable-name">o</span>)    check_exp(ttisuserdata(o), &amp;(o)-&gt;value.gc-&gt;u)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">uvalue</span>(<span class="org-variable-name">o</span>)       (&amp;rawuvalue(o)-&gt;uv)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">clvalue</span>(<span class="org-variable-name">o</span>)      check_exp(ttisfunction(o), &amp;(o)-&gt;value.gc-&gt;cl)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">hvalue</span>(<span class="org-variable-name">o</span>)       check_exp(ttistable(o), &amp;(o)-&gt;value.gc-&gt;h)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">bvalue</span>(<span class="org-variable-name">o</span>)       check_exp(ttisboolean(o), (o)-&gt;value.b)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">thvalue</span>(<span class="org-variable-name">o</span>)      check_exp(ttisthread(o), &amp;(o)-&gt;value.gc-&gt;th)
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+Your postamble here
+</div>
+</body>
+</html>

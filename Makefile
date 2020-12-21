@@ -32,4 +32,7 @@ lex:
 publish:
 	emacs -u "$(id -un)" --batch --eval '(load user-init-file)' --load publish.el --funcall org-publish-all
 
-.PHONY:	test
+server:
+	python -m http.server -d publish/html 8000
+
+.PHONY:	test publish

@@ -1,5 +1,8 @@
 #+SETUPFILE: setup.org
 
+#+TITLE: object
+#+DATE: <2020-12-21 一 10:40>
+
 * DRAFT types & values
 
 lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。

@@ -1,0 +1,32 @@
+#+SETUPFILE: setup.org
+
+#+TITLE: lua 5.1 source guide
+#+DESCRIPTION: A little guide book about how to read lua 5.1 source code
+#+DATE: <2020-12-21 一 09:35>
+
+* outline
+
+- [[file:overview.org][overview]]
+- [[file:object.org][object]]
+- memory
+- string
+- table
+- compiler
+- lexer
+- parser
+- opcode
+- generate
+- vm
+- c api
+- lib
+- coroutine
+- debug
+- gc
+- error handling
+- userdata
+
+| subject  | desc | link |
+|----------+------+------|
+| overview |      | [[file:overview.org][read]] |
+| object   |      | [[file:object.org][read]] |
+| memory   |      |      |

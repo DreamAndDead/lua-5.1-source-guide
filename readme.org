@@ -1,20 +1,4 @@
-* lua source reading guide
+* lua 5.1 source guide
 
-** plan
+This is a 
 
-toc
-
-** env
-
-- os
-- make
-- gen book
-  - html
-  - pdf
-
-** export
-
-[[https://orgmode.org/worg/org-tutorials/org-publish-html-tutorial.html][org publish tutorial]]
-
-
-[[https://opensource.com/article/20/3/blog-emacs][blog with org mode]]   

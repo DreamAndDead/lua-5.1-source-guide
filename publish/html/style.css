@@ -1,0 +1,12 @@
+/*
+ * org export html style
+ */
+
+div#content, div#postamble {
+    width: 40%;
+    margin: 0 auto;
+}
+
+a {
+    text-decoration: underline;
+}

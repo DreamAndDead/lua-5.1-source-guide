@@ -1,4 +1,8 @@
+#+AUTHOR: DreamAndDead
+#+EMAIL: dreamanddead@foxmail.com
+
 #+STARTUP: logdrawer inlineimages
+#+OPTIONS: toc:nil
 
 #+TODO: TODO(t) DRAFT(d) | DONE(o)
 
