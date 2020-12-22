@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-22 二 11:40 -->
+<!-- 2020-12-22 二 12:00 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>overview</title>
@@ -223,32 +223,47 @@
 <div id="outline-container-org124efe0" class="outline-2">
 <h2 id="org124efe0"><span class="section-number-2">1</span> goal</h2>
 <div class="outline-text-2" id="text-1">
+<p>
+这是一本关于 lua 5.1 源代码的小书。
+主要探索 lua 源代码，从中研究 lua 语言的内部实现。
+</p>
+
+<p>
+起因是出于好奇和乐趣，同时希望对其它 source reader 有所启发。
+</p>
+
+
+<p>
+lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚还是要花费不少篇幅。
+而且我也不自信自己的文字能力能将其含义描述清楚。
+</p>
+
+<p>
+所以在本书中，
+</p>
 <ul class="org-ul">
-<li>本书目标
+<li>根据 2/8 原则，关注重点部分</li>
+<li>一图胜千言，尽量使用图解</li>
+<li>其余相关源代码，作为读者的练习</li>
+</ul>
+
+
+<p>
+每一本书都有适合的读者，本书也是如此。
+</p>
+
+<p>
+希望读者你
+</p>
 <ul class="org-ul">
-<li>source reading guide</li>
-</ul></li>
+<li>使用过 lua 语言，了解 lua</li>
+<li>了解 Linux 基础使用</li>
+<li>熟悉 C 语言</li>
 </ul>
 
 <p>
-原则
+因为本书就是建立在相应的前提下书写的。
 </p>
-<ul class="org-ul">
-<li>二八原则，只讲重点</li>
-<li>一图胜千言，尽量使用图解</li>
-<li>关联阅读源代码</li>
-<li>阅读练习</li>
-</ul>
-
-
-<ul class="org-ul">
-<li>针对读者
-<ul class="org-ul">
-<li>lua user</li>
-<li>c</li>
-<li>linux</li>
-</ul></li>
-</ul>
 </div>
 </div>
 
@@ -506,7 +521,7 @@
 <div id="outline-container-orgd0dca5f" class="outline-4">
 <h4 id="orgd0dca5f"><span class="section-number-4">2.4.1</span> compile</h4>
 <div class="outline-text-4" id="text-2-4-1">
-<pre class="example" id="orga8190ee">
+<pre class="example" id="org363f4d8">
 $ make compile
 </pre>
 
@@ -521,7 +536,7 @@ $ make compile
 并将相关文件安装到 <code>./install</code> 目录
 </p>
 
-<pre class="example" id="org094a778">
+<pre class="example" id="orgc537bc4">
 $ make clean
 </pre>
 
@@ -534,7 +549,7 @@ $ make clean
 <div id="outline-container-orgd5a1e3f" class="outline-4">
 <h4 id="orgd5a1e3f"><span class="section-number-4">2.4.2</span> run</h4>
 <div class="outline-text-4" id="text-2-4-2">
-<pre class="example" id="org7353ef8">
+<pre class="example" id="orgb7e0102">
 $ make lua
 </pre>
 
@@ -542,7 +557,7 @@ $ make lua
 交互模式，执行 lua 解释器
 </p>
 
-<pre class="example" id="orgca02793">
+<pre class="example" id="org4aaf641">
 $ make run source=opcode/move.lua
 </pre>
 
@@ -555,7 +570,7 @@ $ make run source=opcode/move.lua
 <div id="outline-container-org319d31c" class="outline-4">
 <h4 id="org319d31c"><span class="section-number-4">2.4.3</span> inspect</h4>
 <div class="outline-text-4" id="text-2-4-3">
-<pre class="example" id="orgf7b1648">
+<pre class="example" id="org9cc6d85">
 $ make lex source=opcode/move.lua
 </pre>
 
@@ -563,7 +578,7 @@ $ make lex source=opcode/move.lua
 对文件进行词法分析
 </p>
 
-<pre class="example" id="orgf022cb2">
+<pre class="example" id="org896981a">
 $ make spy
 </pre>
 
@@ -571,7 +586,7 @@ $ make spy
 交互模式，执行 ChunkSpy
 </p>
 
-<pre class="example" id="org63a5c83">
+<pre class="example" id="org46f8cdb">
 $ make inspect source=opcode/move.lua
 </pre>
 
@@ -585,7 +600,7 @@ $ make inspect source=opcode/move.lua
 <div id="outline-container-org49e87b1" class="outline-4">
 <h4 id="org49e87b1"><span class="section-number-4">2.4.4</span> debug</h4>
 <div class="outline-text-4" id="text-2-4-4">
-<pre class="example" id="orgc3f7a8c">
+<pre class="example" id="org76f08df">
 $ make debug source=opcode/move.lua
 </pre>
 
@@ -598,7 +613,7 @@ $ make debug source=opcode/move.lua
 <div id="outline-container-org1167ba4" class="outline-4">
 <h4 id="org1167ba4"><span class="section-number-4">2.4.5</span> publish</h4>
 <div class="outline-text-4" id="text-2-4-5">
-<pre class="example" id="org60eac42">
+<pre class="example" id="org5954945">
 $ make publish
 </pre>
 
@@ -606,7 +621,7 @@ $ make publish
 将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件
 </p>
 
-<pre class="example" id="org668a8ff">
+<pre class="example" id="org5c8545d">
 $ make server
 </pre>
 
@@ -1027,7 +1042,7 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-22 二 11:40</p>
+<p>Updated: 2020-12-22 二 11:59</p>
 <p>Created: 2020-12-21 一 10:40</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
