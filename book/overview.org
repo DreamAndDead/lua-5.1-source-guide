@@ -96,8 +96,10 @@ diff -ur /home/manjaro/temp/lua-5.1.5/src/Makefile ../lua-5.1.5/src/Makefile
  	$(RM) $(ALL_T) $(ALL_O)
 #+end_src
 
-其中对 =./lua-5.1.5/src/Makefile= 做了 5 处修改，
+其中对 =./lua-5.1.5/Makefile= 做了 1 处修改，
 - 将 lua 安装目录修改到本地 =./install/=
+
+其中对 =./lua-5.1.5/src/Makefile= 做了 4 处修改，
 - 增加编译选项
   - =-m32= 使用 32 位编译
   - =-ggdb3 -O0= 提供更多调试信息，可调试 =#define= 宏
@@ -225,69 +227,110 @@ diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9
  在本地开启 [[http://localhost:8000][http server]]，阅读生成的 html 文件
 
 
-* big picture                                                      :noexport:
+* big picture
 
 ** source file
 
-lua func rule
+在阅读源代码之前，先对相关代码文件有一个总体感觉。
 
-| file       | prefix | desc |
-|------------+--------+------|
-| llex.c     | luaX   |      |
-| lcode.c    | luaK   |      |
-| lapi.c     | luaA   |      |
-| lauxlib.c  | luaL   |      |
-| lbaselib.c |        |      |
-| ldblib.c   |        |      |
-| ldebug.c   |        |      |
-| ldo.c      |        |      |
-| ldump.c    |        |      |
-| lfunc.c    |        |      |
-| lgc.c      |        |      |
-| linit.c    |        |      |
-| liolib.c   |        |      |
-| lmathlib.c |        |      |
-| lmem.c     |        |      |
-| loadlib.c  |        |      |
-| lobject.c  |        |      |
-| lopcodes.c |        |      |
-| loslib.c   |        |      |
-| lparser.c  |        |      |
-| lstate.c   |        |      |
-| lstring.c  |        |      |
-| lstrlib.c  |        |      |
-| ltable.c   |        |      |
-| ltablib.c  |        |      |
-| ltm.c      |        |      |
-| lua.c      |        |      |
-| luac.c     |        |      |
-| lundump.c  |        |      |
-| lvm.c      |        |      |
-| lzio.c     |        |      |
-| print.c    |        |      |
+lua 源代码的核心文件都在 =./lua-5.1.5/src/= 目录，
+按照本书目录的顺序，将相关文件列示如下。
 
+| file       | prefix | desc                                                |
+|------------+--------+-----------------------------------------------------|
+| Makefile   |        | makefile                                            |
+|------------+--------+-----------------------------------------------------|
+| llimits.h  |        | 部分常量与类型定义                                  |
+| luaconf.h  |        | lua 核心配置文件，提供部分功能定制                  |
+| lua.h      |        | 主要头文件，提供对外的接口                          |
+| lua.c      |        | lua 解释器                                          |
+| luac.c     |        | lua 编译器                                          |
+| print.c    |        | 提供打印 chunk 的方法，用于 =luac -l=               |
+|------------+--------+-----------------------------------------------------|
+| lobject.h  | luaO   | 定义基础数据类型，及相关宏操作                      |
+| lobject.c  | luaO   | -                                                   |
+| lmem.h     | luaM   | mem 功能                                            |
+| lmem.c     | luaM   | -                                                   |
+| lstring.h  | luaS   | string 功能                                         |
+| lstring.c  | luaS   | -                                                   |
+| ltable.h   | luaH   | table 功能                                          |
+| ltable.c   | luaH   | -                                                   |
+| ltm.h      | luaT   | metatable(tag method) 功能                          |
+| ltm.c      | luaT   | -                                                   |
+|------------+--------+-----------------------------------------------------|
+| lzio.h     | luaZ   | buffer & stream 功能                                |
+| lzio.c     | luaZ   | -                                                   |
+| llex.h     | luaX   | lexer 功能                                          |
+| llex.c     | luaX   | -                                                   |
+| lparser.h  | luaY   | parser 功能                                         |
+| lparser.c  | luaY   | -                                                   |
+| lopcodes.h | luaP   | opcode 定义及相关宏操作                             |
+| lopcodes.c | luaP   | -                                                   |
+| lcode.h    | luaK   | code 模块，用于生成 opcode                          |
+| lcode.c    | luaK   | -                                                   |
+| lfunc.h    | luaF   | Proto, Closure, Upval 相关的基础操作                |
+| lfunc.c    | luaF   | -                                                   |
+| ldo.h      | luaD   | 调用 Lua/C Closure                                  |
+| ldo.c      | luaD   | -                                                   |
+| lstate.h   | luaE   | lua_State, global_State 相关定义与操作              |
+| lstate.c   | luaE   | -                                                   |
+| lvm.h      | luaV   | vm 功能                                             |
+| lvm.c      | luaV   | -                                                   |
+|------------+--------+-----------------------------------------------------|
+| lapi.h     | luaA   | api 功能，提供对外 api 接口的实现                   |
+| lapi.c     | luaA   | -                                                   |
+|------------+--------+-----------------------------------------------------|
+| lauxlib.h  | luaL   | 为 lua lib 提供基础方法                             |
+| lauxlib.c  | luaL   | -                                                   |
+| lualib.h   |        | 定义 lua std lib 的注册接口                         |
+| linit.c    | luaL   | 实现注册所有 std lib 方法                           |
+| lbaselib.c | luaB   | base lib，实现 print, next, etc 及 coroutine.* 接口 |
+| loadlib.c  |        | package lib，实现 require, moduel 及 package.* 接口 |
+| ltablib.c  |        | table lib，实现 table.* 接口                        |
+| liolib.c   |        | io lib，实现 io.* 接口                              |
+| loslib.c   |        | os lib，实现 os.* 接口                              |
+| lstrlib.c  |        | string lib，实现 string.* 接口                      |
+| lmathlib.c |        | math lib，实现 math.* 接口                          |
+| ldblib.c   |        | debug lib，实现 debug.* 接口                        |
+|------------+--------+-----------------------------------------------------|
+| ldebug.h   | luaG   | debug 功能，用于自省                                |
+| ldebug.c   | luaG   | -                                                   |
+| lgc.h      | luaC   | gc 功能                                             |
+| lgc.c      | luaC   | -                                                   |
+| lundump.h  | luaU   | dump/undump 功能，chunk 的保存与加载                |
+| lundump.c  | luaU   | -                                                   |
+| ldump.c    | luaU   | -                                                   |
 
-scan from feature to feature
+大部分模块，都有对应的 =.h .c= 文件，
+大致来看， =.h= 定义数据结构，宏操作，及函数接口， =.c= 实现函数接口。
+两者协同提供一个模块功能，所以相关的文件描述用 =-= 来代替了。
 
-lua api name convenience. lua*_ for outside, static for inside
-every module, outside method in h file, inside method in c file
+模块 =.h= 文件中定义的函数接口，是可以被其它模块引用的。
+lua 内部使用了一种命名约定，不同模块的函数接口用不同的前缀来标识，
+在上表中的 prefix 列已经列示。
 
-** execution
+当然，上面的规则不是绝对的，存在部分例外，在阅读时不必严格拘束于此。
+
+** execution                                                       :noexport:
+   :LOGBOOK:
+   - Note taken on [2020-12-22 二 09:37] \\
+     总体 执行过程 图解
+   :END:
+
+把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
+
 
 编译器 和 解释器 的命名来源
 - lua standalone interpreter
 - lua compiler
 
 
-- from sample code to result
 - Graph whole process
 - big picture of internal
+- from sample code to result
+- talk about lua state and global state, state scope
 
-把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
+* practice
 
-the final step
-   
-     talk about lua state and global state
-     state scope and graph them
-
-
+- 按照 [[*source file][source file]] 章节中提到的文件顺序，粗略浏览所有代码
+  

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-21 一 17:41 -->
+<!-- 2020-12-22 二 11:40 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>overview</title>
@@ -412,10 +412,16 @@
 </div>
 
 <p>
-其中对 <code>./lua-5.1.5/src/Makefile</code> 做了 5 处修改，
+其中对 <code>./lua-5.1.5/Makefile</code> 做了 1 处修改，
 </p>
 <ul class="org-ul">
 <li>将 lua 安装目录修改到本地 <code>./install/</code></li>
+</ul>
+
+<p>
+其中对 <code>./lua-5.1.5/src/Makefile</code> 做了 4 处修改，
+</p>
+<ul class="org-ul">
 <li>增加编译选项
 <ul class="org-ul">
 <li><code>-m32</code> 使用 32 位编译</li>
@@ -500,7 +506,7 @@
 <div id="outline-container-orgd0dca5f" class="outline-4">
 <h4 id="orgd0dca5f"><span class="section-number-4">2.4.1</span> compile</h4>
 <div class="outline-text-4" id="text-2-4-1">
-<pre class="example" id="orgd4c3fdb">
+<pre class="example" id="orga8190ee">
 $ make compile
 </pre>
 
@@ -515,7 +521,7 @@ $ make compile
 并将相关文件安装到 <code>./install</code> 目录
 </p>
 
-<pre class="example" id="org642c1f6">
+<pre class="example" id="org094a778">
 $ make clean
 </pre>
 
@@ -528,7 +534,7 @@ $ make clean
 <div id="outline-container-orgd5a1e3f" class="outline-4">
 <h4 id="orgd5a1e3f"><span class="section-number-4">2.4.2</span> run</h4>
 <div class="outline-text-4" id="text-2-4-2">
-<pre class="example" id="org279c72e">
+<pre class="example" id="org7353ef8">
 $ make lua
 </pre>
 
@@ -536,7 +542,7 @@ $ make lua
 交互模式，执行 lua 解释器
 </p>
 
-<pre class="example" id="org16dfcb4">
+<pre class="example" id="orgca02793">
 $ make run source=opcode/move.lua
 </pre>
 
@@ -549,7 +555,7 @@ $ make run source=opcode/move.lua
 <div id="outline-container-org319d31c" class="outline-4">
 <h4 id="org319d31c"><span class="section-number-4">2.4.3</span> inspect</h4>
 <div class="outline-text-4" id="text-2-4-3">
-<pre class="example" id="org2a789e3">
+<pre class="example" id="orgf7b1648">
 $ make lex source=opcode/move.lua
 </pre>
 
@@ -557,7 +563,7 @@ $ make lex source=opcode/move.lua
 对文件进行词法分析
 </p>
 
-<pre class="example" id="org43ad571">
+<pre class="example" id="orgf022cb2">
 $ make spy
 </pre>
 
@@ -565,7 +571,7 @@ $ make spy
 交互模式，执行 ChunkSpy
 </p>
 
-<pre class="example" id="org9bb4768">
+<pre class="example" id="org63a5c83">
 $ make inspect source=opcode/move.lua
 </pre>
 
@@ -579,7 +585,7 @@ $ make inspect source=opcode/move.lua
 <div id="outline-container-org49e87b1" class="outline-4">
 <h4 id="org49e87b1"><span class="section-number-4">2.4.4</span> debug</h4>
 <div class="outline-text-4" id="text-2-4-4">
-<pre class="example" id="orgc6546b8">
+<pre class="example" id="orgc3f7a8c">
 $ make debug source=opcode/move.lua
 </pre>
 
@@ -592,7 +598,7 @@ $ make debug source=opcode/move.lua
 <div id="outline-container-org1167ba4" class="outline-4">
 <h4 id="org1167ba4"><span class="section-number-4">2.4.5</span> publish</h4>
 <div class="outline-text-4" id="text-2-4-5">
-<pre class="example" id="org2db6188">
+<pre class="example" id="org60eac42">
 $ make publish
 </pre>
 
@@ -600,7 +606,7 @@ $ make publish
 将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件
 </p>
 
-<pre class="example" id="org1828953">
+<pre class="example" id="org668a8ff">
 $ make server
 </pre>
 
@@ -611,10 +617,417 @@ $ make server
 </div>
 </div>
 </div>
+
+
+<div id="outline-container-org4df2cf6" class="outline-2">
+<h2 id="org4df2cf6"><span class="section-number-2">3</span> big picture</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org5b467d6" class="outline-3">
+<h3 id="org5b467d6"><span class="section-number-3">3.1</span> source file</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+在阅读源代码之前，先对相关代码文件有一个总体感觉。
+</p>
+
+<p>
+lua 源代码的核心文件都在 <code>./lua-5.1.5/src/</code> 目录，
+按照本书目录的顺序，将相关文件列示如下。
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">file</th>
+<th scope="col" class="org-left">prefix</th>
+<th scope="col" class="org-left">desc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">Makefile</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">makefile</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">llimits.h</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">部分常量与类型定义</td>
+</tr>
+
+<tr>
+<td class="org-left">luaconf.h</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">lua 核心配置文件，提供部分功能定制</td>
+</tr>
+
+<tr>
+<td class="org-left">lua.h</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">主要头文件，提供对外的接口</td>
+</tr>
+
+<tr>
+<td class="org-left">lua.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">lua 解释器</td>
+</tr>
+
+<tr>
+<td class="org-left">luac.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">lua 编译器</td>
+</tr>
+
+<tr>
+<td class="org-left">print.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">提供打印 chunk 的方法，用于 <code>luac -l</code></td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">lobject.h</td>
+<td class="org-left">luaO</td>
+<td class="org-left">定义基础数据类型，及相关宏操作</td>
+</tr>
+
+<tr>
+<td class="org-left">lobject.c</td>
+<td class="org-left">luaO</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lmem.h</td>
+<td class="org-left">luaM</td>
+<td class="org-left">mem 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">lmem.c</td>
+<td class="org-left">luaM</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lstring.h</td>
+<td class="org-left">luaS</td>
+<td class="org-left">string 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">lstring.c</td>
+<td class="org-left">luaS</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">ltable.h</td>
+<td class="org-left">luaH</td>
+<td class="org-left">table 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">ltable.c</td>
+<td class="org-left">luaH</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">ltm.h</td>
+<td class="org-left">luaT</td>
+<td class="org-left">metatable(tag method) 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">ltm.c</td>
+<td class="org-left">luaT</td>
+<td class="org-left">-</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">lzio.h</td>
+<td class="org-left">luaZ</td>
+<td class="org-left">buffer &amp; stream 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">lzio.c</td>
+<td class="org-left">luaZ</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">llex.h</td>
+<td class="org-left">luaX</td>
+<td class="org-left">lexer 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">llex.c</td>
+<td class="org-left">luaX</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lparser.h</td>
+<td class="org-left">luaY</td>
+<td class="org-left">parser 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">lparser.c</td>
+<td class="org-left">luaY</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lopcodes.h</td>
+<td class="org-left">luaP</td>
+<td class="org-left">opcode 定义及相关宏操作</td>
+</tr>
+
+<tr>
+<td class="org-left">lopcodes.c</td>
+<td class="org-left">luaP</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lcode.h</td>
+<td class="org-left">luaK</td>
+<td class="org-left">code 模块，用于生成 opcode</td>
+</tr>
+
+<tr>
+<td class="org-left">lcode.c</td>
+<td class="org-left">luaK</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lfunc.h</td>
+<td class="org-left">luaF</td>
+<td class="org-left">Proto, Closure, Upval 相关的基础操作</td>
+</tr>
+
+<tr>
+<td class="org-left">lfunc.c</td>
+<td class="org-left">luaF</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">ldo.h</td>
+<td class="org-left">luaD</td>
+<td class="org-left">调用 Lua/C Closure</td>
+</tr>
+
+<tr>
+<td class="org-left">ldo.c</td>
+<td class="org-left">luaD</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lstate.h</td>
+<td class="org-left">luaE</td>
+<td class="org-left">lua<sub>State</sub>, global<sub>State</sub> 相关定义与操作</td>
+</tr>
+
+<tr>
+<td class="org-left">lstate.c</td>
+<td class="org-left">luaE</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lvm.h</td>
+<td class="org-left">luaV</td>
+<td class="org-left">vm 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">lvm.c</td>
+<td class="org-left">luaV</td>
+<td class="org-left">-</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">lapi.h</td>
+<td class="org-left">luaA</td>
+<td class="org-left">api 功能，提供对外 api 接口的实现</td>
+</tr>
+
+<tr>
+<td class="org-left">lapi.c</td>
+<td class="org-left">luaA</td>
+<td class="org-left">-</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">lauxlib.h</td>
+<td class="org-left">luaL</td>
+<td class="org-left">为 lua lib 提供基础方法</td>
+</tr>
+
+<tr>
+<td class="org-left">lauxlib.c</td>
+<td class="org-left">luaL</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lualib.h</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">定义 lua std lib 的注册接口</td>
+</tr>
+
+<tr>
+<td class="org-left">linit.c</td>
+<td class="org-left">luaL</td>
+<td class="org-left">实现注册所有 std lib 方法</td>
+</tr>
+
+<tr>
+<td class="org-left">lbaselib.c</td>
+<td class="org-left">luaB</td>
+<td class="org-left">base lib，实现 print, next, etc 及 coroutine.* 接口</td>
+</tr>
+
+<tr>
+<td class="org-left">loadlib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">package lib，实现 require, moduel 及 package.* 接口</td>
+</tr>
+
+<tr>
+<td class="org-left">ltablib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">table lib，实现 table.* 接口</td>
+</tr>
+
+<tr>
+<td class="org-left">liolib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">io lib，实现 io.* 接口</td>
+</tr>
+
+<tr>
+<td class="org-left">loslib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">os lib，实现 os.* 接口</td>
+</tr>
+
+<tr>
+<td class="org-left">lstrlib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">string lib，实现 string.* 接口</td>
+</tr>
+
+<tr>
+<td class="org-left">lmathlib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">math lib，实现 math.* 接口</td>
+</tr>
+
+<tr>
+<td class="org-left">ldblib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">debug lib，实现 debug.* 接口</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">ldebug.h</td>
+<td class="org-left">luaG</td>
+<td class="org-left">debug 功能，用于自省</td>
+</tr>
+
+<tr>
+<td class="org-left">ldebug.c</td>
+<td class="org-left">luaG</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lgc.h</td>
+<td class="org-left">luaC</td>
+<td class="org-left">gc 功能</td>
+</tr>
+
+<tr>
+<td class="org-left">lgc.c</td>
+<td class="org-left">luaC</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">lundump.h</td>
+<td class="org-left">luaU</td>
+<td class="org-left">dump/undump 功能，chunk 的保存与加载</td>
+</tr>
+
+<tr>
+<td class="org-left">lundump.c</td>
+<td class="org-left">luaU</td>
+<td class="org-left">-</td>
+</tr>
+
+<tr>
+<td class="org-left">ldump.c</td>
+<td class="org-left">luaU</td>
+<td class="org-left">-</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+大部分模块，都有对应的 <code>.h .c</code> 文件，
+大致来看， <code>.h</code> 定义数据结构，宏操作，及函数接口， <code>.c</code> 实现函数接口。
+两者协同提供一个模块功能，所以相关的文件描述用 <code>-</code> 来代替了。
+</p>
+
+<p>
+模块 <code>.h</code> 文件中定义的函数接口，是可以被其它模块引用的。
+lua 内部使用了一种命名约定，不同模块的函数接口用不同的前缀来标识，
+在上表中的 prefix 列已经列示。
+</p>
+
+<p>
+当然，上面的规则不是绝对的，存在部分例外，在阅读时不必严格拘束于此。
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org83d33cc" class="outline-2">
+<h2 id="org83d33cc"><span class="section-number-2">4</span> practice</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li>按照 <a href="#org5b467d6">source file</a> 章节中提到的文件顺序，粗略浏览所有代码</li>
+</ul>
+</div>
+</div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-21 一 17:38</p>
+<p>Updated: 2020-12-22 二 11:40</p>
 <p>Created: 2020-12-21 一 10:40</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
