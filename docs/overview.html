@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh_cn">
 <head>
-<!-- 2020-12-22 二 12:00 -->
+<!-- 2020-12-22 二 16:11 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>overview</title>
@@ -521,7 +521,7 @@ lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚�
 <div id="outline-container-orgd0dca5f" class="outline-4">
 <h4 id="orgd0dca5f"><span class="section-number-4">2.4.1</span> compile</h4>
 <div class="outline-text-4" id="text-2-4-1">
-<pre class="example" id="org363f4d8">
+<pre class="example" id="orga387527">
 $ make compile
 </pre>
 
@@ -536,7 +536,7 @@ $ make compile
 并将相关文件安装到 <code>./install</code> 目录
 </p>
 
-<pre class="example" id="orgc537bc4">
+<pre class="example" id="org8c3fd02">
 $ make clean
 </pre>
 
@@ -549,7 +549,7 @@ $ make clean
 <div id="outline-container-orgd5a1e3f" class="outline-4">
 <h4 id="orgd5a1e3f"><span class="section-number-4">2.4.2</span> run</h4>
 <div class="outline-text-4" id="text-2-4-2">
-<pre class="example" id="orgb7e0102">
+<pre class="example" id="org7be54ff">
 $ make lua
 </pre>
 
@@ -557,7 +557,7 @@ $ make lua
 交互模式，执行 lua 解释器
 </p>
 
-<pre class="example" id="org4aaf641">
+<pre class="example" id="org53f71c8">
 $ make run source=opcode/move.lua
 </pre>
 
@@ -570,7 +570,7 @@ $ make run source=opcode/move.lua
 <div id="outline-container-org319d31c" class="outline-4">
 <h4 id="org319d31c"><span class="section-number-4">2.4.3</span> inspect</h4>
 <div class="outline-text-4" id="text-2-4-3">
-<pre class="example" id="org9cc6d85">
+<pre class="example" id="orgdaa09e9">
 $ make lex source=opcode/move.lua
 </pre>
 
@@ -578,7 +578,7 @@ $ make lex source=opcode/move.lua
 对文件进行词法分析
 </p>
 
-<pre class="example" id="org896981a">
+<pre class="example" id="org54b0276">
 $ make spy
 </pre>
 
@@ -586,7 +586,7 @@ $ make spy
 交互模式，执行 ChunkSpy
 </p>
 
-<pre class="example" id="org46f8cdb">
+<pre class="example" id="org1b931a2">
 $ make inspect source=opcode/move.lua
 </pre>
 
@@ -600,7 +600,7 @@ $ make inspect source=opcode/move.lua
 <div id="outline-container-org49e87b1" class="outline-4">
 <h4 id="org49e87b1"><span class="section-number-4">2.4.4</span> debug</h4>
 <div class="outline-text-4" id="text-2-4-4">
-<pre class="example" id="org76f08df">
+<pre class="example" id="org623a9c5">
 $ make debug source=opcode/move.lua
 </pre>
 
@@ -613,7 +613,7 @@ $ make debug source=opcode/move.lua
 <div id="outline-container-org1167ba4" class="outline-4">
 <h4 id="org1167ba4"><span class="section-number-4">2.4.5</span> publish</h4>
 <div class="outline-text-4" id="text-2-4-5">
-<pre class="example" id="org5954945">
+<pre class="example" id="orga7e1319">
 $ make publish
 </pre>
 
@@ -621,7 +621,7 @@ $ make publish
 将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件
 </p>
 
-<pre class="example" id="org5c8545d">
+<pre class="example" id="org9c0f9bb">
 $ make server
 </pre>
 
@@ -860,7 +860,7 @@ lua 源代码的核心文件都在 <code>./lua-5.1.5/src/</code> 目录，
 <tr>
 <td class="org-left">lstate.h</td>
 <td class="org-left">luaE</td>
-<td class="org-left">lua<sub>State</sub>, global<sub>State</sub> 相关定义与操作</td>
+<td class="org-left"><code>lua_State</code>, <code>global_State</code> 相关定义与操作</td>
 </tr>
 
 <tr>
@@ -1031,6 +1031,7 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 </div>
 </div>
 
+
 <div id="outline-container-org83d33cc" class="outline-2">
 <h2 id="org83d33cc"><span class="section-number-2">4</span> practice</h2>
 <div class="outline-text-2" id="text-4">
@@ -1042,7 +1043,7 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-22 二 11:59</p>
+<p>Updated: 2020-12-22 二 16:11</p>
 <p>Created: 2020-12-21 一 10:40</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

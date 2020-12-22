@@ -61,7 +61,7 @@ diff -ur /home/manjaro/temp/lua-5.1.5/Makefile ../lua-5.1.5/Makefile
 --- /home/manjaro/temp/lua-5.1.5/Makefile	2012-02-10 17:50:23.000000000 +0800
 +++ ../lua-5.1.5/Makefile	2020-09-16 16:59:20.010277348 +0800
 @@ -9,7 +9,7 @@
- 
+
  # Where to install. The installation starts in the src and doc directories,
  # so take care if INSTALL_TOP is not an absolute path.
 -INSTALL_TOP= /usr/local
@@ -74,7 +74,7 @@ diff -ur /home/manjaro/temp/lua-5.1.5/src/Makefile ../lua-5.1.5/src/Makefile
 +++ ../lua-5.1.5/src/Makefile	2020-11-18 14:45:06.879322946 +0800
 @@ -8,7 +8,7 @@
  PLAT= none
- 
+
  CC= gcc
 -CFLAGS= -O2 -Wall $(MYCFLAGS)
 +CFLAGS= -m32 -ggdb3 -O0 -Wall $(MYCFLAGS)
@@ -83,24 +83,24 @@ diff -ur /home/manjaro/temp/lua-5.1.5/src/Makefile ../lua-5.1.5/src/Makefile
  RM= rm -f
 @@ -30,7 +30,7 @@
  	lstrlib.o loadlib.o linit.o
- 
+
  LUA_T=	lua
 -LUA_O=	lua.o
 +LUA_O=	lua.o print.o
- 
+
  LUAC_T=	luac
  LUAC_O=	luac.o print.o
 @@ -52,10 +52,10 @@
  	$(RANLIB) $@
- 
+
  $(LUA_T): $(LUA_O) $(LUA_A)
 -	$(CC) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
 +	$(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
- 
+
  $(LUAC_T): $(LUAC_O) $(LUA_A)
 -	$(CC) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
 +	$(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
- 
+
  clean:
  	$(RM) $(ALL_T) $(ALL_O)
 #+end_src
@@ -168,7 +168,7 @@ diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9
  #+end_example
 
  在 linux 系统上，使用 gcc 编译 lua 源代码，生成
- - lua 解释器 =./lua-5.1.5/src/lua= 
+ - lua 解释器 =./lua-5.1.5/src/lua=
  - lua 编译器 =./lua-5.1.5/src/luac=
  并将相关文件安装到 =./install= 目录
 
@@ -281,7 +281,7 @@ lua 源代码的核心文件都在 =./lua-5.1.5/src/= 目录，
 | lfunc.c    | luaF   | -                                                   |
 | ldo.h      | luaD   | 调用 Lua/C Closure                                  |
 | ldo.c      | luaD   | -                                                   |
-| lstate.h   | luaE   | lua_State, global_State 相关定义与操作              |
+| lstate.h   | luaE   | =lua_State=, =global_State= 相关定义与操作          |
 | lstate.c   | luaE   | -                                                   |
 | lvm.h      | luaV   | vm 功能                                             |
 | lvm.c      | luaV   | -                                                   |
@@ -326,6 +326,9 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
      总体 执行过程 图解
    :END:
 
+和机器类比，比如 C 语言
+
+
 把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
 
 
@@ -333,13 +336,61 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 - lua standalone interpreter
 - lua compiler
 
+#+begin_src ditaa :file overview-execution.png
 
-- Graph whole process
++----------+             +----------+             +----------+
+|          | compile     |          |  executed   |          |
+| C code   +------------>| execuable+------------>| Machine  |
+|          |             | file     |             |          |
++----------+             +----------+             +----------+
+
+#+end_src
+
+#+RESULTS:
+[[file:overview-execution.png]]
+
+
+
+
+#+begin_src ditaa :file overview-lua.png
+
++----------+             +----------+             +----------+
+|          |  compile    |          |  executed   |          |
+| lua code +------------>|  Proto   +------------>| VM       |
+|          |             |          |             |          |
++----------+             +---+------+             +----------+
+                             |  ^
+                        dump |  | undump
+                             |  |
+                             v  |
+                         +------+---+
+                         |          |
+                         | binary   |
+                         | file     |
+                         +----------+
+
+#+end_src
+
+#+RESULTS:
+[[file:overview-lua.png]]
+
+
+a little picture
+
+
+
+
+
+** a little tour                                                   :noexport:
+
+chain all subject
+
+
 - big picture of internal
 - from sample code to result
 - talk about lua state and global state, state scope
 
+
 * practice
 
 - 按照 [[*source file][source file]] 章节中提到的文件顺序，粗略浏览所有代码
-  

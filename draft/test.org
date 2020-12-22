@@ -67,3 +67,15 @@ typedef union Closure {
 [[file:test-word.png]]
 
 
+#+PRIORITIES: header-args:latex-as-png :results raw value replace
+#+begin_src latex-as-png :file test.png :exports file
+\begin{tikzpicture}
+\draw[->] (-3,0) -- (-2,0) arc[radius=0.5cm,start angle=-180,end angle=0] (-1,0) -- (1,0) arc[radius=0.5cm,start angle=180,end angle=0] (2,0) -- (3,0);
+\filldraw (-1.5,0) circle[radius=1mm];
+\end{tikzpicture}
+#+end_src
+
+#+RESULTS:
+[[file:test.png]]
+
+
