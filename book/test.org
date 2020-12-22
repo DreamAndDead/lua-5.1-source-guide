@@ -8,8 +8,6 @@ test some org feature, such as export, etc.
    :LOGBOOK:
    - Note taken on [2020-11-24 二 14:43] \\
      new note
-   - Note taken on [2020-11-23 一 16:53] \\
-     jakfljaklfjlk
    :END:
 
 #+BEGIN_SRC emacs-lisp -n -r
@@ -57,7 +55,7 @@ typedef union Closure {
 
 一些中文内容
 
-#+begin_src ditaa :file test.png
+#+begin_src ditaa :file test-ditaa.png
   +------------------+
   |   hello          |
   +------------------+
@@ -67,15 +65,12 @@ typedef union Closure {
 [[file:test-word.png]]
 
 
-#+PRIORITIES: header-args:latex-as-png :results raw value replace
-#+begin_src latex-as-png :file test.png :exports file
+#+begin_src latex :file test-latex.png :exports file
 \begin{tikzpicture}
 \draw[->] (-3,0) -- (-2,0) arc[radius=0.5cm,start angle=-180,end angle=0] (-1,0) -- (1,0) arc[radius=0.5cm,start angle=180,end angle=0] (2,0) -- (3,0);
 \filldraw (-1.5,0) circle[radius=1mm];
 \end{tikzpicture}
 #+end_src
 
-#+RESULTS:
-[[file:test.png]]
 
 
