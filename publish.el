@@ -8,8 +8,8 @@
 ")
 
 
-					; https://emacs.stackexchange.com/questions/20731/setting-up-ditaa-in-org-mode
-(setq org-ditaa-jar-path "~/project/lua-5.1.5/tool/ditaa.jar")
+; https://emacs.stackexchange.com/questions/20731/setting-up-ditaa-in-org-mode
+(setq org-ditaa-jar-path "~/project/lua51/tool/ditaa.jar")
 
 (setq org-publish-project-alist
       '(

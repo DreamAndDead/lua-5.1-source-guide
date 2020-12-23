@@ -65,7 +65,7 @@ typedef union Closure {
 [[file:test-word.png]]
 
 
-#+begin_src asymptote :file test-asymptote.pdf
+#+begin_src asymptote :file test-asymptote.png
 import three;
 
 size(560,320,IgnoreAspect);
@@ -109,28 +109,30 @@ draw(shift(H)*s,m);
 #+end_src
 
 #+RESULTS:
-[[file:test-asymptote.pdf]]
+[[file:test-asymptote.png]]
 
+#+begin_src asymptote :file learn-asymptote.png
+draw((0,0) -- (100, 100));
+#+end_src
 
+#+RESULTS:
+[[file:learn-asymptote.png]]
 
-#+name: test_plot_png
 #+header: :exports results :file test.png 
 #+header: :imagemagick yes :iminoptions -density 600 :imoutoptions -geometry 400 
 #+header: :fit yes :noweb yes :headers '("\\usepackage{tikz}")
-#+begin_src latex :exports results :file test-latex.png 
+#+begin_src latex :exports results :file test-latex.png :results raw value replace
 \LaTeX
 #+end_src
-
-#+RESULTS: test_plot_png
-#+begin_export latex
-#+end_export
 
 #+RESULTS:
 
 
-#+PRIORITIES: header-args:latex-as-png :results raw value replace
-#+begin_src latex-as-png
-\LaTeX 中文
+#+PRIORITIES: header-args:latex-as-png :results raw value replace :exports results
+
+#+PRIORITIES: header-args:latex-as-png :results raw  :exports results
+#+begin_src latex-as-png file: test-latex.pdf
+\LaTeX
 #+end_src
 
 #+RESULTS:

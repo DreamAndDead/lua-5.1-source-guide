@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-23 三 12:12 -->
+<!-- 2020-12-23 三 20:55 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>object</title>
@@ -38,7 +38,7 @@
   }
   pre.src {
     position: relative;
-    overflow: auto;
+    overflow: visible;
     padding-top: 1.2em;
   }
   pre.src:before {
@@ -194,41 +194,61 @@
 <link rel="stylesheet" type="text/css" href="htmlize.css">
 <link rel="stylesheet" type="text/css" href="style.css">
 <script type="text/javascript">
-// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2020 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
 <!--/*--><![CDATA[/*><!--*/
-     function CodeHighlightOn(elem, id)
-     {
-       var target = document.getElementById(id);
-       if(null != target) {
-         elem.classList.add("code-highlighted");
-         target.classList.add("code-highlighted");
-       }
-     }
-     function CodeHighlightOff(elem, id)
-     {
-       var target = document.getElementById(id);
-       if(null != target) {
-         elem.classList.remove("code-highlighted");
-         target.classList.remove("code-highlighted");
-       }
-     }
-    /*]]>*///-->
-// @license-end
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
 </script>
 </head>
 <body>
 <div id="content">
 <h1 class="title">object</h1>
-
-<div id="outline-container-org81eb715" class="outline-2">
-<h2 id="org81eb715"><span class="section-number-2">1</span> types &amp; values</h2>
-<div class="outline-text-2" id="text-1">
 <p>
 lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
 </p>
 
 <p>
-lua 中有 8 种类型的值
+语言中定义了 8 种类型的值
 </p>
 <ul class="org-ul">
 <li>nil</li>
@@ -242,14 +262,19 @@ lua 中有 8 种类型的值
 </ul>
 
 <p>
-从某种角度而言，程序就是“数据”与“操作数据的方法”。
-所以第一步，先来了解 lua 类型与值的实现。
+虽然章节名称为 object，和源代码的名称相同。
+但是通常都翻译为“对象”，容易与 OOP 中的对象概念混杂在一起。
+在本章，更乐意将其译为“值”。
 </p>
-</div>
 
-<div id="outline-container-orgeaf1294" class="outline-3">
-<h3 id="orgeaf1294"><span class="section-number-3">1.1</span> <span class="todo TODO">TODO</span> review struct &amp; union</h3>
-<div class="outline-text-3" id="text-1-1">
+<p>
+从某种角度而言，程序就是“数据”与“操作数据的方法”。
+所以第一步，先来了解 lua 中的值。
+</p>
+
+<div id="outline-container-orgb3fd391" class="outline-2">
+<h2 id="orgb3fd391"><span class="section-number-2">1</span> <span class="todo TODO">TODO</span> review struct &amp; union</h2>
+<div class="outline-text-2" id="text-1">
 <ul class="org-ul">
 <li>struct memory</li>
 <li>union memory</li>
@@ -260,12 +285,12 @@ lua 中有 8 种类型的值
 </div>
 </div>
 
-<div id="outline-container-orgcf3b264" class="outline-3">
-<h3 id="orgcf3b264"><span class="section-number-3">1.2</span> tagged value</h3>
-<div class="outline-text-3" id="text-1-2">
+<div id="outline-container-org2ae68a1" class="outline-2">
+<h2 id="org2ae68a1"><span class="section-number-2">2</span> tagged value</h2>
+<div class="outline-text-2" id="text-2">
 <p>
-一开始就提到，类型存在于值本身。
-在 lua 内部，用 TValue（tagged value）表示值的概念。
+章节开始就提到，类型存在于值本身。
+在 lua 内部，用 TValue（tagged value）结构表示值的概念。
 </p>
 
 <div class="org-src-container">
@@ -283,23 +308,25 @@ lua 中有 8 种类型的值
 
 <p>
 tt 表示值的类型，value 表示值的数据。
-很明显，类型是值的一部分。
+明显地，类型是值的一部分。
 </p>
 
-<p>
-fig.tvalue simple
+
+<div class="figure">
+<p><img src="object-tvalue.png" alt="object-tvalue.png">
 </p>
 </div>
+</div>
 
-<div id="outline-container-org432127f" class="outline-4">
-<h4 id="org432127f"><span class="section-number-4">1.2.1</span> <span class="todo TODO">TODO</span> type</h4>
-<div class="outline-text-4" id="text-1-2-1">
+<div id="outline-container-org1036786" class="outline-3">
+<h3 id="org1036786"><span class="section-number-3">2.1</span> type</h3>
+<div class="outline-text-3" id="text-2-1">
 <p>
-在 TValue 中，类型用 int 数字来标识，可以找到所有基础类型的宏定义
+在 TValue 中，类型 tt 用 int 来标识，可以在代码中看到所有基础类型的宏定义
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>lua.h</label><pre class="src src-c"><span class="org-comment-delimiter">/*</span>
 <span class="org-comment">** basic types</span>
 <span class="org-comment-delimiter">*/</span>
 <span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TNONE</span>               (-1)
@@ -317,15 +344,15 @@ fig.tvalue simple
 </div>
 
 <p>
-完全对应lua 中的 8 种类型。
+完全对应 lua 中的 8 种类型。
 </p>
 
 <p>
-同样地，lua 定义了相应的宏，方便类型的检测。
+同时定义了相应的宏，方便类型的检测。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">78: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">Macros to test type</span><span class="org-comment-delimiter"> */</span>
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lobject.h</label><pre class="src src-c"><span class="linenr">78: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">Macros to test type</span><span class="org-comment-delimiter"> */</span>
 <span class="linenr">79: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisnil</span>(<span class="org-variable-name">o</span>)      (ttype(o) == LUA_TNIL)
 <span class="linenr">80: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisnumber</span>(<span class="org-variable-name">o</span>)   (ttype(o) == LUA_TNUMBER)
 <span class="linenr">81: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">ttisstring</span>(<span class="org-variable-name">o</span>)   (ttype(o) == LUA_TSTRING)
@@ -342,22 +369,22 @@ fig.tvalue simple
 </div>
 
 <p>
-细心如你，一定发现多了一种 lightuserdata 类型。
-userdata 类型有 light 和 non-light 两种类型定义，这一点先不做细致的解释，
-先带着问题前进，之后再解释为什么。
+细心如你，一定发现莫名多出一种 lightuserdata 类型。
+这是由 userdata 类型细分出来的一种类型定义，目前先不做细致的解释，
+之后到相应章节再具体分析。
 </p>
 </div>
 </div>
 
-<div id="outline-container-org7fb10f4" class="outline-4">
-<h4 id="org7fb10f4"><span class="section-number-4">1.2.2</span> data</h4>
-<div class="outline-text-4" id="text-1-2-2">
+<div id="outline-container-org4bf4399" class="outline-3">
+<h3 id="org4bf4399"><span class="section-number-3">2.2</span> value</h3>
+<div class="outline-text-3" id="text-2-2">
 <p>
-至于值的数据，TValue 用一个 union 结构来表示，有效利用内存空间。
+数据部分，TValue 用一个 union 结构来表示，有效利用内存空间。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lobject.h</label><pre class="src src-c"><span class="org-comment-delimiter">/*</span>
 <span class="org-comment">** Union of all Lua values</span>
 <span class="org-comment-delimiter">*/</span>
 <span class="org-keyword">typedef</span> <span class="org-keyword">union</span> {
@@ -373,20 +400,25 @@ userdata 类型有 light 和 non-light 两种类型定义，这一点先不做�
 不同类型的数据使用不同的键值来存取。
 </p>
 
-<p>
-fig.value
+
+<div class="figure">
+<p><img src="object-value.png" alt="object-value.png">
 </p>
 </div>
 </div>
 </div>
 
-<div id="outline-container-orgc6f29f8" class="outline-3">
-<h3 id="orgc6f29f8"><span class="section-number-3">1.3</span> detail</h3>
-<div class="outline-text-3" id="text-1-3">
+
+
+
+
+<div id="outline-container-org1387e3e" class="outline-3">
+<h3 id="org1387e3e"><span class="section-number-3">2.3</span> detail</h3>
+<div class="outline-text-3" id="text-2-3">
 </div>
-<div id="outline-container-orga8ea4ee" class="outline-4">
-<h4 id="orga8ea4ee"><span class="section-number-4">1.3.1</span> nil</h4>
-<div class="outline-text-4" id="text-1-3-1">
+<div id="outline-container-org7b4ffc0" class="outline-4">
+<h4 id="org7b4ffc0"><span class="section-number-4">2.3.1</span> nil</h4>
+<div class="outline-text-4" id="text-2-3-1">
 <p>
 nil 是最简单的值，表示没有值。由于不需要数据，只需用 tt 表示类型即可。
 </p>
@@ -413,9 +445,9 @@ fig.nil
 </div>
 </div>
 
-<div id="outline-container-org13d5e53" class="outline-4">
-<h4 id="org13d5e53"><span class="section-number-4">1.3.2</span> bool</h4>
-<div class="outline-text-4" id="text-1-3-2">
+<div id="outline-container-orgaa405bd" class="outline-4">
+<h4 id="orgaa405bd"><span class="section-number-4">2.3.2</span> bool</h4>
+<div class="outline-text-4" id="text-2-3-2">
 <p>
 lua 中的 bool 值是 true 和 false。
 </p>
@@ -430,9 +462,9 @@ fig.bool
 </div>
 </div>
 
-<div id="outline-container-orge4054cb" class="outline-4">
-<h4 id="orge4054cb"><span class="section-number-4">1.3.3</span> <span class="todo TODO">TODO</span> light userdata</h4>
-<div class="outline-text-4" id="text-1-3-3">
+<div id="outline-container-org952e640" class="outline-4">
+<h4 id="org952e640"><span class="section-number-4">2.3.3</span> <span class="todo TODO">TODO</span> light userdata</h4>
+<div class="outline-text-4" id="text-2-3-3">
 <p>
 light userdata 表示 c 和 lua 协同的时候，由 c 语言一方传入的数据。
 </p>
@@ -451,9 +483,9 @@ fig.light userdata
 </div>
 </div>
 
-<div id="outline-container-org6a0c976" class="outline-4">
-<h4 id="org6a0c976"><span class="section-number-4">1.3.4</span> number</h4>
-<div class="outline-text-4" id="text-1-3-4">
+<div id="outline-container-orgda35150" class="outline-4">
+<h4 id="orgda35150"><span class="section-number-4">2.3.4</span> number</h4>
+<div class="outline-text-4" id="text-2-3-4">
 <p>
 默认设定下，lua 中所有数字都用 double 来表示。
 </p>
@@ -489,9 +521,9 @@ fig.number
 </div>
 </div>
 
-<div id="outline-container-org96b23c5" class="outline-4">
-<h4 id="org96b23c5"><span class="section-number-4">1.3.5</span> collectable</h4>
-<div class="outline-text-4" id="text-1-3-5">
+<div id="outline-container-org3bab9c9" class="outline-4">
+<h4 id="org3bab9c9"><span class="section-number-4">2.3.5</span> collectable</h4>
+<div class="outline-text-4" id="text-2-3-5">
 <p>
 上面的数据表示都相对简单，其余类型的数据就相对复杂一些。
 但是有一点是共通的，它们都属于可 gc 的对象。
@@ -594,9 +626,9 @@ fig.gcobject
 </div>
 </div>
 
-<div id="outline-container-orgf4ac917" class="outline-4">
-<h4 id="orgf4ac917"><span class="section-number-4">1.3.6</span> <span class="todo TODO">TODO</span> internal</h4>
-<div class="outline-text-4" id="text-1-3-6">
+<div id="outline-container-orga944aae" class="outline-4">
+<h4 id="orga944aae"><span class="section-number-4">2.3.6</span> <span class="todo TODO">TODO</span> internal</h4>
+<div class="outline-text-4" id="text-2-3-6">
 <p>
 细心如你，一定又发现了，GCObject 中除了 gch，有 7 个键值，而不是 5 个。
 </p>
@@ -638,9 +670,9 @@ proto 和 upval 就对应 GCObject 中多出的 2 个键值。
 </div>
 </div>
 
-<div id="outline-container-orgede1483" class="outline-3">
-<h3 id="orgede1483"><span class="section-number-3">1.4</span> <span class="todo TODO">TODO</span> practice</h3>
-<div class="outline-text-3" id="text-1-4">
+<div id="outline-container-org1998d6a" class="outline-3">
+<h3 id="org1998d6a"><span class="section-number-3">2.4</span> <span class="todo TODO">TODO</span> practice</h3>
+<div class="outline-text-3" id="text-2-4">
 <p>
 根据不同类型，从 TValue 中取数据的宏
 </p>
@@ -665,7 +697,7 @@ proto 和 upval 就对应 GCObject 中多出的 2 个键值。
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-23 三 12:11</p>
+<p>Updated: 2020-12-23 三 20:18</p>
 <p>Created: 2020-12-23 三 11:59</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
