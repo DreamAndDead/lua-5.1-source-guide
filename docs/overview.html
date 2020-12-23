@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-23 三 11:13 -->
+<!-- 2020-12-23 三 12:01 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>overview</title>
@@ -521,7 +521,7 @@ lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚�
 <div id="outline-container-orgd0dca5f" class="outline-4">
 <h4 id="orgd0dca5f"><span class="section-number-4">2.4.1</span> compile</h4>
 <div class="outline-text-4" id="text-2-4-1">
-<pre class="example" id="org9c3ab09">
+<pre class="example" id="org018c773">
 $ make compile
 </pre>
 
@@ -536,7 +536,7 @@ $ make compile
 并将相关文件安装到 <code>./install</code> 目录
 </p>
 
-<pre class="example" id="orgab57036">
+<pre class="example" id="org3134ca6">
 $ make clean
 </pre>
 
@@ -549,7 +549,7 @@ $ make clean
 <div id="outline-container-orgd5a1e3f" class="outline-4">
 <h4 id="orgd5a1e3f"><span class="section-number-4">2.4.2</span> run</h4>
 <div class="outline-text-4" id="text-2-4-2">
-<pre class="example" id="org3e0a01a">
+<pre class="example" id="org9868c25">
 $ make lua
 </pre>
 
@@ -557,7 +557,7 @@ $ make lua
 交互模式，执行 lua 解释器
 </p>
 
-<pre class="example" id="orgdc86dca">
+<pre class="example" id="orgd864c2b">
 $ make run source=opcode/move.lua
 </pre>
 
@@ -570,7 +570,7 @@ $ make run source=opcode/move.lua
 <div id="outline-container-org319d31c" class="outline-4">
 <h4 id="org319d31c"><span class="section-number-4">2.4.3</span> inspect</h4>
 <div class="outline-text-4" id="text-2-4-3">
-<pre class="example" id="org2f3743f">
+<pre class="example" id="org64c0a18">
 $ make lex source=opcode/move.lua
 </pre>
 
@@ -578,7 +578,7 @@ $ make lex source=opcode/move.lua
 对文件进行词法分析
 </p>
 
-<pre class="example" id="org522db4f">
+<pre class="example" id="orgae2fce4">
 $ make spy
 </pre>
 
@@ -586,7 +586,7 @@ $ make spy
 交互模式，执行 ChunkSpy
 </p>
 
-<pre class="example" id="orgdd1643a">
+<pre class="example" id="orgb55d016">
 $ make inspect source=opcode/move.lua
 </pre>
 
@@ -600,7 +600,7 @@ $ make inspect source=opcode/move.lua
 <div id="outline-container-org49e87b1" class="outline-4">
 <h4 id="org49e87b1"><span class="section-number-4">2.4.4</span> debug</h4>
 <div class="outline-text-4" id="text-2-4-4">
-<pre class="example" id="org3544507">
+<pre class="example" id="orga527e0c">
 $ make debug source=opcode/move.lua
 </pre>
 
@@ -613,7 +613,7 @@ $ make debug source=opcode/move.lua
 <div id="outline-container-org1167ba4" class="outline-4">
 <h4 id="org1167ba4"><span class="section-number-4">2.4.5</span> publish</h4>
 <div class="outline-text-4" id="text-2-4-5">
-<pre class="example" id="org71c58d0">
+<pre class="example" id="orge4eea1f">
 $ make publish
 </pre>
 
@@ -621,7 +621,7 @@ $ make publish
 将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件
 </p>
 
-<pre class="example" id="org48fd05b">
+<pre class="example" id="org3fd91f2">
 $ make server
 </pre>
 
@@ -1039,7 +1039,7 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 </p>
 
 
-<div id="org5be26a0" class="figure">
+<div id="org7829c5f" class="figure">
 <p><img src="overview-execution.png" alt="overview-execution.png">
 </p>
 </div>
@@ -1049,7 +1049,7 @@ C 代码通过编译过程，生成可执行文件；可执行文件被机器执
 </p>
 
 
-<div id="org57cb82e" class="figure">
+<div id="org3755982" class="figure">
 <p><img src="overview-lua.png" alt="overview-lua.png">
 </p>
 </div>
@@ -1109,7 +1109,7 @@ lua 源代码 make 之后，生成两个可执行文件
 </ul>
 
 <p>
-这即是上文中两个程序分别称为编译器 和 解释器 的命名来源，以后的行文中也使用这种方式。
+这即是上文中两个程序分别称为编译器 和 解释器 的命名来源，以后的行文中也使用这种约定。
 </p>
 </div>
 </div>
@@ -1127,7 +1127,7 @@ lua 源代码 make 之后，生成两个可执行文件
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-23 三 11:13</p>
+<p>Updated: 2020-12-23 三 11:59</p>
 <p>Created: 2020-12-21 一 10:40</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

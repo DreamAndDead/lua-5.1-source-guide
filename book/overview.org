@@ -394,13 +394,19 @@ lua 源代码 make 之后，生成两个可执行文件
 
 这即是上文中两个程序分别称为编译器 和 解释器 的命名来源，以后的行文中也使用这种约定。
 
-** a little tour                                                   :noexport:
+** TODO a little tour                                              :noexport:
+   :LOGBOOK:
+   - Note taken on [2020-12-23 三 11:58] \\
+     居然还不能绘制出完整的图
+     等之后，将所有微观的景观拼接起来
+   :END:
 
 chain all subject
 
 - big picture of internal
-- from sample code to result
 - talk about lua state and global state, state scope
+
+#+CAPTION: page 45 46 draft
 
 
 * practice

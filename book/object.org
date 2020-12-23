@@ -1,13 +1,11 @@
 #+SETUPFILE: setup.org
 
 #+TITLE: object
-#+DATE: <2020-12-21 一 10:40>
-
-* DRAFT types & values
+#+DATE: <2020-12-23 三 11:59>
 
 lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
 
-lua 中有 8 种类型的值
+语言中定义了 8 种类型的值
 - nil
 - bool
 - number
@@ -17,10 +15,14 @@ lua 中有 8 种类型的值
 - userdata
 - thread
 
-从某种角度而言，程序就是“数据”与“操作数据的方法”。
-所以第一步，先来了解 lua 类型与值的实现。
+虽然章节名称为 object，和源代码的名称相同。
+但是通常都翻译为“对象”，容易与 OOP 中的对象概念混杂在一起。
+在本章，更乐意将其译为“值”。
 
-** TODO review struct & union
+从某种角度而言，程序就是“数据”与“操作数据的方法”。
+所以第一步，先来了解 lua 中的值。
+
+* TODO review struct & union
 
 - struct memory
 - union memory
@@ -28,43 +30,87 @@ lua 中有 8 种类型的值
 - struct in union, gcobject hack
 - union in array? 如何对齐
 
-** tagged value
+* tagged value
 
-一开始就提到，类型存在于值本身。
-在 lua 内部，用 TValue（tagged value）表示值的概念。
+章节开始就提到，类型存在于值本身。
+在 lua 内部，用 TValue（tagged value）结构表示值的概念。
 
+#+CAPTION: lobject.h
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 67 :lines "67-76"
 
 tt 表示值的类型，value 表示值的数据。
-很明显，类型是值的一部分。
+明显地，类型是值的一部分。
 
-fig.tvalue simple
+#+begin_src ditaa :file object-tvalue.png :cmdline -E
 
-*** TODO type
++-----------+
+|Value value|
++-----------+
+|int tt     |
++-----------+
+#+end_src
 
-在 TValue 中，类型用 int 数字来标识，可以找到所有基础类型的宏定义
+#+RESULTS:
+[[file:object-tvalue.png]]
 
+** type
+
+在 TValue 中，类型 tt 用 int 来标识，可以在代码中看到所有基础类型的宏定义
+
+#+CAPTION: lua.h
 #+INCLUDE: ../lua-5.1.5/src/lua.h src c :lines "69-83"
 
-完全对应lua 中的 8 种类型。
+完全对应 lua 中的 8 种类型。
 
-同样地，lua 定义了相应的宏，方便类型的检测。
+同时定义了相应的宏，方便类型的检测。
 
+#+CAPTION: lobject.h
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 78 :lines "78-91"
 
-细心如你，一定发现多了一种 lightuserdata 类型。
-userdata 类型有 light 和 non-light 两种类型定义，这一点先不做细致的解释，
-先带着问题前进，之后再解释为什么。
+细心如你，一定发现莫名多出一种 lightuserdata 类型。
+这是由 userdata 类型细分出来的一种类型定义，目前先不做细致的解释，
+之后到相应章节再具体分析。
 
-*** data
+** value
 
-至于值的数据，TValue 用一个 union 结构来表示，有效利用内存空间。
+数据部分，TValue 用一个 union 结构来表示，有效利用内存空间。
 
+#+CAPTION: lobject.h
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "56-65"
 
 不同类型的数据使用不同的键值来存取。
 
-fig.value
+#+begin_src ditaa :file object-value.png :cmdline
+
++------------------------------------------------------------------------+
+|   Value value                                                          |
+| +--------------+-----------------+-----------------+-----------------+ |
+| :              :                 :                 :                 : |
+| | GCObject*  gc| void *          | lua_Number      | int             | |
+| |              | p               | n               | b               | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| |              |                 |                 |                 | |
+| +--------------+-----------------+-----------------+-----------------+ |
++------------------------------------------------------------------------+
+|   int tt                                                               |
++------------------------------------------------------------------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:object-value.png]]
+
+
+
+
 
 ** detail
 
@@ -169,12 +215,10 @@ proto 和 upval 就对应 GCObject 中多出的 2 个键值。
    :LOGBOOK:
    - Note taken on [2020-12-02 三 15:43] \\
      所有可关联本章内容一起阅读的代码
-     
+
      关联性强，容易阅读
    :END:
 
 根据不同类型，从 TValue 中取数据的宏
 
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "91-102"
-
-
