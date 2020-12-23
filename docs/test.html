@@ -219,10 +219,89 @@
 <body>
 <div id="content">
 
+<div id="outline-container-org7983a24" class="outline-2">
+<h2 id="org7983a24"><span class="section-number-2">1</span> test</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+test some org feature, such as export, etc.
+</p>
+</div>
+
+<div id="outline-container-org03a18ca" class="outline-3">
+<h3 id="org03a18ca"><span class="section-number-3">1.1</span> src</h3>
+<div class="outline-text-3" id="text-1-1">
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><span id="coderef-sc" class="coderef-off"><span class="linenr">1: </span><span class="org-rainbow-delimiters-depth-1">(</span><span class="org-keyword">save-excursion</span></span>
+<span id="coderef-jump" class="coderef-off"><span class="linenr">2: </span>   <span class="org-rainbow-delimiters-depth-2">(</span>goto-char <span class="org-rainbow-delimiters-depth-3">(</span>point-min<span class="org-rainbow-delimiters-depth-3">)</span><span class="org-rainbow-delimiters-depth-2">)</span><span class="org-rainbow-delimiters-depth-1">)</span></span>
+</pre>
+</div>
+
+<p>
+In line <a href="#coderef-sc" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-sc');" onmouseout="CodeHighlightOff(this, 'coderef-sc');">1</a> we remember the current position.
+<a href="#coderef-jump" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-jump');" onmouseout="CodeHighlightOff(this, 'coderef-jump');">Line 2</a> jumps to point-min.
+</p>
+
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="linenr">287: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">288: </span><span class="org-comment"> ** Closures</span>
+<span class="linenr">289: </span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">290: </span>
+<span class="linenr">291: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">ClosureHeader</span> \
+<span class="linenr">292: </span>        CommonHeader; <span class="org-type">lu_byte</span> <span class="org-variable-name">isC</span>; <span class="org-type">lu_byte</span> <span class="org-variable-name">nupvalues</span>; <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>; \
+<span class="linenr">293: </span>        <span class="org-keyword">struct</span> <span class="org-type">Table</span> *<span class="org-variable-name">env</span>
+<span class="linenr">294: </span>
+<span class="linenr">295: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">CClosure</span> {
+<span class="linenr">296: </span>  ClosureHeader;
+<span class="linenr">297: </span>  <span class="org-type">lua_CFunction</span> <span class="org-variable-name">f</span>;
+<span class="linenr">298: </span>  <span class="org-type">TValue</span> <span class="org-variable-name">upvalue</span>[1];
+<span class="linenr">299: </span>} <span class="org-type">CClosure</span>;
+<span class="linenr">300: </span>
+<span class="linenr">301: </span>
+<span class="linenr">302: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">LClosure</span> {
+<span class="linenr">303: </span>  ClosureHeader;
+<span class="linenr">304: </span>  <span class="org-keyword">struct</span> <span class="org-type">Proto</span> *<span class="org-variable-name">p</span>;
+<span class="linenr">305: </span>  <span class="org-type">UpVal</span> *<span class="org-variable-name">upvals</span>[1];
+<span class="linenr">306: </span>} <span class="org-type">LClosure</span>;
+<span class="linenr">307: </span>
+<span class="linenr">308: </span>
+<span class="linenr">309: </span><span class="org-keyword">typedef</span> <span class="org-keyword">union</span> <span class="org-type">Closure</span> {
+<span class="linenr">310: </span>  <span class="org-type">CClosure</span> <span class="org-variable-name">c</span>;
+<span class="linenr">311: </span>  <span class="org-type">LClosure</span> <span class="org-variable-name">l</span>;
+<span class="linenr">312: </span>} <span class="org-type">Closure</span>;
+<span class="linenr">313: </span>
+<span class="linenr">314: </span>
+<span class="linenr">315: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">iscfunction</span>(<span class="org-variable-name">o</span>)  (ttype(o) == LUA_TFUNCTION &amp;&amp; clvalue(o)-&gt;c.isC)
+<span class="linenr">316: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">isLfunction</span>(<span class="org-variable-name">o</span>)  (ttype(o) == LUA_TFUNCTION &amp;&amp; <span class="org-negation-char">!</span>clvalue(o)-&gt;c.isC)
+</pre>
+</div>
+
+
+<p>
+一些中文内容
+</p>
+
+
+<div id="org218a223" class="figure">
+<p><img src="test-ditaa.png" alt="test-ditaa.png">
+</p>
+</div>
+
+
+<div class="org-src-container">
+<pre class="src src-latex"><span class="org-font-latex-sedate"><span class="org-keyword">\begin</span></span>{<span class="org-function-name">tikzpicture</span>}
+<span class="org-font-latex-sedate">\draw</span>[-&gt;] (-3,0) -- (-2,0) arc[radius=0.5cm,start angle=-180,end angle=0] (-1,0) -- (1,0) arc[radius=0.5cm,start angle=180,end angle=0] (2,0) -- (3,0);
+<span class="org-font-latex-sedate">\filldraw</span> (-1.5,0) circle[radius=1mm];
+<span class="org-font-latex-sedate"><span class="org-keyword">\end</span></span>{<span class="org-function-name">tikzpicture</span>}
+</pre>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-23 三 09:03</p>
+<p>Updated: 2020-12-23 三 08:39</p>
 <p>Created: </p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

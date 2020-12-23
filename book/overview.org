@@ -320,21 +320,10 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 
 当然，上面的规则不是绝对的，存在部分例外，在阅读时不必严格拘束于此。
 
-** execution                                                       :noexport:
-   :LOGBOOK:
-   - Note taken on [2020-12-22 二 09:37] \\
-     总体 执行过程 图解
-   :END:
+** execution
 
-和机器类比，比如 C 语言
-
-
-把编程语言也看作一个程序，接收源码字符串，并实现约定描述的功能
-
-
-编译器 和 解释器 的命名来源
-- lua standalone interpreter
-- lua compiler
+同是编程语言，必定有相似的地方。
+下面从 C 语言的角度，粗略类比 Lua 语言的执行过程。
 
 #+begin_src ditaa :file overview-execution.png
 
@@ -349,14 +338,13 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 #+RESULTS:
 [[file:overview-execution.png]]
 
-
-
+C 代码通过编译过程，生成可执行文件；可执行文件被机器执行，达成 C 代码描述的语义。
 
 #+begin_src ditaa :file overview-lua.png
 
 +----------+             +----------+             +----------+
 |          |  compile    |          |  executed   |          |
-| lua code +------------>|  Proto   +------------>| VM       |
+| Lua code +------------>|  Proto   +------------>| VM       |
 |          |             |          |             |          |
 +----------+             +---+------+             +----------+
                              |  ^
@@ -374,17 +362,41 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 #+RESULTS:
 [[file:overview-lua.png]]
 
-
-a little picture
-
-
+Lua 语言通过 compile dump 过程，生成特定格式的二进制文件；
+二进制文件可以被加载，并在 VM 中执行，达成 Lua 代码描述的语义。
 
 
+如果抽象来看，编程语言是一种语言，一种文本约定，描述程序的语义。
+实现语义的程序，称之为编程语言的实现。
+
+C（语言）通过 gcc（实现）来达成语义，同样地，Lua（语言）需要一个（实现），才能达成语义。
+
+=./lua-5.1.5/src/= 就是这个实现的全部内容。
+
+
+虽然大体流程相似，作为编译型语言的 C 和解释型的 Lua 还是存在些许不同。
+
+C 语言直接编译为面向机器的指令，整体是静态的，一次性全部编译完成，整体加载运行。
+
+Lua 语言的编译面向 VM，生成 opcode 交由 VM 来执行，VM 则由 Machine 来执行，整体多了一层中间层 VM。
+
+
+lua 源代码 make 之后，生成两个可执行文件
+- =lua, lua standalone interpreter=
+- =luac, lua compiler=
+
+=luac= 程序执行的就是 compile + dump 的过程
+
+=lua= 程序根据参数不同，可能会执行
+- compile + executed 过程
+- undump + executed 过程
+- VM 常驻内存，使用 REPL 的方式，不断输入 lua code，执行 compile + executed 的解释过程
+
+这即是上文中两个程序分别称为编译器 和 解释器 的命名来源，以后的行文中也使用这种约定。
 
 ** a little tour                                                   :noexport:
 
 chain all subject
-
 
 - big picture of internal
 - from sample code to result
