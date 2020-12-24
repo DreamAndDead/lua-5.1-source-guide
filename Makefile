@@ -35,4 +35,7 @@ publish:
 server:
 	python -m http.server -d docs 8000
 
+draw:
+	asy -f pdf -pdfviewer="okular" -batchView -tex xelatex
+
 .PHONY:	clean test publish

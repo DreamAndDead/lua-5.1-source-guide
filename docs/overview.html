@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-23 三 20:55 -->
+<!-- 2020-12-24 四 11:54 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>overview</title>
@@ -38,7 +38,7 @@
   }
   pre.src {
     position: relative;
-    overflow: visible;
+    overflow: auto;
     padding-top: 1.2em;
   }
   pre.src:before {
@@ -194,58 +194,34 @@
 <link rel="stylesheet" type="text/css" href="htmlize.css">
 <link rel="stylesheet" type="text/css" href="style.css">
 <script type="text/javascript">
-/*
-@licstart  The following is the entire license notice for the
-JavaScript code in this tag.
-
-Copyright (C) 2012-2020 Free Software Foundation, Inc.
-
-The JavaScript code in this tag is free software: you can
-redistribute it and/or modify it under the terms of the GNU
-General Public License (GNU GPL) as published by the Free Software
-Foundation, either version 3 of the License, or (at your option)
-any later version.  The code is distributed WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-
-As additional permission under GNU GPL version 3 section 7, you
-may distribute non-source (e.g., minimized or compacted) forms of
-that code without the copy of the GNU GPL normally required by
-section 4, provided you include this license notice and a URL
-through which recipients can access the Corresponding Source.
-
-
-@licend  The above is the entire license notice
-for the JavaScript code in this tag.
-*/
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
 <!--/*--><![CDATA[/*><!--*/
- function CodeHighlightOn(elem, id)
- {
-   var target = document.getElementById(id);
-   if(null != target) {
-     elem.cacheClassElem = elem.className;
-     elem.cacheClassTarget = target.className;
-     target.className = "code-highlighted";
-     elem.className   = "code-highlighted";
-   }
- }
- function CodeHighlightOff(elem, id)
- {
-   var target = document.getElementById(id);
-   if(elem.cacheClassElem)
-     elem.className = elem.cacheClassElem;
-   if(elem.cacheClassTarget)
-     target.className = elem.cacheClassTarget;
- }
-/*]]>*///-->
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
 </script>
 </head>
 <body>
 <div id="content">
 <h1 class="title">overview</h1>
 
-<div id="outline-container-org1c2648a" class="outline-2">
-<h2 id="org1c2648a"><span class="section-number-2">1</span> goal</h2>
+<div id="outline-container-orgbe61b37" class="outline-2">
+<h2 id="orgbe61b37"><span class="section-number-2">1</span> goal</h2>
 <div class="outline-text-2" id="text-1">
 <p>
 这是一本关于 lua 5.1 源代码的小书。
@@ -291,12 +267,12 @@ lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚�
 </div>
 </div>
 
-<div id="outline-container-org6993297" class="outline-2">
-<h2 id="org6993297"><span class="section-number-2">2</span> project</h2>
+<div id="outline-container-org949d9c6" class="outline-2">
+<h2 id="org949d9c6"><span class="section-number-2">2</span> project</h2>
 <div class="outline-text-2" id="text-2">
 </div>
-<div id="outline-container-orgf33cc06" class="outline-3">
-<h3 id="orgf33cc06"><span class="section-number-3">2.1</span> file structure</h3>
+<div id="outline-container-org82e5097" class="outline-3">
+<h3 id="org82e5097"><span class="section-number-3">2.1</span> file structure</h3>
 <div class="outline-text-3" id="text-2-1">
 <table>
 
@@ -392,8 +368,8 @@ lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚�
 </div>
 </div>
 
-<div id="outline-container-orgb4dbbe6" class="outline-3">
-<h3 id="orgb4dbbe6"><span class="section-number-3">2.2</span> source code</h3>
+<div id="outline-container-orgeb4d7a7" class="outline-3">
+<h3 id="orgeb4d7a7"><span class="section-number-3">2.2</span> source code</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
 出于方便修改源代码进行调试的原因，将 <a href="https://www.lua.org/versions.html">lua 5.1 source code</a> 下载并保存在项目的 <code>lua-5.1.5/</code> 目录中，
@@ -473,8 +449,8 @@ lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚�
 </div>
 </div>
 
-<div id="outline-container-orged0f596" class="outline-3">
-<h3 id="orged0f596"><span class="section-number-3">2.3</span> tool</h3>
+<div id="outline-container-org4384270" class="outline-3">
+<h3 id="org4384270"><span class="section-number-3">2.3</span> tool</h3>
 <div class="outline-text-3" id="text-2-3">
 <p>
 在分析代码的过程中，使用了一些三方工具。
@@ -530,8 +506,8 @@ lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚�
 </div>
 
 
-<div id="outline-container-orga817723" class="outline-3">
-<h3 id="orga817723"><span class="section-number-3">2.4</span> usage</h3>
+<div id="outline-container-org12338c0" class="outline-3">
+<h3 id="org12338c0"><span class="section-number-3">2.4</span> usage</h3>
 <div class="outline-text-3" id="text-2-4">
 <p>
 在分析代码的过程，经常使用一些分析过程，全部整理在 <code>Makefile</code> 中。
@@ -542,10 +518,10 @@ lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚�
 </p>
 </div>
 
-<div id="outline-container-org1a676cd" class="outline-4">
-<h4 id="org1a676cd"><span class="section-number-4">2.4.1</span> compile</h4>
+<div id="outline-container-org69bf90a" class="outline-4">
+<h4 id="org69bf90a"><span class="section-number-4">2.4.1</span> compile</h4>
 <div class="outline-text-4" id="text-2-4-1">
-<pre class="example">
+<pre class="example" id="orgeffda1a">
 $ make compile
 </pre>
 
@@ -560,7 +536,7 @@ $ make compile
 并将相关文件安装到 <code>./install</code> 目录
 </p>
 
-<pre class="example">
+<pre class="example" id="org2ad3d4b">
 $ make clean
 </pre>
 
@@ -570,10 +546,10 @@ $ make clean
 </div>
 </div>
 
-<div id="outline-container-orgd69a147" class="outline-4">
-<h4 id="orgd69a147"><span class="section-number-4">2.4.2</span> run</h4>
+<div id="outline-container-org46ccd4b" class="outline-4">
+<h4 id="org46ccd4b"><span class="section-number-4">2.4.2</span> run</h4>
 <div class="outline-text-4" id="text-2-4-2">
-<pre class="example">
+<pre class="example" id="orgc52363a">
 $ make lua
 </pre>
 
@@ -581,7 +557,7 @@ $ make lua
 交互模式，执行 lua 解释器
 </p>
 
-<pre class="example">
+<pre class="example" id="orgd262357">
 $ make run source=opcode/move.lua
 </pre>
 
@@ -591,10 +567,10 @@ $ make run source=opcode/move.lua
 </div>
 </div>
 
-<div id="outline-container-org3b0b3b7" class="outline-4">
-<h4 id="org3b0b3b7"><span class="section-number-4">2.4.3</span> inspect</h4>
+<div id="outline-container-org6e0916b" class="outline-4">
+<h4 id="org6e0916b"><span class="section-number-4">2.4.3</span> inspect</h4>
 <div class="outline-text-4" id="text-2-4-3">
-<pre class="example">
+<pre class="example" id="orgbf189fa">
 $ make lex source=opcode/move.lua
 </pre>
 
@@ -602,7 +578,7 @@ $ make lex source=opcode/move.lua
 对文件进行词法分析
 </p>
 
-<pre class="example">
+<pre class="example" id="orgfff00d1">
 $ make spy
 </pre>
 
@@ -610,7 +586,7 @@ $ make spy
 交互模式，执行 ChunkSpy
 </p>
 
-<pre class="example">
+<pre class="example" id="orgcc0bf88">
 $ make inspect source=opcode/move.lua
 </pre>
 
@@ -621,10 +597,10 @@ $ make inspect source=opcode/move.lua
 </div>
 
 
-<div id="outline-container-org23c22aa" class="outline-4">
-<h4 id="org23c22aa"><span class="section-number-4">2.4.4</span> debug</h4>
+<div id="outline-container-orge8ed6ff" class="outline-4">
+<h4 id="orge8ed6ff"><span class="section-number-4">2.4.4</span> debug</h4>
 <div class="outline-text-4" id="text-2-4-4">
-<pre class="example">
+<pre class="example" id="org5f0f1ee">
 $ make debug source=opcode/move.lua
 </pre>
 
@@ -634,10 +610,10 @@ $ make debug source=opcode/move.lua
 </div>
 </div>
 
-<div id="outline-container-orga5c7fe3" class="outline-4">
-<h4 id="orga5c7fe3"><span class="section-number-4">2.4.5</span> publish</h4>
+<div id="outline-container-orgfcfcbdb" class="outline-4">
+<h4 id="orgfcfcbdb"><span class="section-number-4">2.4.5</span> publish</h4>
 <div class="outline-text-4" id="text-2-4-5">
-<pre class="example">
+<pre class="example" id="org7af6440">
 $ make publish
 </pre>
 
@@ -645,7 +621,7 @@ $ make publish
 将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件
 </p>
 
-<pre class="example">
+<pre class="example" id="orgcbfa724">
 $ make server
 </pre>
 
@@ -658,12 +634,12 @@ $ make server
 </div>
 
 
-<div id="outline-container-orgad8d1a2" class="outline-2">
-<h2 id="orgad8d1a2"><span class="section-number-2">3</span> big picture</h2>
+<div id="outline-container-org844a4e9" class="outline-2">
+<h2 id="org844a4e9"><span class="section-number-2">3</span> big picture</h2>
 <div class="outline-text-2" id="text-3">
 </div>
-<div id="outline-container-orgaf97987" class="outline-3">
-<h3 id="orgaf97987"><span class="section-number-3">3.1</span> source file</h3>
+<div id="outline-container-orge67ad49" class="outline-3">
+<h3 id="orge67ad49"><span class="section-number-3">3.1</span> source file</h3>
 <div class="outline-text-3" id="text-3-1">
 <p>
 在阅读源代码之前，先对相关代码文件有一个总体感觉。
@@ -1054,8 +1030,8 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 </div>
 </div>
 
-<div id="outline-container-org43ec24d" class="outline-3">
-<h3 id="org43ec24d"><span class="section-number-3">3.2</span> execution</h3>
+<div id="outline-container-orgdd31f9a" class="outline-3">
+<h3 id="orgdd31f9a"><span class="section-number-3">3.2</span> execution</h3>
 <div class="outline-text-3" id="text-3-2">
 <p>
 同是编程语言，必定有相似的地方。
@@ -1063,7 +1039,7 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 </p>
 
 
-<div class="figure">
+<div id="orge5b9536" class="figure">
 <p><img src="overview-execution.png" alt="overview-execution.png">
 </p>
 </div>
@@ -1073,7 +1049,7 @@ C 代码通过编译过程，生成可执行文件；可执行文件被机器执
 </p>
 
 
-<div class="figure">
+<div id="org9cf551b" class="figure">
 <p><img src="overview-lua.png" alt="overview-lua.png">
 </p>
 </div>
@@ -1140,18 +1116,18 @@ lua 源代码 make 之后，生成两个可执行文件
 </div>
 
 
-<div id="outline-container-org90efc5d" class="outline-2">
-<h2 id="org90efc5d"><span class="section-number-2">4</span> practice</h2>
+<div id="outline-container-orgc8d86bc" class="outline-2">
+<h2 id="orgc8d86bc"><span class="section-number-2">4</span> practice</h2>
 <div class="outline-text-2" id="text-4">
 <ul class="org-ul">
-<li>按照 <a href="#orgaf97987">source file</a> 章节中提到的文件顺序，粗略浏览所有代码</li>
+<li>按照 <a href="#orge67ad49">source file</a> 章节中提到的文件顺序，粗略浏览所有代码</li>
 </ul>
 </div>
 </div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-23 三 20:18</p>
+<p>Updated: 2020-12-23 三 11:59</p>
 <p>Created: 2020-12-21 一 10:40</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

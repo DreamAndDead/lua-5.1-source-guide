@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-23 三 20:55 -->
+<!-- 2020-12-24 四 11:54 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>object</title>
@@ -38,7 +38,7 @@
   }
   pre.src {
     position: relative;
-    overflow: visible;
+    overflow: auto;
     padding-top: 1.2em;
   }
   pre.src:before {
@@ -194,50 +194,26 @@
 <link rel="stylesheet" type="text/css" href="htmlize.css">
 <link rel="stylesheet" type="text/css" href="style.css">
 <script type="text/javascript">
-/*
-@licstart  The following is the entire license notice for the
-JavaScript code in this tag.
-
-Copyright (C) 2012-2020 Free Software Foundation, Inc.
-
-The JavaScript code in this tag is free software: you can
-redistribute it and/or modify it under the terms of the GNU
-General Public License (GNU GPL) as published by the Free Software
-Foundation, either version 3 of the License, or (at your option)
-any later version.  The code is distributed WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-
-As additional permission under GNU GPL version 3 section 7, you
-may distribute non-source (e.g., minimized or compacted) forms of
-that code without the copy of the GNU GPL normally required by
-section 4, provided you include this license notice and a URL
-through which recipients can access the Corresponding Source.
-
-
-@licend  The above is the entire license notice
-for the JavaScript code in this tag.
-*/
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
 <!--/*--><![CDATA[/*><!--*/
- function CodeHighlightOn(elem, id)
- {
-   var target = document.getElementById(id);
-   if(null != target) {
-     elem.cacheClassElem = elem.className;
-     elem.cacheClassTarget = target.className;
-     target.className = "code-highlighted";
-     elem.className   = "code-highlighted";
-   }
- }
- function CodeHighlightOff(elem, id)
- {
-   var target = document.getElementById(id);
-   if(elem.cacheClassElem)
-     elem.className = elem.cacheClassElem;
-   if(elem.cacheClassTarget)
-     target.className = elem.cacheClassTarget;
- }
-/*]]>*///-->
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
 </script>
 </head>
 <body>
@@ -272,8 +248,8 @@ lua 是一种动态类型语言，类型不存在于变量中，而存在于值�
 所以第一步，先来了解 lua 中的值。
 </p>
 
-<div id="outline-container-orgb3fd391" class="outline-2">
-<h2 id="orgb3fd391"><span class="section-number-2">1</span> <span class="todo TODO">TODO</span> review struct &amp; union</h2>
+<div id="outline-container-org0533f2b" class="outline-2">
+<h2 id="org0533f2b"><span class="section-number-2">1</span> <span class="todo TODO">TODO</span> review struct &amp; union</h2>
 <div class="outline-text-2" id="text-1">
 <ul class="org-ul">
 <li>struct memory</li>
@@ -285,8 +261,8 @@ lua 是一种动态类型语言，类型不存在于变量中，而存在于值�
 </div>
 </div>
 
-<div id="outline-container-org2ae68a1" class="outline-2">
-<h2 id="org2ae68a1"><span class="section-number-2">2</span> tagged value</h2>
+<div id="outline-container-orge656376" class="outline-2">
+<h2 id="orge656376"><span class="section-number-2">2</span> tagged value</h2>
 <div class="outline-text-2" id="text-2">
 <p>
 章节开始就提到，类型存在于值本身。
@@ -312,14 +288,14 @@ tt 表示值的类型，value 表示值的数据。
 </p>
 
 
-<div class="figure">
+<div id="orgdcfe9ed" class="figure">
 <p><img src="object-tvalue.png" alt="object-tvalue.png">
 </p>
 </div>
 </div>
 
-<div id="outline-container-org1036786" class="outline-3">
-<h3 id="org1036786"><span class="section-number-3">2.1</span> type</h3>
+<div id="outline-container-org8bda005" class="outline-3">
+<h3 id="org8bda005"><span class="section-number-3">2.1</span> type</h3>
 <div class="outline-text-3" id="text-2-1">
 <p>
 在 TValue 中，类型 tt 用 int 来标识，可以在代码中看到所有基础类型的宏定义
@@ -376,8 +352,8 @@ tt 表示值的类型，value 表示值的数据。
 </div>
 </div>
 
-<div id="outline-container-org4bf4399" class="outline-3">
-<h3 id="org4bf4399"><span class="section-number-3">2.2</span> value</h3>
+<div id="outline-container-org3ce8b5f" class="outline-3">
+<h3 id="org3ce8b5f"><span class="section-number-3">2.2</span> value</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
 数据部分，TValue 用一个 union 结构来表示，有效利用内存空间。
@@ -401,7 +377,7 @@ tt 表示值的类型，value 表示值的数据。
 </p>
 
 
-<div class="figure">
+<div id="org27ab97d" class="figure">
 <p><img src="object-value.png" alt="object-value.png">
 </p>
 </div>
@@ -412,12 +388,12 @@ tt 表示值的类型，value 表示值的数据。
 
 
 
-<div id="outline-container-org1387e3e" class="outline-3">
-<h3 id="org1387e3e"><span class="section-number-3">2.3</span> detail</h3>
+<div id="outline-container-orgd3666e2" class="outline-3">
+<h3 id="orgd3666e2"><span class="section-number-3">2.3</span> detail</h3>
 <div class="outline-text-3" id="text-2-3">
 </div>
-<div id="outline-container-org7b4ffc0" class="outline-4">
-<h4 id="org7b4ffc0"><span class="section-number-4">2.3.1</span> nil</h4>
+<div id="outline-container-org558b1e4" class="outline-4">
+<h4 id="org558b1e4"><span class="section-number-4">2.3.1</span> nil</h4>
 <div class="outline-text-4" id="text-2-3-1">
 <p>
 nil 是最简单的值，表示没有值。由于不需要数据，只需用 tt 表示类型即可。
@@ -445,8 +421,8 @@ fig.nil
 </div>
 </div>
 
-<div id="outline-container-orgaa405bd" class="outline-4">
-<h4 id="orgaa405bd"><span class="section-number-4">2.3.2</span> bool</h4>
+<div id="outline-container-orgb1fd865" class="outline-4">
+<h4 id="orgb1fd865"><span class="section-number-4">2.3.2</span> bool</h4>
 <div class="outline-text-4" id="text-2-3-2">
 <p>
 lua 中的 bool 值是 true 和 false。
@@ -462,8 +438,8 @@ fig.bool
 </div>
 </div>
 
-<div id="outline-container-org952e640" class="outline-4">
-<h4 id="org952e640"><span class="section-number-4">2.3.3</span> <span class="todo TODO">TODO</span> light userdata</h4>
+<div id="outline-container-org2f452a3" class="outline-4">
+<h4 id="org2f452a3"><span class="section-number-4">2.3.3</span> <span class="todo TODO">TODO</span> light userdata</h4>
 <div class="outline-text-4" id="text-2-3-3">
 <p>
 light userdata 表示 c 和 lua 协同的时候，由 c 语言一方传入的数据。
@@ -483,8 +459,8 @@ fig.light userdata
 </div>
 </div>
 
-<div id="outline-container-orgda35150" class="outline-4">
-<h4 id="orgda35150"><span class="section-number-4">2.3.4</span> number</h4>
+<div id="outline-container-orgbb8f1b6" class="outline-4">
+<h4 id="orgbb8f1b6"><span class="section-number-4">2.3.4</span> number</h4>
 <div class="outline-text-4" id="text-2-3-4">
 <p>
 默认设定下，lua 中所有数字都用 double 来表示。
@@ -521,8 +497,8 @@ fig.number
 </div>
 </div>
 
-<div id="outline-container-org3bab9c9" class="outline-4">
-<h4 id="org3bab9c9"><span class="section-number-4">2.3.5</span> collectable</h4>
+<div id="outline-container-orgc50ec13" class="outline-4">
+<h4 id="orgc50ec13"><span class="section-number-4">2.3.5</span> collectable</h4>
 <div class="outline-text-4" id="text-2-3-5">
 <p>
 上面的数据表示都相对简单，其余类型的数据就相对复杂一些。
@@ -626,8 +602,8 @@ fig.gcobject
 </div>
 </div>
 
-<div id="outline-container-orga944aae" class="outline-4">
-<h4 id="orga944aae"><span class="section-number-4">2.3.6</span> <span class="todo TODO">TODO</span> internal</h4>
+<div id="outline-container-org7946053" class="outline-4">
+<h4 id="org7946053"><span class="section-number-4">2.3.6</span> <span class="todo TODO">TODO</span> internal</h4>
 <div class="outline-text-4" id="text-2-3-6">
 <p>
 细心如你，一定又发现了，GCObject 中除了 gch，有 7 个键值，而不是 5 个。
@@ -670,8 +646,8 @@ proto 和 upval 就对应 GCObject 中多出的 2 个键值。
 </div>
 </div>
 
-<div id="outline-container-org1998d6a" class="outline-3">
-<h3 id="org1998d6a"><span class="section-number-3">2.4</span> <span class="todo TODO">TODO</span> practice</h3>
+<div id="outline-container-orgecc23a6" class="outline-3">
+<h3 id="orgecc23a6"><span class="section-number-3">2.4</span> <span class="todo TODO">TODO</span> practice</h3>
 <div class="outline-text-3" id="text-2-4">
 <p>
 根据不同类型，从 TValue 中取数据的宏
@@ -697,7 +673,7 @@ proto 和 upval 就对应 GCObject 中多出的 2 个键值。
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-23 三 20:18</p>
+<p>Updated: 2020-12-23 三 15:22</p>
 <p>Created: 2020-12-23 三 11:59</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
