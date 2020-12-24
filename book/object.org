@@ -46,7 +46,7 @@ unitsize(1pt);
 defaultpen(fontsize(16pt));
 defaultpen(font("OT1","cmtt","m","n"));
 
-fill(box((0,0), (200, 100)), white);
+fill(box((0,0), (140, 100)), white);
 
 path b = box((0, 0), (120, 40));
 
@@ -115,14 +115,8 @@ label("Value value", (10, 70), E);
 
 #+end_src
 
-#+RESULTS:
-[[file:object-value.png]]
 
-
-
-
-
-** detail
+** basic
 
 *** nil
 
@@ -166,7 +160,7 @@ fig.light userdata
 
 fig.number
 
-*** collectable
+** collectable
 
 上面的数据表示都相对简单，其余类型的数据就相对复杂一些。
 但是有一点是共通的，它们都属于可 gc 的对象。
