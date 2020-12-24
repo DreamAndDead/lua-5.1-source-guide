@@ -56,42 +56,11 @@ typedef union Closure {
 #+END_SRC
 
 
-一些中文内容
-
-#+begin_src ditaa :file test-ditaa.png
-  +------------------+
-  |   hello          |
-  +------------------+
-#+end_src
-
-#+RESULTS:
-[[file:test-word.png]]
-
-
-
-#+header: :exports results :file test-latex.png 
-#+header: :imagemagick yes :iminoptions -density 600 :imoutoptions -geometry 400 
-#+header: :fit yes :noweb yes :headers '("\\usepackage{tikz}")
-#+begin_src latex :exports results :file test-latex.png :results raw value replace
-\LaTeX
-#+end_src
-
-#+RESULTS:
-
-
-#+PRIORITIES: header-args:latex-as-png :results raw value replace
-#+begin_src latex-as-png file: test-latex-as-png.png
-\LaTeX
-#+end_src
-
-#+RESULTS:
-[[file:ob-latex-as-png.png]]
-
-
 #+begin_src asymptote :file learn-asymptote.png
 size(10cm, 10cm);
 fill(box((0,0), (100, 100)), white);
 
+draw((0,0) -- (200, 100));
 label("$A$", (0, 0), NE);
 #+end_src
 

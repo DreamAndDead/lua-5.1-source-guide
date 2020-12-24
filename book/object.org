@@ -41,17 +41,27 @@ lua 是一种动态类型语言，类型不存在于变量中，而存在于值�
 tt 表示值的类型，value 表示值的数据。
 明显地，类型是值的一部分。
 
-#+begin_src ditaa :file object-tvalue.png :cmdline -E
+#+begin_src asymptote :file object-tvalue.png
+unitsize(1pt);
+defaultpen(fontsize(16pt));
+defaultpen(font("OT1","cmtt","m","n"));
 
-+-----------+
-|Value value|
-+-----------+
-|int tt     |
-+-----------+
+fill(box((0,0), (200, 100)), white);
+
+path b = box((0, 0), (120, 40));
+
+pair o = (10, 10);
+draw(shift(o) * b);
+label("int tt", (10, 30), E);
+
+pair offset = (0, 40);
+draw(shift(o + offset) * b);
+label("Value value", (10, 70), E);
 #+end_src
 
 #+RESULTS:
 [[file:object-tvalue.png]]
+
 
 ** type
 
