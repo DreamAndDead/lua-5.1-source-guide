@@ -9,7 +9,7 @@
 | subject        | desc                 | progress | link |
 |----------------+----------------------+----------+------|
 | overview       | 全书总览             |      70% | [[file:overview.org][preview]] |
-| object         | 关键数据结构         |      20% | [[file:object.org][preview]] |
+| object         | 关键数据结构         |      60% | [[file:object.org][preview]] |
 | memory         | 内存模块             |       0% |      |
 | string         | 字符串结构           |       0% |      |
 | table          | 表结构               |       0% |      |
