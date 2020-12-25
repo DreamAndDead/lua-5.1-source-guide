@@ -45,7 +45,6 @@ tt 表示值的类型，value 表示值的数据。
 unitsize(1pt);
 defaultpen(fontsize(16pt));
 defaultpen(font("OT1","cmtt","m","n"));
-
 fill(box((0,0), (140, 100)), white);
 
 path b = box((0, 0), (120, 40));

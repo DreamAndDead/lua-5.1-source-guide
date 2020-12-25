@@ -147,7 +147,7 @@ diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9
 - 增加显示 =is_vararg= 字段
 
 
-[[http://ditaa.sourceforge.net/][ditaa]] 是一个命令行工具，用于将 ascii art 图形转化为图片，用于生成大部分图解图片。
+[[http://ditaa.sourceforge.net/][ditaa]] 是一个命令行工具，用于将 ascii art 图形转化为图片，用于辅助生成图解。
 
 
 [[https://github.com/mkottman/lua-gdb-helper][lua-gdb-helper]] 是一个 gdb 脚本项目，用于辅助调试，打印关键数据结构。
@@ -325,42 +325,44 @@ lua 内部使用了一种命名约定，不同模块的函数接口用不同的�
 同是编程语言，必定有相似的地方。
 下面从 C 语言的角度，粗略类比 Lua 语言的执行过程。
 
-#+begin_src ditaa :file overview-execution.png
+#+begin_src asymptote :noweb eval :file overview-c-process.png
+<<lib>>
 
-+----------+             +----------+             +----------+
-|          | compile     |          |  executed   |          |
-| C code   +------------>| execuable+------------>| Machine  |
-|          |             | file     |             |          |
-+----------+             +----------+             +----------+
+init_canvas(540, 100);
 
+Box code = Box((50, 50), (80, 60), "C code");
+Box exe = Box((260, 50), (140, 60), "Execuable file");
+Box machine = Box((480, 50), (80, 60), "Machine");
+
+code.connect(exe, E, W, "compile");
+exe.connect(machine, E, W, "executed");
 #+end_src
 
 #+RESULTS:
-[[file:overview-execution.png]]
+[[file:overview-c-process.png]]
 
 C 代码通过编译过程，生成可执行文件；可执行文件被机器执行，达成 C 代码描述的语义。
 
-#+begin_src ditaa :file overview-lua.png
+#+begin_src asymptote :noweb eval :file overview-lua-process.png
+<<lib>>
 
-+----------+             +----------+             +----------+
-|          |  compile    |          |  executed   |          |
-| Lua code +------------>|  Proto   +------------>| VM       |
-|          |             |          |             |          |
-+----------+             +---+------+             +----------+
-                             |  ^
-                        dump |  | undump
-                             |  |
-                             v  |
-                         +------+---+
-                         |          |
-                         | binary   |
-                         | file     |
-                         +----------+
+init_canvas(500, 300);
 
+Box code = Box((60, 200), (80, 60), "Lua code");
+Box proto = Box((240, 200), (80, 60), "Proto");
+Box vm = Box((440, 200), (80, 60), "VM");
+Box bfile = Box((240, 80), (120, 60), "Binary file");
+
+code.connect(proto, E, W, "compile");
+proto.connect(vm, E, W, "executed");
+proto.connect(bfile, S + W/2, N + W/3, "dump", W);
+bfile.connect(proto, N + E/3, S + E/2, "undump", E);
 #+end_src
 
 #+RESULTS:
-[[file:overview-lua.png]]
+[[file:overview-lua-process.png]]
+
+
 
 Lua 语言通过 compile dump 过程，生成特定格式的二进制文件；
 二进制文件可以被加载，并在 VM 中执行，达成 Lua 代码描述的语义。

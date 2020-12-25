@@ -9,3 +9,4 @@ lua-5.1.5/src/luac
 *.log
 *.tex
 *.pdf
+*.dvi

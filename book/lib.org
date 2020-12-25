@@ -1,0 +1,53 @@
+#+name: lib
+#+begin_src asymptote :file lib.png
+unitsize(1pt);
+defaultpen(fontsize(16pt));
+defaultpen(font("OT1","cmtt","m","n"));
+
+void init_canvas(real width, real height) {
+  fill(box((0,0), (width, height)), white);
+}
+
+struct Box {
+  pair center;
+  pair size;
+  string text;
+
+  real width;
+  real height;
+  pair pos;
+
+  pair unit_vector;
+  
+  void draw_self() {
+    path rect = box((0, 0), this.size);
+    draw(shift(this.pos) * rect);
+    label(this.text, this.center);
+  }
+
+  void operator init(pair c, pair s, string t) {
+    this.center = c;
+    this.size = s;
+    this.text = t;
+
+    this.width = s.x;
+    this.height = s.y;
+    this.pos = c - s / 2;
+    this.unit_vector = (width / 2, height / 2);
+
+    this.draw_self();
+  }
+
+  void connect(Box other, pair self_anchor, pair other_anchor, string text, align text_align = N) {
+    pair start = this.center + realmult(self_anchor, this.unit_vector);
+    pair stop = other.center + realmult(other_anchor, other.unit_vector);
+    pair mid = (start + stop) / 2;
+
+    draw(start -- stop, Arrow);
+    label(text, mid, text_align);
+  }
+}
+#+end_src
+
+#+RESULTS: lib
+[[file:lib.png]]
