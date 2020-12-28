@@ -6,25 +6,25 @@
 
 * outline
 
-| subject        | desc                 | progress | link |
-|----------------+----------------------+----------+------|
+| subject        | desc                 | progress | link    |
+|----------------+----------------------+----------+---------|
 | overview       | 全书总览             |      70% | [[file:overview.org][preview]] |
-| object         | 关键数据结构         |      60% | [[file:object.org][preview]] |
-| memory         | 内存模块             |       0% |      |
-| string         | 字符串结构           |       0% |      |
-| table          | 表结构               |       0% |      |
-| compiler       | 编译过程             |       0% |      |
-| lexer          | 词法分析             |       0% |      |
-| opcode         | 字节码               |       0% |      |
-| generator      | 语法分析与字节码生成 |       0% |      |
-| vm             | 虚拟机               |       0% |      |
-| c api          | 外部 api             |       0% |      |
-| lib            | 标准库               |       0% |      |
-| coroutine      | 协程结构             |       0% |      |
-| debug          | debug 模块           |       0% |      |
-| gc             | gc 模块              |       0% |      |
-| error handling | 错误处理机制         |       0% |      |
-| userdata       | userdata 结构        |       0% |      |
+| object         | 关键数据结构         |      90% | [[file:object.org][preview]] |
+| memory         | 内存模块             |       0% |         |
+| string         | 字符串结构           |       0% |         |
+| table          | 表结构               |       0% |         |
+| compiler       | 编译过程             |       0% |         |
+| lexer          | 词法分析             |       0% |         |
+| opcode         | 字节码               |       0% |         |
+| generator      | 语法分析与字节码生成 |       0% |         |
+| vm             | 虚拟机               |       0% |         |
+| c api          | 外部 api             |       0% |         |
+| lib            | 标准库               |       0% |         |
+| coroutine      | 协程结构             |       0% |         |
+| debug          | debug 模块           |       0% |         |
+| gc             | gc 模块              |       0% |         |
+| error handling | 错误处理机制         |       0% |         |
+| userdata       | userdata 结构        |       0% |         |
 
 
 

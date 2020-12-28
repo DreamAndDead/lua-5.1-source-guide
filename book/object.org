@@ -41,21 +41,13 @@ lua 是一种动态类型语言，类型不存在于变量中，而存在于值�
 tt 表示值的类型，value 表示值的数据。
 明显地，类型是值的一部分。
 
-#+begin_src asymptote :file object-tvalue.png
-unitsize(1pt);
-defaultpen(fontsize(16pt));
-defaultpen(font("OT1","cmtt","m","n"));
-fill(box((0,0), (140, 100)), white);
+#+begin_src asymptote :noweb eval :file object-tvalue.png
+<<lib>>
 
-path b = box((0, 0), (120, 40));
+init_canvas(140, 100);
 
-pair o = (10, 10);
-draw(shift(o) * b);
-label("int tt", (10, 30), E);
-
-pair offset = (0, 40);
-draw(shift(o + offset) * b);
-label("Value value", (10, 70), E);
+Box tt = Box((70, 30), (120, 40), "int tt");
+Box val = Box((70, 70), (120, 40), "Value value");
 #+end_src
 
 #+RESULTS:
@@ -89,20 +81,24 @@ TValue 中，数据 value 用 union Value 结构来表示，有效利用内存�
 
 不同类型的数据使用不同的键值来存取。
 
+#+begin_src asymptote :noweb eval :file object-value.png
+<<lib>>
 
-#+begin_example
-+------------------------------------------------------------------------+
-| Value value                                                            |
-| +--------------+-----------------+-----------------+-----------------+ |
-| |              |                 |                 |                 | |
-| | GCObject* gc | void* p         | lua_Number n    | int b           | |
-| |              |                 |                 |                 | |
-| +--------------+-----------------+-----------------+-----------------+ |
-+------------------------------------------------------------------------+
-| int tt                                                                 |
-+------------------------------------------------------------------------+
-#+end_example
+init_canvas(520, 200);
 
+Box gc = Box((80, 100), (120, 80), "GCObject* gc", dashed);
+Box p = Box((200, 100), (120, 80), "void* p", dashed);
+Box n = Box((320, 100), (120, 80), "lua\_Number n", dashed);
+Box b = Box((440, 100), (120, 80), "int b", dashed);
+
+Box tt = Box((260, 30), (500, 40), "int tt");
+Box val = Box((260, 115), (500, 130), "");
+
+label((260, 160), "Value value");
+#+end_src
+
+#+RESULTS:
+[[file:object-value.png]]
 
 * detail
 
@@ -121,8 +117,34 @@ nil 是最简单的值，表示没有值。
 
 可以看出，nil 值在内部是一个单例，所有使用 nil 的地方，都通过 ~luaO_nilobject~ 来引用。
 
+#+name: tvalue
+#+begin_src asymptote :noweb eval :file object-template.png :exports none
+<<lib>>
 
-fig.nil
+void draw_tvalue(string val, string t) {
+  init_canvas(520, 200);
+
+  Box v = Box((260, 100), (480, 80), val, dashed);
+
+  Box tt = Box((260, 30), (500, 40), t);
+  Box val = Box((260, 115), (500, 130), "");
+
+  label((260, 160), "Value value");
+}
+#+end_src
+
+#+RESULTS: tvalue
+[[file:object-template.png]]
+
+#+begin_src asymptote :noweb eval :file object-nil.png
+<<tvalue>>
+
+draw_tvalue("NULL", "int tt = LUA\_TNIL");
+#+end_src
+
+#+RESULTS:
+[[file:object-nil.png]]
+
 
 ** bool
 
@@ -130,7 +152,14 @@ fig.nil
 
 在存储的安排上，使用 tt 记录类型，用 value 中的 int b = 1/0 表示 true/false。
 
-fig.bool
+#+begin_src asymptote :noweb eval :file object-bool.png
+<<tvalue>>
+
+draw_tvalue("int b = 1/0", "int tt = LUA\_TBOOLEAN");
+#+end_src
+
+#+RESULTS:
+[[file:object-bool.png]]
 
 ** light userdata
 
@@ -139,7 +168,14 @@ lua 内部只负责引用，而不负责其生命周期管理，什么时候应�
 
 所以内部在用 tt 记录类型之后，只用 value 中 void * p 引用即可。
 
-fig.light userdata
+#+begin_src asymptote :noweb eval :file object-userdata.png
+<<tvalue>>
+
+draw_tvalue("void* p = <address>", "int tt = LUA\_TLIGHTUSERDATA");
+#+end_src
+
+#+RESULTS:
+[[file:object-userdata.png]]
 
 ** number
 
@@ -153,7 +189,14 @@ fig.light userdata
 
 类似的，用 tt 记录类型，用 value 中 =lua_Number n= 来记录 number 数值。
 
-fig.number
+#+begin_src asymptote :noweb eval :file object-number.png
+<<tvalue>>
+
+draw_tvalue("lua\_Number n = <number>", "int tt = LUA\_TNUMBER");
+#+end_src
+
+#+RESULTS:
+[[file:object-number.png]]
 
 ** collectable
 
@@ -169,6 +212,14 @@ fig.number
 #+CAPTION: lobject.h
 #+include: ../lua-5.1.5/src/lobject.h src c -n 189 :lines "189-190"
 
+#+begin_src asymptote :noweb eval :file object-collectable.png
+<<tvalue>>
+
+draw_tvalue("GCObject* gc = <address>", "int tt = LUA\_TSTRING / LUA\_TTABLE / etc");
+#+end_src
+
+#+RESULTS:
+[[file:object-collectable.png]]
 
 lua 内建了 gc 机制，其中关键的结构是 =GCObject= ，
 用于表示所有 iscollectable 的值。
@@ -191,14 +242,59 @@ GCObject 是 union 结构，和 Value 结构类似，内部键值用于存取不
 #+CAPTION: lstate.h
 #+include: ../lua-5.1.5/src/lstate.h src c -n 97 :lines "97-128"
 
-=ts us cl= 虽然是 union，但是其中多余的字段是用于对齐的，实质还是 struct。
+=ts u cl= 虽然是 union，但是其中多余的字段是用于对齐的，实质还是 struct。
 
 #+CAPTION: lobject.h
 #+include: ../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
 #+include: ../lua-5.1.5/src/lobject.h src c -n 215 :lines "215-224"
 #+include: ../lua-5.1.5/src/lobject.h src c -n 287 :lines "287-313"
 
-fig.gcobject
+#+begin_src asymptote :noweb eval :file object-gcobject.png
+<<lib>>
+
+init_canvas(1880, 370);
+
+void draw_outer(pair pos, pair size, string text) {
+  Box surrounding = Box(pos, size, "", dashed);
+  label(pos + (0, size.y / 2), text, 2*S);
+}
+
+void draw_key(pair pos, pair size, string text, bool extra = true) {
+  draw_outer(pos, size, text);
+
+  pair inner_size = (size.x - 20, 40);
+  Box(pos + (0, size.y / 2 - 50), inner_size, "GCObject* next");
+  Box(pos + (0, size.y / 2 - 90), inner_size, "lu\_byte tt");
+  Box(pos + (0, size.y / 2 - 130), inner_size, "lu\_byte marked");
+  if (extra) {
+    Box(pos + (0, size.y / 2 - 170), inner_size, "...");
+    Box(pos + (0, size.y / 2 - 210), inner_size, "...");
+    Box(pos + (0, size.y / 2 - 250), inner_size, "...");
+  }
+}
+
+draw_key((100, 180), (160, 320), "gch", false);
+
+draw_outer((350, 180), (340, 320), "ts");
+Box((270, 170), (160, 280), "L\_Umaxalign dummy", dashed);
+draw_key((430, 170), (160, 280), "tsv");
+
+draw_outer((690, 180), (340, 320), "u");
+Box((610, 170), (160, 280), "L\_Umaxalign dummy", dashed);
+draw_key((770, 170), (160, 280), "uv");
+
+draw_outer((1030, 180), (340, 320), "cl");
+draw_key((950, 170), (160, 280), "c");
+draw_key((1110, 170), (160, 280), "l");
+
+draw_key((1280, 180), (160, 320), "h");
+draw_key((1440, 180), (160, 320), "p");
+draw_key((1600, 180), (160, 320), "uv");
+draw_key((1760, 180), (160, 320), "th");
+#+end_src
+
+#+RESULTS:
+[[file:object-gcobject.png]]
 
 GCObject 将类型重新备份了一份，GCHeader 中的 tt 和 TValue 中的 tt 是相同的。
 

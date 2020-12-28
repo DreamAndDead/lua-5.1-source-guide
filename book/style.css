@@ -29,3 +29,11 @@ tr,td,th {
   vertical-align: middle;
 }
 
+/*
+ * center big picture
+ * https://stackoverflow.com/questions/14562457/center-oversized-image-in-div
+ */
+img {
+    margin-left: 50%;
+    transform: translateX(-50%);
+}

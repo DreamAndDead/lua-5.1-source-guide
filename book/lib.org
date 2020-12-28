@@ -18,14 +18,16 @@ struct Box {
   pair pos;
 
   pair unit_vector;
+
+  pen p;
   
   void draw_self() {
     path rect = box((0, 0), this.size);
-    draw(shift(this.pos) * rect);
+    draw(shift(this.pos) * rect, this.p);
     label(this.text, this.center);
   }
 
-  void operator init(pair c, pair s, string t) {
+  void operator init(pair c, pair s, string t, pen p = solid) {
     this.center = c;
     this.size = s;
     this.text = t;
@@ -34,6 +36,8 @@ struct Box {
     this.height = s.y;
     this.pos = c - s / 2;
     this.unit_vector = (width / 2, height / 2);
+
+    this.p = p;
 
     this.draw_self();
   }
