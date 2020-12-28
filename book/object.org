@@ -24,13 +24,49 @@ lua 是一种动态类型语言，类型不存在于变量中，而存在于值�
 
 * TODO review struct & union
 
+https://stackoverflow.com/questions/119123/why-isnt-sizeof-for-a-struct-equal-to-the-sum-of-sizeof-of-each-member
+
+http://www.catb.org/esr/structure-packing/
+
+
 - struct memory
+  - stack and count
+  - mem padding in the last
+  - in array, just padding * count
 - union memory
-- how TString alignment? where dummy is smaller than tsv
+  - share
+  - rely on the largest
+  - array, just size * count
 - struct in union, gcobject hack
-- union in array? 如何对齐
 
+- how dummy works
+- union in array?
 
+#+begin_src C :flags -m32
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+  typedef struct s1 {
+    short a;
+    int b;
+    char c;
+  } s1;
+
+  typedef union u1 {
+    int a;
+    char b;
+  } u1;
+  
+  printf("sizeof(s1) = %d\n", sizeof(s1));
+  printf("sizeof(u1) = %d\n", sizeof(u1));
+  printf("sizeof(void*) = %d\n", sizeof(void*));
+}
+#+end_src
+
+#+RESULTS:
+| sizeof(s1)    | = | 12 |
+| sizeof(u1)    | = |  4 |
+| sizeof(void*) | = |  4 |
 
 * tagged value
 
