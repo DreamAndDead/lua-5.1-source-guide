@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-28 一 12:06 -->
+<!-- 2020-12-28 一 17:08 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>object</title>
@@ -275,7 +275,7 @@ tt 表示值的类型，value 表示值的数据。
 </p>
 
 
-<div id="orgacfbba3" class="figure">
+<div id="orgfc59685" class="figure">
 <p><img src="object-tvalue.png" alt="object-tvalue.png">
 </p>
 </div>
@@ -365,7 +365,7 @@ TValue 中，数据 value 用 union Value 结构来表示，有效利用内存�
 </p>
 
 
-<div id="orgbc1eb7e" class="figure">
+<div id="org980f714" class="figure">
 <p><img src="object-value.png" alt="object-value.png">
 </p>
 </div>
@@ -406,7 +406,7 @@ nil 是最简单的值，表示没有值。
 </p>
 
 
-<div id="org60adc51" class="figure">
+<div id="orgd5f6b11" class="figure">
 <p><img src="object-nil.png" alt="object-nil.png">
 </p>
 </div>
@@ -426,7 +426,7 @@ nil 是最简单的值，表示没有值。
 </p>
 
 
-<div id="orgaf57c79" class="figure">
+<div id="org7ea536c" class="figure">
 <p><img src="object-bool.png" alt="object-bool.png">
 </p>
 </div>
@@ -446,7 +446,7 @@ lua 内部只负责引用，而不负责其生命周期管理，什么时候应�
 </p>
 
 
-<div id="org73b5ef0" class="figure">
+<div id="orgfea7b1a" class="figure">
 <p><img src="object-userdata.png" alt="object-userdata.png">
 </p>
 </div>
@@ -486,7 +486,7 @@ lua 内部只负责引用，而不负责其生命周期管理，什么时候应�
 </p>
 
 
-<div id="org0edcfa6" class="figure">
+<div id="org6cbb01c" class="figure">
 <p><img src="object-number.png" alt="object-number.png">
 </p>
 </div>
@@ -517,7 +517,7 @@ lua 内部只负责引用，而不负责其生命周期管理，什么时候应�
 </div>
 
 
-<div id="org6be419b" class="figure">
+<div id="org9a24284" class="figure">
 <p><img src="object-collectable.png" alt="object-collectable.png">
 </p>
 </div>
@@ -551,6 +551,12 @@ GCObject 是 union 结构，和 Value 结构类似，内部键值用于存取不
 <p>
 如果仔细观察内部内存的安排，会发现这种方式是非常巧妙的。
 </p>
+
+
+<div id="org6a0fe91" class="figure">
+<p><img src="object-gcobject.png" alt="object-gcobject.png">
+</p>
+</div>
 
 <p>
 <code>gch h p uv th</code> 都是 struct，头部的字段都是 CommonHeader。
@@ -730,12 +736,6 @@ GCObject 是 union 结构，和 Value 结构类似，内部键值用于存取不
 </pre>
 </div>
 
-
-<div id="org244b96a" class="figure">
-<p><img src="object-gcobject.png" alt="object-gcobject.png">
-</p>
-</div>
-
 <p>
 GCObject 将类型重新备份了一份，GCHeader 中的 tt 和 TValue 中的 tt 是相同的。
 </p>
@@ -864,7 +864,7 @@ proto 和 upval 就对应 GCObject 中多出的 2 个键值 p uv，
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-28 一 11:58</p>
+<p>Updated: 2020-12-28 一 17:07</p>
 <p>Created: 2020-12-23 三 11:59</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

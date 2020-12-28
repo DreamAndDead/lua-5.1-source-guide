@@ -30,6 +30,8 @@ lua 是一种动态类型语言，类型不存在于变量中，而存在于值�
 - struct in union, gcobject hack
 - union in array? 如何对齐
 
+
+
 * tagged value
 
 章节开始就提到，类型存在于值本身。
@@ -231,24 +233,6 @@ GCObject 是 union 结构，和 Value 结构类似，内部键值用于存取不
 
 如果仔细观察内部内存的安排，会发现这种方式是非常巧妙的。
 
-=gch h p uv th= 都是 struct，头部的字段都是 CommonHeader。
-
-#+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 39 :lines "39-52"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 338 :lines "338-349"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 228 :lines "228-254"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 270 :lines "270-285"
-
-#+CAPTION: lstate.h
-#+include: ../lua-5.1.5/src/lstate.h src c -n 97 :lines "97-128"
-
-=ts u cl= 虽然是 union，但是其中多余的字段是用于对齐的，实质还是 struct。
-
-#+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 215 :lines "215-224"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 287 :lines "287-313"
-
 #+begin_src asymptote :noweb eval :file object-gcobject.png
 <<lib>>
 
@@ -295,6 +279,24 @@ draw_key((1760, 180), (160, 320), "th");
 
 #+RESULTS:
 [[file:object-gcobject.png]]
+
+=gch h p uv th= 都是 struct，头部的字段都是 CommonHeader。
+
+#+CAPTION: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src c -n 39 :lines "39-52"
+#+include: ../lua-5.1.5/src/lobject.h src c -n 338 :lines "338-349"
+#+include: ../lua-5.1.5/src/lobject.h src c -n 228 :lines "228-254"
+#+include: ../lua-5.1.5/src/lobject.h src c -n 270 :lines "270-285"
+
+#+CAPTION: lstate.h
+#+include: ../lua-5.1.5/src/lstate.h src c -n 97 :lines "97-128"
+
+=ts u cl= 虽然是 union，但是其中多余的字段是用于对齐的，实质还是 struct。
+
+#+CAPTION: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
+#+include: ../lua-5.1.5/src/lobject.h src c -n 215 :lines "215-224"
+#+include: ../lua-5.1.5/src/lobject.h src c -n 287 :lines "287-313"
 
 GCObject 将类型重新备份了一份，GCHeader 中的 tt 和 TValue 中的 tt 是相同的。
 

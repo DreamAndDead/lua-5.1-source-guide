@@ -10,7 +10,7 @@
 |----------------+----------------------+----------+---------|
 | overview       | 全书总览             |      70% | [[file:overview.org][preview]] |
 | object         | 关键数据结构         |      90% | [[file:object.org][preview]] |
-| memory         | 内存模块             |       0% |         |
+| memory         | 内存模块             |      20% | [[file:mem.org][preview]] |
 | string         | 字符串结构           |       0% |         |
 | table          | 表结构               |       0% |         |
 | compiler       | 编译过程             |       0% |         |

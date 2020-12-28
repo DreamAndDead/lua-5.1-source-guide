@@ -1,17 +1,18 @@
 #+SETUPFILE: setup.org
 
-* DRAFT memory
+#+TITLE: memory
+#+DATE: <2020-12-28 一 17:07>
 
 内存是承载数据的基础。在讲解更多细节之前，先关注 lua 是如何管理内存资源的。
 
 
-** core api
-   :LOGBOOK:
-   - Note taken on [2020-12-02 三 17:26] \\
-     g->ud 和 g->totalbytes 的作用
-   - Note taken on [2020-12-02 三 16:13] \\
-     ud 的作用？
-   :END:
+* core api
+  :LOGBOOK:
+  - Note taken on [2020-12-02 三 17:26] \\
+  g->ud 和 g->totalbytes 的作用
+  - Note taken on [2020-12-02 三 16:13] \\
+  ud 的作用？
+  :END:
 
 
 TODO: overview 中需要讲解 lua_state 和 global_state
@@ -46,19 +47,19 @@ lua 默认提供的 frealloc 函数很简单，只是简单利用系统 api 来�
 
 #+INCLUDE: ../lua-5.1.5/src/lapi.c src c -n 1007 :lines "1007-1023"
 
-** generic routine
+* generic routine
 
 在核心 api 定义之后，lua 中的其它函数不过是它的封装。
 
 这里主要介绍三个函数
 
-*** ~luaM_realloc_~
+** ~luaM_realloc_~
 
 简单对核心 api 进行了封装，计算了 totalbytes，为其它方法提供基础。
 
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 73 :lines "73-86"
 
-*** ~luaM_rellocv~
+** ~luaM_rellocv~
 
 这是一个宏，
 
@@ -75,7 +76,7 @@ elemsize
 
 #+INCLUDE: ../lua-5.1.5/src/lmem.h src c -n 19 :lines "19-23"
 
-*** ~luaM_growaux_~
+** ~luaM_growaux_~
 
 这个方法，在 ~luaM_rellocv~ 的基础上，添加了 limit 的限制。
 
@@ -85,7 +86,7 @@ elemsize
 
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 46 :lines "46-64"
 
-** practice
+* practice
 
 以上主要介绍的 3 个方法不是公共的方法，其它模块并不引用它们，而引用其它宏定义
 
