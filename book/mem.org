@@ -97,7 +97,7 @@ typedef struct global_State {
 
 #+begin_src dot :file mem-call.png
 digraph {
-	rankdir = TD;
+	rankdir = TB;
 	node[shape=box];
 
 	g[label="g->frealloc"];

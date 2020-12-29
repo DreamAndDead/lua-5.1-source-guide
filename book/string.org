@@ -104,6 +104,45 @@ stringtable 就是教科书式的 hash table 实现。
 - size，桶数组的长度
 
 #+caption: hash table bucket overview, hash func, mod and colli
+#+begin_src dot :file string-hashtable.png
+digraph {
+	rankdir = LR;
+	
+	subgraph string {
+		node[shape=box];
+
+		{ rank=same;
+			spre[label="\"pre\""];
+			spost[label="\"post\""];
+			spp[label="\"prepost\""];
+		}
+
+		label = "process #1";
+	}
+
+	node[shape=record, width=.1, height=.1];
+	buckets [label="<b0> 0 | <b1> | <b2> | <b3> | <b4> | <b5> | <b6> | <b7>"];
+
+	subgraph tstring {
+		node[shape=box];
+
+		{ rank=same;
+			pre;
+			post;
+			prepost;
+		}
+	}
+
+	spre -> buckets:b1 -> pre;
+	spost -> buckets:b4 -> prepost -> post;
+	spp -> buckets:b4;
+
+	
+}
+#+end_src
+
+#+RESULTS:
+[[file:string-hashtable.png]]
 
 ** method
 
