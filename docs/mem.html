@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-29 二 11:53 -->
+<!-- 2020-12-29 二 17:17 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>memory</title>
@@ -333,8 +333,8 @@ lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看
 <span class="linenr">67: </span><span class="org-comment-delimiter">*/</span>
 <span class="linenr">68: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">global_State</span> {
 <span class="linenr">69: </span>  <span class="org-type">stringtable</span> <span class="org-variable-name">strt</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">hash table for strings</span><span class="org-comment-delimiter"> */</span>
-<span id="coderef-fa" class="coderef-off"><span class="linenr">70: </span>  <span class="org-type">lua_Alloc</span> <span class="org-variable-name">frealloc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">function to reallocate memory</span><span class="org-comment-delimiter"> */</span> (fa)</span>
-<span id="coderef-ud" class="coderef-off"><span class="linenr">71: </span>  <span class="org-type">void</span> *<span class="org-variable-name">ud</span>;         <span class="org-comment-delimiter">/* </span><span class="org-comment">auxiliary data to `frealloc'</span><span class="org-comment-delimiter"> */</span> (ud)</span>
+<span id="coderef-fa" class="coderef-off"><span class="linenr">70: </span>  <span class="org-type">lua_Alloc</span> <span class="org-variable-name">frealloc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">function to reallocate memory</span><span class="org-comment-delimiter"> */</span></span>
+<span id="coderef-ud" class="coderef-off"><span class="linenr">71: </span>  <span class="org-type">void</span> *<span class="org-variable-name">ud</span>;         <span class="org-comment-delimiter">/* </span><span class="org-comment">auxiliary data to `frealloc'</span><span class="org-comment-delimiter"> */</span></span>
 <span class="linenr">72: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">currentwhite</span>;
 <span class="linenr">73: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">gcstate</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">state of garbage collector</span><span class="org-comment-delimiter"> */</span>
 <span class="linenr">74: </span>  <span class="org-type">int</span> <span class="org-variable-name">sweepstrgc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">position of sweep in `strt'</span><span class="org-comment-delimiter"> */</span>
@@ -346,7 +346,7 @@ lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看
 <span class="linenr">80: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">tmudata</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">last element of list of userdata to be GC</span><span class="org-comment-delimiter"> */</span>
 <span class="linenr">81: </span>  <span class="org-type">Mbuffer</span> <span class="org-variable-name">buff</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">temporary buffer for string concatentation</span><span class="org-comment-delimiter"> */</span>
 <span class="linenr">82: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">GCthreshold</span>;
-<span id="coderef-tb" class="coderef-off"><span class="linenr">83: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">totalbytes</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of bytes currently allocated</span><span class="org-comment-delimiter"> */</span> (tb)</span>
+<span id="coderef-tb" class="coderef-off"><span class="linenr">83: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">totalbytes</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of bytes currently allocated</span><span class="org-comment-delimiter"> */</span></span>
 <span class="linenr">84: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">estimate</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">an estimate of number of bytes actually in use</span><span class="org-comment-delimiter"> */</span>
 <span class="linenr">85: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">gcdept</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">how much GC is `behind schedule'</span><span class="org-comment-delimiter"> */</span>
 <span class="linenr">86: </span>  <span class="org-type">int</span> <span class="org-variable-name">gcpause</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of pause between successive GCs</span><span class="org-comment-delimiter"> */</span>
@@ -403,7 +403,7 @@ lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看
 </p>
 
 
-<div id="orga7f19fa" class="figure">
+<div id="org1301e8c" class="figure">
 <p><img src="mem-call.png" alt="mem-call.png">
 </p>
 </div>
@@ -522,27 +522,22 @@ lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要�
 <col  class="org-left">
 
 <col  class="org-left">
-
-<col  class="org-left">
 </colgroup>
 <thead>
 <tr>
 <th scope="col" class="org-left">文件</th>
 <th scope="col" class="org-left">建议</th>
-<th scope="col" class="org-left">描述</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="org-left">lmem.h</td>
 <td class="org-left">仔细阅读</td>
-<td class="org-left">关于内存分配的全部方法</td>
 </tr>
 
 <tr>
 <td class="org-left">lmem.c</td>
 <td class="org-left">仔细阅读</td>
-<td class="org-left">相关函数实现</td>
 </tr>
 </tbody>
 </table>
@@ -551,7 +546,7 @@ lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要�
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-29 二 11:51</p>
+<p>Updated: 2020-12-29 二 17:17</p>
 <p>Created: 2020-12-23 三 11:59</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

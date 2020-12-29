@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2020-12-29 二 17:25 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>string</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="DreamAndDead">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="htmlize.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">string</h1>
+<p>
+string 是多数编程语言内建的类型，lua 也不例外。
+</p>
+
+<p>
+lua 代码中使用字符串是非常方便的，呼之即来，使用后也可以不闻不问。
+因为 string 在底层自动新建，并由 gc 自动回收，极大方便了上层使用者。
+</p>
+
+<p>
+更重要的是，string 同时也在 lua 的底层实现发挥着重要的作用。
+</p>
+
+<p>
+本章就来讲解 lua 中的 string。
+</p>
+
+<div id="outline-container-org912911b" class="outline-2">
+<h2 id="org912911b"><span class="section-number-2">1</span> structure</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+在 <a href="object.html">object</a> 章节中已经提到，string 类型在 GCObject 中用 TString ts 表示。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>lobject.h</label><pre class="src src-c"><span class="linenr">196: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">197: </span><span class="org-comment">** String headers for string table</span>
+<span class="linenr">198: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">199: </span><span class="org-keyword">typedef</span> <span class="org-keyword">union</span> <span class="org-type">TString</span> {
+<span class="linenr">200: </span>  <span class="org-type">L_Umaxalign</span> <span class="org-variable-name">dummy</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">ensures maximum alignment for strings</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">201: </span>  <span class="org-keyword">struct</span> {
+<span class="linenr">202: </span>    CommonHeader;
+<span class="linenr">203: </span>    <span class="org-type">lu_byte</span> <span class="org-variable-name">reserved</span>;
+<span class="linenr">204: </span>    <span class="org-type">unsigned</span> <span class="org-type">int</span> <span class="org-variable-name">hash</span>;
+<span class="linenr">205: </span>    <span class="org-type">size_t</span> <span class="org-variable-name">len</span>;
+<span class="linenr">206: </span>  } <span class="org-variable-name">tsv</span>;
+<span class="linenr">207: </span>} <span class="org-type">TString</span>;
+</pre>
+</div>
+
+<p>
+TString 看上去是 union 结构，但是 dummy 只用来做对齐，并不用作实际用途，
+所以考虑这一点，TString 本质还是一个 struct 结构。
+</p>
+
+<p>
+除去 CommonHeader 部分，新增了 3 个字段，存储 string 的元数据，
+而实际的数据部分，紧紧跟在 TString 的后面，而没有使用如 next 之类的指针来引用，是一种巧妙的方法。
+</p>
+
+<p>
+data 部分是通用的 char[]。
+</p>
+
+<p>
+meta 部分，用新增的 3 个字段来记录，
+</p>
+<ul class="org-ul">
+<li>reserved，用于关键字（如 if，end 等），到 lex 章节再详细解释</li>
+<li>hash，由 data 计算得到的 hash 值，在 new 小节详细解释</li>
+<li>len，data 长度，不包含最后的 '\0'</li>
+</ul>
+
+<p>
+明确了这种结构之后，相关的宏就很容易理解。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>lobject.h</label><pre class="src src-c"><span class="linenr">210: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">getstr</span>(<span class="org-variable-name">ts</span>)      cast(<span class="org-keyword">const</span> <span class="org-type">char</span> *, (ts) + 1)
+</pre>
+</div>
+
+<p>
+使用 ts + 1 来索引到 data 的位置，并取到 data 数据。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lstring.h</label><pre class="src src-c"><span class="linenr">16: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">sizestring</span>(<span class="org-variable-name">s</span>)   (<span class="org-keyword">sizeof</span>(<span class="org-keyword">union</span> <span class="org-type">TString</span>)+((s)-&gt;len+1)*<span class="org-keyword">sizeof</span>(<span class="org-type">char</span>))
+</pre>
+</div>
+
+<p>
+TString 的空间大小就是 meta + data 的大小，+1 是因为要计入末尾的 '\0'。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge38137f" class="outline-2">
+<h2 id="orge38137f"><span class="section-number-2">2</span> new</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+
+<div id="outline-container-org93a7d98" class="outline-3">
+<h3 id="org93a7d98"><span class="section-number-3">2.1</span> immutable</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+多数 lua 用户不知道的是，lua 中所有的 string 都是不可变的，且只有一份留存在内存中。
+</p>
+
+<p>
+比如如下示例代码，
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = <span class="org-string">"pre"</span>
+<span class="org-keyword">local</span> <span class="org-variable-name">b</span> = <span class="org-string">"post"</span>
+<span class="org-keyword">local</span> <span class="org-variable-name">c</span> = a .. b
+<span class="org-keyword">local</span> <span class="org-variable-name">d</span> = <span class="org-string">"pre"</span>
+</pre>
+</div>
+
+<p>
+变量 a d 指向同一个 string 类型的 TValue（还记得吗？）
+</p>
+
+<p>
+<code>a .. b</code> 连接的过程没有修改 <code>"pre"</code> 或者 <code>"post"</code> ，而是新建了 <code>"prepost"</code> ，新变量 c 指向它。
+</p>
+
+
+<div id="org0622d54" class="figure">
+<p><img src="string-immutable.png" alt="string-immutable.png">
+</p>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org823c597" class="outline-3">
+<h3 id="org823c597"><span class="section-number-3">2.2</span> string table</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+前面提到的 immutable 的特性，正是对底层实现的一种表面呈现。
+</p>
+
+<p>
+实际上，所有新建的 TString 都集合存储在 <code>global_State</code> 中的 stringtable。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lstate.h</label><pre class="src src-c"><span class="linenr">65: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">66: </span><span class="org-comment">** `global state', shared by all threads of this state</span>
+<span class="linenr">67: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">68: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">global_State</span> {
+<span class="linenr">69: </span>  <span class="org-type">stringtable</span> <span class="org-variable-name">strt</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">hash table for strings</span><span class="org-comment-delimiter"> */</span>
+</pre>
+</div>
+<div class="org-src-container">
+<pre class="src src-c"><span class="linenr">38: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">stringtable</span> {
+<span class="linenr">39: </span>  <span class="org-type">GCObject</span> **<span class="org-variable-name">hash</span>;
+<span class="linenr">40: </span>  <span class="org-type">lu_int32</span> <span class="org-variable-name">nuse</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">41: </span>  <span class="org-type">int</span> <span class="org-variable-name">size</span>;
+<span class="linenr">42: </span>} <span class="org-type">stringtable</span>;
+</pre>
+</div>
+
+<p>
+stringtable 就是教科书式的 hash table 实现。
+</p>
+<ul class="org-ul">
+<li>hash，元素为 <code>GCObject *</code> 的桶数组</li>
+<li>nuse，已存储 TString 的数量</li>
+<li>size，桶数组的长度</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgef7704b" class="outline-3">
+<h3 id="orgef7704b"><span class="section-number-3">2.3</span> method</h3>
+<div class="outline-text-3" id="text-2-3">
+
+<div id="org30bd10e" class="figure">
+<p><img src="string-call.png" alt="string-call.png">
+</p>
+</div>
+
+<p>
+string 模块中提供的方法非常少，新建 TString 的核心过程实现在 <code>luaS_newlstr</code> 和 <code>newlstr</code> 中。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>lstring.c</label><pre class="src src-C"><span class="linenr">75: </span><span class="org-type">TString</span> *<span class="org-function-name">luaS_newlstr</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">str</span>, <span class="org-type">size_t</span> <span class="org-variable-name">l</span>) {
+<span class="linenr">76: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">o</span>;
+<span class="linenr">77: </span>  <span class="org-type">unsigned</span> <span class="org-type">int</span> <span class="org-variable-name">h</span> = cast(<span class="org-type">unsigned</span> <span class="org-type">int</span>, l);  <span class="org-comment-delimiter">/* </span><span class="org-comment">seed</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">78: </span>  <span class="org-type">size_t</span> <span class="org-variable-name">step</span> = (l&gt;&gt;5)+1;  <span class="org-comment-delimiter">/* </span><span class="org-comment">if string is too long, don't hash all its chars</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">79: </span>  <span class="org-type">size_t</span> <span class="org-variable-name">l1</span>;
+<span class="linenr">80: </span>  <span class="org-keyword">for</span> (l1=l; l1&gt;=step; l1-=step)  <span class="org-comment-delimiter">/* </span><span class="org-comment">compute hash</span><span class="org-comment-delimiter"> */</span>
+<span id="coderef-hash" class="coderef-off"><span class="linenr">81: </span>    h = h ^ ((h&lt;&lt;5)+(h&gt;&gt;2)+cast(<span class="org-type">unsigned</span> <span class="org-type">char</span>, str[l1-1]));</span>
+<span id="coderef-mod" class="coderef-off"><span class="linenr">82: </span>  <span class="org-keyword">for</span> (o = G(L)-&gt;strt.hash[lmod(h, G(L)-&gt;strt.size)];</span>
+<span class="linenr">83: </span>       o != <span class="org-constant">NULL</span>;
+<span id="coderef-search" class="coderef-off"><span class="linenr">84: </span>       o = o-&gt;gch.next) {</span>
+<span class="linenr">85: </span>    <span class="org-type">TString</span> *<span class="org-variable-name">ts</span> = rawgco2ts(o);
+<span class="linenr">86: </span>    <span class="org-keyword">if</span> (ts-&gt;tsv.len == l &amp;&amp; (memcmp(str, getstr(ts), l) == 0)) {
+<span class="linenr">87: </span>      <span class="org-comment-delimiter">/* </span><span class="org-comment">string may be dead</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">88: </span>      <span class="org-keyword">if</span> (isdead(G(L), o)) changewhite(o);
+<span id="coderef-exist" class="coderef-off"><span class="linenr">89: </span>      <span class="org-keyword">return</span> ts;</span>
+<span class="linenr">90: </span>    }
+<span class="linenr">91: </span>  }
+<span id="coderef-new" class="coderef-off"><span class="linenr">92: </span>  <span class="org-keyword">return</span> newlstr(L, str, l, h);  <span class="org-comment-delimiter">/* </span><span class="org-comment">not found</span><span class="org-comment-delimiter"> */</span></span>
+<span class="linenr">93: </span>}
+</pre>
+</div>
+
+<p>
+从公有方法 <code>luaS_newlstr</code> 开始
+</p>
+<ol class="org-ol">
+<li>先计算 <a href="#coderef-hash" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-hash');" onmouseout="CodeHighlightOff(this, 'coderef-hash');">字符串 hash</a></li>
+<li>用 <a href="#coderef-mod" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-mod');" onmouseout="CodeHighlightOff(this, 'coderef-mod');">模除</a> 方式找到相应的 bucket</li>
+<li>如果桶中有元素，<a href="#coderef-search" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-search');" onmouseout="CodeHighlightOff(this, 'coderef-search');">一路向下查找</a></li>
+<li>如果有相同 <code>char *</code> 内容的元素存在，<a href="#coderef-exist" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-exist');" onmouseout="CodeHighlightOff(this, 'coderef-exist');">返回相应元素</a></li>
+<li>直到这时，才<a href="#coderef-new" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-new');" onmouseout="CodeHighlightOff(this, 'coderef-new');">新建 TString</a></li>
+</ol>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>lstring.c</label><pre class="src src-C"><span class="linenr">50: </span><span class="org-keyword">static</span> <span class="org-type">TString</span> *<span class="org-function-name">newlstr</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">str</span>, <span class="org-type">size_t</span> <span class="org-variable-name">l</span>,
+<span class="linenr">51: </span>                                       <span class="org-type">unsigned</span> <span class="org-type">int</span> <span class="org-variable-name">h</span>) {
+<span class="linenr">52: </span>  <span class="org-type">TString</span> *<span class="org-variable-name">ts</span>;
+<span class="linenr">53: </span>  <span class="org-type">stringtable</span> *<span class="org-variable-name">tb</span>;
+<span id="coderef-check" class="coderef-off"><span class="linenr">54: </span>  <span class="org-keyword">if</span> (l+1 &gt; (MAX_SIZET - <span class="org-keyword">sizeof</span>(TString))/<span class="org-keyword">sizeof</span>(<span class="org-type">char</span>))</span>
+<span class="linenr">55: </span>    luaM_toobig(L);
+<span id="coderef-alloc" class="coderef-off"><span class="linenr">56: </span>  ts = cast(<span class="org-type">TString</span> *, luaM_malloc(L, (l+1)*<span class="org-keyword">sizeof</span>(<span class="org-type">char</span>)+<span class="org-keyword">sizeof</span>(TString)));</span>
+<span class="linenr">57: </span>  ts-&gt;tsv.len = l;
+<span class="linenr">58: </span>  ts-&gt;tsv.hash = h;
+<span class="linenr">59: </span>  ts-&gt;tsv.marked = luaC_white(G(L));
+<span class="linenr">60: </span>  ts-&gt;tsv.tt = LUA_TSTRING;
+<span class="linenr">61: </span>  ts-&gt;tsv.reserved = 0;
+<span class="linenr">62: </span>  memcpy(ts+1, str, l*<span class="org-keyword">sizeof</span>(<span class="org-type">char</span>));
+<span id="coderef-ending0" class="coderef-off"><span class="linenr">63: </span>  ((<span class="org-type">char</span> *)(ts+1))[l] = <span class="org-string">'\0'</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">ending 0</span><span class="org-comment-delimiter"> */</span></span>
+<span class="linenr">64: </span>  tb = &amp;G(L)-&gt;strt;
+<span class="linenr">65: </span>  h = lmod(h, tb-&gt;size);
+<span id="coderef-insert" class="coderef-off"><span class="linenr">66: </span>  ts-&gt;tsv.next = tb-&gt;hash[h];  <span class="org-comment-delimiter">/* </span><span class="org-comment">chain new entry</span><span class="org-comment-delimiter"> */</span></span>
+<span class="linenr">67: </span>  tb-&gt;hash[h] = obj2gco(ts);
+<span class="linenr">68: </span>  tb-&gt;nuse++;
+<span class="linenr">69: </span>  <span class="org-keyword">if</span> (tb-&gt;nuse &gt; cast(lu_int32, tb-&gt;size) &amp;&amp; tb-&gt;size &lt;= MAX_INT/2)
+<span id="coderef-resize" class="coderef-off"><span class="linenr">70: </span>    luaS_resize(L, tb-&gt;size*2);  <span class="org-comment-delimiter">/* </span><span class="org-comment">too crowded</span><span class="org-comment-delimiter"> */</span></span>
+<span class="linenr">71: </span>  <span class="org-keyword">return</span> ts;
+<span class="linenr">72: </span>}
+</pre>
+</div>
+
+<p>
+私有方法 <code>newlstr</code> 调用的前提是，桶数组中没有相同 <code>char *</code> 内容的 TString 存在
+</p>
+<ol class="org-ol">
+<li><a href="#coderef-check" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-check');" onmouseout="CodeHighlightOff(this, 'coderef-check');">检测是否超出长度限制</a>，在右侧减运算防止溢出</li>
+<li><a href="#coderef-alloc" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-alloc');" onmouseout="CodeHighlightOff(this, 'coderef-alloc');">分配内存</a>，l+1 是为了补足最后的 '\0'</li>
+<li><a href="#coderef-ending0" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-ending0');" onmouseout="CodeHighlightOff(this, 'coderef-ending0');">添加后置 '\0'</a></li>
+<li><a href="#coderef-insert" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-insert');" onmouseout="CodeHighlightOff(this, 'coderef-insert');">头插法</a>，插入到 string table 中，这样就不用判断桶中是否有元素，
+使用隐藏在 CommonHeader 中的 next 将元素链接起来。</li>
+<li><a href="#coderef-resize" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-resize');" onmouseout="CodeHighlightOff(this, 'coderef-resize');">按需进行 resize</a></li>
+</ol>
+
+<p>
+理解了上述方法，余下的两个宏自然也容易理解
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>lstring.h</label><pre class="src src-c"><span class="linenr">20: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaS_new</span>(<span class="org-variable-name">L</span>, <span class="org-variable-name">s</span>)  (luaS_newlstr(L, s, strlen(s)))
+<span class="linenr">21: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaS_newliteral</span>(<span class="org-variable-name">L</span>, <span class="org-variable-name">s</span>)   (luaS_newlstr(L, <span class="org-string">""</span> s, \
+<span class="linenr">22: </span>                                 (<span class="org-keyword">sizeof</span>(s)/<span class="org-keyword">sizeof</span>(<span class="org-type">char</span>))-1))
+</pre>
+</div>
+
+<p>
+两者的区别在于 <code>luaS_literal</code> 只能接受字面量参数。
+因为如果 <code>sizeof(s)</code> 中的 s 是 <code>char *</code> ，得到的是指针类型的长度，而不是字符串的长度。
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orga5dbfef" class="outline-2">
+<h2 id="orga5dbfef"><span class="section-number-2">3</span> resize</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+resize 方法的作用是用于动态调整 hash table 中桶的数量，
+</p>
+<ul class="org-ul">
+<li>如果桶个数过少，容易出现冲突</li>
+<li>如果桶个数过多，空间利用率不高</li>
+</ul>
+
+<p>
+在不考虑极值的情况下
+</p>
+<ul class="org-ul">
+<li>当元素数量超过桶的个数，则 2 倍拓展</li>
+<li>当元素数量小于 1/4 桶的个数，则 2 倍收缩</li>
+</ul>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>lstring.c</label><pre class="src src-c"><span class="linenr">69: </span><span class="org-keyword">if</span> (tb-&gt;nuse &gt; cast(lu_int32, tb-&gt;size) &amp;&amp; tb-&gt;size &lt;= MAX_INT/2)
+<span class="linenr">70: </span>  <span class="org-function-name">luaS_resize</span>(L, tb-&gt;size*2);  <span class="org-comment-delimiter">/* </span><span class="org-comment">too crowded</span><span class="org-comment-delimiter"> */</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span>lgc.c</label><pre class="src src-c"><span class="linenr">433: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">check size of string hash</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">434: </span><span class="org-keyword">if</span> (g-&gt;strt.nuse &lt; cast(lu_int32, g-&gt;strt.size/4) &amp;&amp;
+<span class="linenr">435: </span>    g-&gt;strt.size &gt; MINSTRTABSIZE*2)
+<span class="linenr">436: </span>  <span class="org-function-name">luaS_resize</span>(L, g-&gt;strt.size/2);  <span class="org-comment-delimiter">/* </span><span class="org-comment">table is too big</span><span class="org-comment-delimiter"> */</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org1ab1eab" class="outline-2">
+<h2 id="org1ab1eab"><span class="section-number-2">4</span> practice</h2>
+<div class="outline-text-2" id="text-4">
+<ol class="org-ol">
+<li><code>luaS_resize</code> 留待读者自行阅读，教科书式的实现</li>
+<li>因为 userdata 的新建方法和 string 非常相似，在源码中也就一并放在一起，关注
+<ul class="org-ul">
+<li><code>sizeudata</code></li>
+<li><code>luaS_newudata</code></li>
+</ul></li>
+</ol>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">lstring.h</td>
+<td class="org-left">仔细阅读</td>
+</tr>
+
+<tr>
+<td class="org-left">lstring.c</td>
+<td class="org-left">仔细阅读</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+
+<p>Updated: 2020-12-29 二 17:25</p>
+<p>Created: 2020-12-29 二 11:57</p>
+<p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+</div>
+</body>
+</html>

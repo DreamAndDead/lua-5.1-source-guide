@@ -13,6 +13,8 @@
 
 (org-babel-lob-ingest "./book/lib.org")
 
+(setq org-babel-lua-command "lua5.1")
+
 (setq org-publish-project-alist
       '(
 	("posts"
