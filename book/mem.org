@@ -3,100 +3,170 @@
 #+TITLE: memory
 #+DATE: <2020-12-23 三 11:59>
 
-内存是承载数据的基础。在讲解更多细节之前，先关注 lua 是如何管理内存资源的。
 
+内存管理对所有程序都很关键，对于动态语言更是如此。
+
+lua 是单线程程序，即使在内部实现了协程，但内存还是统一管理的。
+
+内存回收使用 gc 算法，是非常重要的模块，而相对地，内存分配就显得非常简单。
+
+本章就讲解 lua 源码中关于内存分配的内容。
 
 * core api
-  :LOGBOOK:
-  - Note taken on [2020-12-02 三 17:26] \\
-  g->ud 和 g->totalbytes 的作用
-  - Note taken on [2020-12-02 三 16:13] \\
-  ud 的作用？
-  :END:
 
+内存分配，无外乎涉及 3 个基础 api
+- malloc
+- realloc
+- free
 
-TODO: overview 中需要讲解 lua_state 和 global_state
+对于了解操作系统和 C 语言的大家都不陌生。
 
-lua 是单线程程序，即使在内部有协程这样的实现，但是内存还是进行统一管理的。
-负责全局的相关事务的结构，为 global state。
-
-内存模块，必须提供两种基础功能，内存分配 和 内存回收。
-
-lua 中的内存模块很简单，没有复杂如整理内存碎片之类（TODO 不一定，可能由 gc 实现），甚至将内存分配和内存回收用一个核心 api 实现。
-
-g->frealloc 是函数指针，指向负责内存分配和回收的核心 api。
-
-其原型为 lua_Alloc
+lua 内部将其简化为 1 个 api，定义原型为 =lua_Alloc=
 
 #+CAPTION: lua.h
 #+INCLUDE: ../lua-5.1.5/src/lua.h src c -n 63 :lines "63-67"
 
-不管这个函数内部如何实现，只要符合如下的行为，都可以作为核心 api。
-- malloc 功能， ~frealloc(ud, NULL, 0, n)~ ，分配大小为 n 的内存，并返回头地址
-- free 功能， ~frealloc(ud, p, o, 0)~ ，回收以 p 开始的 o 大小的内存块，返回 NULL
-- realloc 功能， ~frealloc(ud, p, o, n)~ ，变更 p 开始的内存块大小为 n，失败则返回 NULL
+这是一个函数指针，规定其行为需遵从如下约定
 
 #+CAPTION: lmem.c
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 23 :lines "23-40"
 
-lua 默认提供的 frealloc 函数很简单，只是简单利用系统 api 来实现
+简单的说，就是根据参数的不同，将 3 个基础 api 的功能用 1 个 api 来表示
+- malloc， ~frealloc(ud, NULL, 0, ns)~ ，分配大小为 ns 的内存，返回头地址
+- realloc， ~frealloc(ud, p, os, ns)~ ，变更 p 开始的内存块大小从 os 到 ns，失败返回 NULL
+- free， ~frealloc(ud, p, os, 0)~ ，回收以 p 开始的 os 大小的内存块，返回 NULL
 
+lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看到它是非常纯粹的
+
+#+caption: lauxlib.c
 #+INCLUDE: ../lua-5.1.5/src/lauxlib.c src c -n 627 :lines "627-637"
 
-同时，lua 也提供了相关接口，可以使用户自定义内存管理函数。
+** about global state
 
+在 [[file:overview.org][overview]] 章节，简单提到了 =global_State= ，字面意义上理解，它和全局的状态相关。
+
+这里就是它的一个应用方面，记录内存分配相关的状态。
+
+#+caption: lstate.h
+#+begin_src C -n 65
+/*
+,** `global state', shared by all threads of this state
+*/
+typedef struct global_State {
+  stringtable strt;  /* hash table for strings */
+  lua_Alloc frealloc;  /* function to reallocate memory */  (ref:fa)
+  void *ud;         /* auxiliary data to `frealloc' */      (ref:ud) 
+  lu_byte currentwhite;
+  lu_byte gcstate;  /* state of garbage collector */
+  int sweepstrgc;  /* position of sweep in `strt' */
+  GCObject *rootgc;  /* list of all collectable objects */
+  GCObject **sweepgc;  /* position of sweep in `rootgc' */
+  GCObject *gray;  /* list of gray objects */
+  GCObject *grayagain;  /* list of objects to be traversed atomically */
+  GCObject *weak;  /* list of weak tables (to be cleared) */
+  GCObject *tmudata;  /* last element of list of userdata to be GC */
+  Mbuffer buff;  /* temporary buffer for string concatentation */
+  lu_mem GCthreshold;
+  lu_mem totalbytes;  /* number of bytes currently allocated */  (ref:tb)
+  lu_mem estimate;  /* an estimate of number of bytes actually in use */
+  lu_mem gcdept;  /* how much GC is `behind schedule' */
+  int gcpause;  /* size of pause between successive GCs */
+  int gcstepmul;  /* GC `granularity' */
+  lua_CFunction panic;  /* to be called in unprotected errors */
+  TValue l_registry;
+  struct lua_State *mainthread;
+  UpVal uvhead;  /* head of double-linked list of all open upvalues */
+  struct Table *mt[NUM_TAGS];  /* metatables for basic types */
+  TString *tmname[TM_N];  /* array with tag-method names */
+} global_State;
+#+end_src
+
+- [[(fa)][frealloc]] 引用内部的内存分配函数，即上面提到的 =l_alloc=
+- [[(ud)][ud]] 引用 frealloc 函数的第一个参数，提供辅助数据，用于用户自定义
+- [[(tb)][totalbytes]] 记录已分配的总内存大小
+
+在了解 =global_State= 相关字段后，就不难理解 lua 在 c api 层面提供的相关接口，
+使用户自定义内存管理函数。
+
+#+caption: lapi.c
 #+INCLUDE: ../lua-5.1.5/src/lapi.c src c -n 1007 :lines "1007-1023"
 
-* generic routine
+* generic api
 
-在核心 api 定义之后，lua 中的其它函数不过是它的封装。
+核心 api 定义之后，其它上层方法不过是对它的封装。
 
-这里主要介绍三个函数
+#+begin_src dot :file mem-call.png
+digraph {
+	rankdir = TD;
+	node[shape=box];
 
-** ~luaM_realloc_~
+	g[label="g->frealloc"];
+	luaM_realloc_[style=filled, color=skyblue];
+	luaM_reallocv[style=filled, color=skyblue];
+	luaM_growaux_[style=filled, color=skyblue];
+	
+	luaM_reallocv -> luaM_realloc_;
 
-简单对核心 api 进行了封装，计算了 totalbytes，为其它方法提供基础。
+	luaM_freemem -> luaM_realloc_;
+	luaM_free -> luaM_realloc_;
+	luaM_freearray -> luaM_reallocv;
 
+	luaM_malloc -> luaM_realloc_;
+	luaM_new -> luaM_malloc;
+	luaM_newvector -> luaM_reallocv;
+
+	luaM_growvector -> luaM_growaux_;
+	luaM_reallocvector -> luaM_reallocv;
+
+	luaM_realloc_ -> g;
+	luaM_growaux_ -> luaM_reallocv;
+}
+#+end_src
+
+#+RESULTS:
+[[file:mem-call.png]]
+
+lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要介绍图中标识的 3 个方法，其余留给读者自行阅读。
+
+** =luaM_realloc_=
+
+对核心 api 进行了封装，检测函数错误，以及计算 totalbytes，为其它方法提供了基础。
+
+#+caption: lmem.c
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 73 :lines "73-86"
 
-** ~luaM_rellocv~
+** =luaM_rellocv=
 
-这是一个宏，
+这个方法是一个宏，其中参数含义为
+- L -> =lua_State=
+- b -> block pointer
+- on -> old number n
+- n -> new number n
+- e -> elem size
 
-命名有些混乱，参数为
-L
-block
-old n
-new n
-elemsize
-
-先进行除法，是避免溢出，因为 =size_t= 是 unsigned
-
-这个宏，是为了方便进行，不同类型 多元素数组的管理，不用重复计算内存的大小
-
+#+caption: lmem.h
 #+INCLUDE: ../lua-5.1.5/src/lmem.h src c -n 19 :lines "19-23"
 
-** ~luaM_growaux_~
+可以看出，这个宏在 =luaM_realloc_= 的基础上，方便对多元素数组进行内存分配，省去重复手动计算内存大小的困扰。
 
-这个方法，在 ~luaM_rellocv~ 的基础上，添加了 limit 的限制。
+其中有一个细节，使用 =n+1= 和 =MAX_SIZET/e= 进行比较，而非使用 =(n+1) * e= 和 =MAX_SIZET= 进行比较，
+因为 =size_t= 是无符号类型，先进行除法来避免比较时溢出。
 
-最小不能小于 4， 最大不能超过 limit，按 2 倍速进行内存扩张，这便是 grow 的由来。
+** =luaM_growaux_=
 
-适用于维持 vector 类型的结构。
+这个方法在 =luaM_rellocv= 的基础上，添加了 limit 的限制。
 
+最小不能小于 4， 最大不能超过 limit，按 2 倍速度进行内存 grow，适用于管理 *类 vector 结构* 。
+
+#+caption: lmem.c
 #+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 46 :lines "46-64"
 
 * practice
 
-以上主要介绍的 3 个方法不是公共的方法，其它模块并不引用它们，而引用其它宏定义
+本章并不复杂，明确了上面的基础，剩下的方法并不难理解。
 
-它们分别代表了
-- free 功能
-- malloc 功能
-- realloc 功能
-
-明确了上面的基础，这些宏并不难理解。
-
-#+INCLUDE: ../lua-5.1.5/src/lmem.h src c -n 24 :lines "24-39"
-
+| 文件   | 建议     | 描述                   |
+|--------+----------+------------------------|
+| lmem.h | 仔细阅读 | 关于内存分配的全部方法 |
+| lmem.c | 仔细阅读 | 相关函数实现         |
 

@@ -29,6 +29,17 @@ https://stackoverflow.com/questions/119123/why-isnt-sizeof-for-a-struct-equal-to
 http://www.catb.org/esr/structure-packing/
 
 
+
+https://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/Type-Attributes.html
+
+https://gcc.gnu.org/onlinedocs/gcc/Alignment.html
+
+https://stackoverflow.com/questions/14332633/attribute-packed-v-s-gcc-attribute-alignedx
+
+https://softwareengineering.stackexchange.com/questions/256179/the-advantage-of-using-attribute-aligned
+
+
+
 - struct memory
   - stack and count
   - mem padding in the last
@@ -43,24 +54,20 @@ http://www.catb.org/esr/structure-packing/
 - union in array?
 
 #+begin_src C :flags -m32
-#include <stdio.h>
+typedef struct s1 {
+  short a;
+  int b;
+  char c;
+} s1;
 
-int main(int argc, char** argv) {
-  typedef struct s1 {
-    short a;
-    int b;
-    char c;
-  } s1;
-
-  typedef union u1 {
-    int a;
-    char b;
-  } u1;
+typedef union u1 {
+  int a;
+  char b;
+} u1;
   
-  printf("sizeof(s1) = %d\n", sizeof(s1));
-  printf("sizeof(u1) = %d\n", sizeof(u1));
-  printf("sizeof(void*) = %d\n", sizeof(void*));
-}
+printf("sizeof(s1) = %d\n", sizeof(s1));
+printf("sizeof(u1) = %d\n", sizeof(u1));
+printf("sizeof(void*) = %d\n", sizeof(void*));
 #+end_src
 
 #+RESULTS:

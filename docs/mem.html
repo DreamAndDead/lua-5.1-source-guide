@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-28 一 17:08 -->
+<!-- 2020-12-29 二 11:53 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>memory</title>
@@ -220,36 +220,39 @@
 <div id="content">
 <h1 class="title">memory</h1>
 <p>
-内存是承载数据的基础。在讲解更多细节之前，先关注 lua 是如何管理内存资源的。
+内存管理对所有程序都很关键，对于动态语言更是如此。
 </p>
 
+<p>
+lua 是单线程程序，即使在内部实现了协程，但内存还是统一管理的。
+</p>
+
+<p>
+内存回收使用 gc 算法，是非常重要的模块，而相对地，内存分配就显得非常简单。
+</p>
+
+<p>
+本章就讲解 lua 源码中关于内存分配的内容。
+</p>
 
 <div id="outline-container-org9a060b9" class="outline-2">
 <h2 id="org9a060b9"><span class="section-number-2">1</span> core api</h2>
 <div class="outline-text-2" id="text-1">
 <p>
-TODO: overview 中需要讲解 lua<sub>state</sub> 和 global<sub>state</sub>
+内存分配，无外乎涉及 3 个基础 api
+</p>
+<ul class="org-ul">
+<li>malloc</li>
+<li>realloc</li>
+<li>free</li>
+</ul>
+
+<p>
+对于了解操作系统和 C 语言的大家都不陌生。
 </p>
 
 <p>
-lua 是单线程程序，即使在内部有协程这样的实现，但是内存还是进行统一管理的。
-负责全局的相关事务的结构，为 global state。
-</p>
-
-<p>
-内存模块，必须提供两种基础功能，内存分配 和 内存回收。
-</p>
-
-<p>
-lua 中的内存模块很简单，没有复杂如整理内存碎片之类（TODO 不一定，可能由 gc 实现），甚至将内存分配和内存回收用一个核心 api 实现。
-</p>
-
-<p>
-g-&gt;frealloc 是函数指针，指向负责内存分配和回收的核心 api。
-</p>
-
-<p>
-其原型为 lua<sub>Alloc</sub>
+lua 内部将其简化为 1 个 api，定义原型为 <code>lua_Alloc</code>
 </p>
 
 <div class="org-src-container">
@@ -261,13 +264,8 @@ g-&gt;frealloc 是函数指针，指向负责内存分配和回收的核心 api�
 </div>
 
 <p>
-不管这个函数内部如何实现，只要符合如下的行为，都可以作为核心 api。
+这是一个函数指针，规定其行为需遵从如下约定
 </p>
-<ul class="org-ul">
-<li>malloc 功能， <code>frealloc(ud, NULL, 0, n)</code> ，分配大小为 n 的内存，并返回头地址</li>
-<li>free 功能， <code>frealloc(ud, p, o, 0)</code> ，回收以 p 开始的 o 大小的内存块，返回 NULL</li>
-<li>realloc 功能， <code>frealloc(ud, p, o, n)</code> ，变更 p 开始的内存块大小为 n，失败则返回 NULL</li>
-</ul>
 
 <div class="org-src-container">
 <label class="org-src-name"><span class="listing-number">Listing 2: </span>lmem.c</label><pre class="src src-c"><span class="linenr">23: </span><span class="org-comment-delimiter">/*</span>
@@ -291,11 +289,20 @@ g-&gt;frealloc 是函数指针，指向负责内存分配和回收的核心 api�
 </div>
 
 <p>
-lua 默认提供的 frealloc 函数很简单，只是简单利用系统 api 来实现
+简单的说，就是根据参数的不同，将 3 个基础 api 的功能用 1 个 api 来表示
+</p>
+<ul class="org-ul">
+<li>malloc， <code>frealloc(ud, NULL, 0, ns)</code> ，分配大小为 ns 的内存，返回头地址</li>
+<li>realloc， <code>frealloc(ud, p, os, ns)</code> ，变更 p 开始的内存块大小从 os 到 ns，失败返回 NULL</li>
+<li>free， <code>frealloc(ud, p, os, 0)</code> ，回收以 p 开始的 os 大小的内存块，返回 NULL</li>
+</ul>
+
+<p>
+lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看到它是非常纯粹的
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">627: </span><span class="org-keyword">static</span> <span class="org-type">void</span> *<span class="org-function-name">l_alloc</span> (<span class="org-type">void</span> *<span class="org-variable-name">ud</span>, <span class="org-type">void</span> *<span class="org-variable-name">ptr</span>, <span class="org-type">size_t</span> <span class="org-variable-name">osize</span>, <span class="org-type">size_t</span> <span class="org-variable-name">nsize</span>) {
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lauxlib.c</label><pre class="src src-c"><span class="linenr">627: </span><span class="org-keyword">static</span> <span class="org-type">void</span> *<span class="org-function-name">l_alloc</span> (<span class="org-type">void</span> *<span class="org-variable-name">ud</span>, <span class="org-type">void</span> *<span class="org-variable-name">ptr</span>, <span class="org-type">size_t</span> <span class="org-variable-name">osize</span>, <span class="org-type">size_t</span> <span class="org-variable-name">nsize</span>) {
 <span class="linenr">628: </span>  (<span class="org-type">void</span>)ud;
 <span class="linenr">629: </span>  (<span class="org-type">void</span>)osize;
 <span class="linenr">630: </span>  <span class="org-keyword">if</span> (nsize == 0) {
@@ -307,13 +314,66 @@ lua 默认提供的 frealloc 函数很简单，只是简单利用系统 api 来�
 <span class="linenr">636: </span>}
 </pre>
 </div>
+</div>
+
+<div id="outline-container-org168f3b0" class="outline-3">
+<h3 id="org168f3b0"><span class="section-number-3">1.1</span> about global state</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+在 <a href="overview.html">overview</a> 章节，简单提到了 <code>global_State</code> ，字面意义上理解，它和全局的状态相关。
+</p>
 
 <p>
-同时，lua 也提供了相关接口，可以使用户自定义内存管理函数。
+这里就是它的一个应用方面，记录内存分配相关的状态。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">1007: </span>LUA_API <span class="org-type">lua_Alloc</span> <span class="org-function-name">lua_getallocf</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">void</span> **<span class="org-variable-name">ud</span>) {
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lstate.h</label><pre class="src src-C"><span class="linenr">65: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">66: </span><span class="org-comment">** `global state', shared by all threads of this state</span>
+<span class="linenr">67: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">68: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">global_State</span> {
+<span class="linenr">69: </span>  <span class="org-type">stringtable</span> <span class="org-variable-name">strt</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">hash table for strings</span><span class="org-comment-delimiter"> */</span>
+<span id="coderef-fa" class="coderef-off"><span class="linenr">70: </span>  <span class="org-type">lua_Alloc</span> <span class="org-variable-name">frealloc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">function to reallocate memory</span><span class="org-comment-delimiter"> */</span> (fa)</span>
+<span id="coderef-ud" class="coderef-off"><span class="linenr">71: </span>  <span class="org-type">void</span> *<span class="org-variable-name">ud</span>;         <span class="org-comment-delimiter">/* </span><span class="org-comment">auxiliary data to `frealloc'</span><span class="org-comment-delimiter"> */</span> (ud)</span>
+<span class="linenr">72: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">currentwhite</span>;
+<span class="linenr">73: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">gcstate</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">state of garbage collector</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">74: </span>  <span class="org-type">int</span> <span class="org-variable-name">sweepstrgc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">position of sweep in `strt'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">75: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">rootgc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of all collectable objects</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">76: </span>  <span class="org-type">GCObject</span> **<span class="org-variable-name">sweepgc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">position of sweep in `rootgc'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">77: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gray</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of gray objects</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">78: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">grayagain</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of objects to be traversed atomically</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">79: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">weak</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of weak tables (to be cleared)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">80: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">tmudata</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">last element of list of userdata to be GC</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">81: </span>  <span class="org-type">Mbuffer</span> <span class="org-variable-name">buff</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">temporary buffer for string concatentation</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">82: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">GCthreshold</span>;
+<span id="coderef-tb" class="coderef-off"><span class="linenr">83: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">totalbytes</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of bytes currently allocated</span><span class="org-comment-delimiter"> */</span> (tb)</span>
+<span class="linenr">84: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">estimate</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">an estimate of number of bytes actually in use</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">85: </span>  <span class="org-type">lu_mem</span> <span class="org-variable-name">gcdept</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">how much GC is `behind schedule'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">86: </span>  <span class="org-type">int</span> <span class="org-variable-name">gcpause</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of pause between successive GCs</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">87: </span>  <span class="org-type">int</span> <span class="org-variable-name">gcstepmul</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">GC `granularity'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">88: </span>  <span class="org-type">lua_CFunction</span> <span class="org-variable-name">panic</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">to be called in unprotected errors</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">89: </span>  <span class="org-type">TValue</span> <span class="org-variable-name">l_registry</span>;
+<span class="linenr">90: </span>  <span class="org-keyword">struct</span> <span class="org-type">lua_State</span> *<span class="org-variable-name">mainthread</span>;
+<span class="linenr">91: </span>  <span class="org-type">UpVal</span> <span class="org-variable-name">uvhead</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">head of double-linked list of all open upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">92: </span>  <span class="org-keyword">struct</span> <span class="org-type">Table</span> *<span class="org-variable-name">mt</span>[NUM_TAGS];  <span class="org-comment-delimiter">/* </span><span class="org-comment">metatables for basic types</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">93: </span>  <span class="org-type">TString</span> *<span class="org-variable-name">tmname</span>[TM_N];  <span class="org-comment-delimiter">/* </span><span class="org-comment">array with tag-method names</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">94: </span>} <span class="org-type">global_State</span>;
+</pre>
+</div>
+
+<ul class="org-ul">
+<li><a href="#coderef-fa" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-fa');" onmouseout="CodeHighlightOff(this, 'coderef-fa');">frealloc</a> 引用内部的内存分配函数，即上面提到的 <code>l_alloc</code></li>
+<li><a href="#coderef-ud" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-ud');" onmouseout="CodeHighlightOff(this, 'coderef-ud');">ud</a> 引用 frealloc 函数的第一个参数，提供辅助数据，用于用户自定义</li>
+<li><a href="#coderef-tb" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-tb');" onmouseout="CodeHighlightOff(this, 'coderef-tb');">totalbytes</a> 记录已分配的总内存大小</li>
+</ul>
+
+<p>
+在了解 <code>global_State</code> 相关字段后，就不难理解 lua 在 c api 层面提供的相关接口，
+使用户自定义内存管理函数。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>lapi.c</label><pre class="src src-c"><span class="linenr">1007: </span>LUA_API <span class="org-type">lua_Alloc</span> <span class="org-function-name">lua_getallocf</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">void</span> **<span class="org-variable-name">ud</span>) {
 <span class="linenr">1008: </span>  <span class="org-type">lua_Alloc</span> <span class="org-variable-name">f</span>;
 <span class="linenr">1009: </span>  lua_lock(L);
 <span class="linenr">1010: </span>  <span class="org-keyword">if</span> (ud) *ud = G(L)-&gt;ud;
@@ -333,28 +393,35 @@ lua 默认提供的 frealloc 函数很简单，只是简单利用系统 api 来�
 </div>
 </div>
 </div>
+</div>
 
-<div id="outline-container-orgaec85f4" class="outline-2">
-<h2 id="orgaec85f4"><span class="section-number-2">2</span> generic routine</h2>
+<div id="outline-container-org2b3e1e2" class="outline-2">
+<h2 id="org2b3e1e2"><span class="section-number-2">2</span> generic api</h2>
 <div class="outline-text-2" id="text-2">
 <p>
-在核心 api 定义之后，lua 中的其它函数不过是它的封装。
+核心 api 定义之后，其它上层方法不过是对它的封装。
 </p>
 
-<p>
-这里主要介绍三个函数
+
+<div id="orga7f19fa" class="figure">
+<p><img src="mem-call.png" alt="mem-call.png">
 </p>
 </div>
 
-<div id="outline-container-orgf8d1def" class="outline-3">
-<h3 id="orgf8d1def"><span class="section-number-3">2.1</span> <code>luaM_realloc_</code></h3>
+<p>
+lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要介绍图中标识的 3 个方法，其余留给读者自行阅读。
+</p>
+</div>
+
+<div id="outline-container-orgddbb217" class="outline-3">
+<h3 id="orgddbb217"><span class="section-number-3">2.1</span> <code>luaM_realloc_</code></h3>
 <div class="outline-text-3" id="text-2-1">
 <p>
-简单对核心 api 进行了封装，计算了 totalbytes，为其它方法提供基础。
+对核心 api 进行了封装，检测函数错误，以及计算 totalbytes，为其它方法提供了基础。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">73: </span><span class="org-comment-delimiter">/*</span>
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>lmem.c</label><pre class="src src-c"><span class="linenr">73: </span><span class="org-comment-delimiter">/*</span>
 <span class="linenr">74: </span><span class="org-comment">** generic allocation routine.</span>
 <span class="linenr">75: </span><span class="org-comment-delimiter">*/</span>
 <span class="linenr">76: </span><span class="org-type">void</span> *<span class="org-function-name">luaM_realloc_</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">void</span> *<span class="org-variable-name">block</span>, <span class="org-type">size_t</span> <span class="org-variable-name">osize</span>, <span class="org-type">size_t</span> <span class="org-variable-name">nsize</span>) {
@@ -372,57 +439,52 @@ lua 默认提供的 frealloc 函数很简单，只是简单利用系统 api 来�
 </div>
 </div>
 
-<div id="outline-container-orga673407" class="outline-3">
-<h3 id="orga673407"><span class="section-number-3">2.2</span> <code>luaM_rellocv</code></h3>
+<div id="outline-container-org452c414" class="outline-3">
+<h3 id="org452c414"><span class="section-number-3">2.2</span> <code>luaM_rellocv</code></h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
-这是一个宏，
+这个方法是一个宏，其中参数含义为
 </p>
-
-<p>
-命名有些混乱，参数为
-L
-block
-old n
-new n
-elemsize
-</p>
-
-<p>
-先进行除法，是避免溢出，因为 <code>size_t</code> 是 unsigned
-</p>
-
-<p>
-这个宏，是为了方便进行，不同类型 多元素数组的管理，不用重复计算内存的大小
-</p>
+<ul class="org-ul">
+<li>L -&gt; <code>lua_State</code></li>
+<li>b -&gt; block pointer</li>
+<li>on -&gt; old number n</li>
+<li>n -&gt; new number n</li>
+<li>e -&gt; elem size</li>
+</ul>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">19: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_reallocv</span>(<span class="org-variable-name">L</span>,<span class="org-variable-name">b</span>,<span class="org-variable-name">on</span>,<span class="org-variable-name">n</span>,<span class="org-variable-name">e</span>) \
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>lmem.h</label><pre class="src src-c"><span class="linenr">19: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_reallocv</span>(<span class="org-variable-name">L</span>,<span class="org-variable-name">b</span>,<span class="org-variable-name">on</span>,<span class="org-variable-name">n</span>,<span class="org-variable-name">e</span>) \
 <span class="linenr">20: </span>        ((cast(size_t, (n)+1) &lt;= MAX_SIZET/(e)) ?  <span class="org-comment-delimiter">/* </span><span class="org-comment">+1 to avoid warnings</span><span class="org-comment-delimiter"> */</span> \
 <span class="linenr">21: </span>                luaM_realloc_(L, (b), (on)*(e), (n)*(e)) : \
 <span class="linenr">22: </span>                luaM_toobig(L))
 </pre>
 </div>
+
+<p>
+可以看出，这个宏在 <code>luaM_realloc_</code> 的基础上，方便对多元素数组进行内存分配，省去重复手动计算内存大小的困扰。
+</p>
+
+<p>
+其中有一个细节，使用 <code>n+1</code> 和 <code>MAX_SIZET/e</code> 进行比较，而非使用 <code>(n+1) * e</code> 和 <code>MAX_SIZET</code> 进行比较，
+因为 <code>size_t</code> 是无符号类型，先进行除法来避免比较时溢出。
+</p>
 </div>
 </div>
 
-<div id="outline-container-org7051f63" class="outline-3">
-<h3 id="org7051f63"><span class="section-number-3">2.3</span> <code>luaM_growaux_</code></h3>
+<div id="outline-container-org0a9f8cf" class="outline-3">
+<h3 id="org0a9f8cf"><span class="section-number-3">2.3</span> <code>luaM_growaux_</code></h3>
 <div class="outline-text-3" id="text-2-3">
 <p>
-这个方法，在 <code>luaM_rellocv</code> 的基础上，添加了 limit 的限制。
+这个方法在 <code>luaM_rellocv</code> 的基础上，添加了 limit 的限制。
 </p>
 
 <p>
-最小不能小于 4， 最大不能超过 limit，按 2 倍速进行内存扩张，这便是 grow 的由来。
-</p>
-
-<p>
-适用于维持 vector 类型的结构。
+最小不能小于 4， 最大不能超过 limit，按 2 倍速度进行内存 grow，适用于管理 <b>类 vector 结构</b> 。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">46: </span><span class="org-type">void</span> *<span class="org-function-name">luaM_growaux_</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">void</span> *<span class="org-variable-name">block</span>, <span class="org-type">int</span> *<span class="org-variable-name">size</span>, <span class="org-type">size_t</span> <span class="org-variable-name">size_elems</span>,
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>lmem.c</label><pre class="src src-c"><span class="linenr">46: </span><span class="org-type">void</span> *<span class="org-function-name">luaM_growaux_</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">void</span> *<span class="org-variable-name">block</span>, <span class="org-type">int</span> *<span class="org-variable-name">size</span>, <span class="org-type">size_t</span> <span class="org-variable-name">size_elems</span>,
 <span class="linenr">47: </span>                     <span class="org-type">int</span> <span class="org-variable-name">limit</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">errormsg</span>) {
 <span class="linenr">48: </span>  <span class="org-type">void</span> *<span class="org-variable-name">newblock</span>;
 <span class="linenr">49: </span>  <span class="org-type">int</span> <span class="org-variable-name">newsize</span>;
@@ -450,47 +512,47 @@ elemsize
 <h2 id="orge3038a2"><span class="section-number-2">3</span> practice</h2>
 <div class="outline-text-2" id="text-3">
 <p>
-以上主要介绍的 3 个方法不是公共的方法，其它模块并不引用它们，而引用其它宏定义
+本章并不复杂，明确了上面的基础，剩下的方法并不难理解。
 </p>
 
-<p>
-它们分别代表了
-</p>
-<ul class="org-ul">
-<li>free 功能</li>
-<li>malloc 功能</li>
-<li>realloc 功能</li>
-</ul>
+<table>
 
-<p>
-明确了上面的基础，这些宏并不难理解。
-</p>
 
-<div class="org-src-container">
-<pre class="src src-c"><span class="linenr">24: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_freemem</span>(<span class="org-variable-name">L</span>, <span class="org-variable-name">b</span>, <span class="org-variable-name">s</span>)   luaM_realloc_(L, (b), (s), 0)
-<span class="linenr">25: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_free</span>(<span class="org-variable-name">L</span>, <span class="org-variable-name">b</span>)         luaM_realloc_(L, (b), <span class="org-keyword">sizeof</span>(*(b)), 0)
-<span class="linenr">26: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_freearray</span>(<span class="org-variable-name">L</span>, <span class="org-variable-name">b</span>, <span class="org-variable-name">n</span>, <span class="org-variable-name">t</span>)   luaM_reallocv(L, (b), n, 0, <span class="org-keyword">sizeof</span>(t))
-<span class="linenr">27: </span>
-<span class="linenr">28: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_malloc</span>(<span class="org-variable-name">L</span>,<span class="org-variable-name">t</span>)        luaM_realloc_(L, <span class="org-constant">NULL</span>, 0, (t))
-<span class="linenr">29: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_new</span>(<span class="org-variable-name">L</span>,<span class="org-variable-name">t</span>)           cast(<span class="org-type">t</span> *, luaM_malloc(L, <span class="org-keyword">sizeof</span>(t)))
-<span class="linenr">30: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_newvector</span>(<span class="org-variable-name">L</span>,<span class="org-variable-name">n</span>,<span class="org-variable-name">t</span>) \
-<span class="linenr">31: </span>                cast(<span class="org-type">t</span> *, luaM_reallocv(L, <span class="org-constant">NULL</span>, 0, n, <span class="org-keyword">sizeof</span>(t)))
-<span class="linenr">32: </span>
-<span class="linenr">33: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_growvector</span>(<span class="org-variable-name">L</span>,<span class="org-variable-name">v</span>,<span class="org-variable-name">nelems</span>,<span class="org-variable-name">size</span>,<span class="org-variable-name">t</span>,<span class="org-variable-name">limit</span>,<span class="org-variable-name">e</span>) \
-<span class="linenr">34: </span>          <span class="org-keyword">if</span> ((nelems)+1 &gt; (size)) \
-<span class="linenr">35: </span>            ((v)=cast(<span class="org-type">t</span> *, luaM_growaux_(L,v,&amp;(size),<span class="org-keyword">sizeof</span>(t),limit,e)))
-<span class="linenr">36: </span>
-<span class="linenr">37: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">luaM_reallocvector</span>(<span class="org-variable-name">L</span>, <span class="org-variable-name">v</span>,<span class="org-variable-name">oldn</span>,<span class="org-variable-name">n</span>,<span class="org-variable-name">t</span>) \
-<span class="linenr">38: </span>   ((v)=cast(<span class="org-type">t</span> *, luaM_reallocv(L, v, oldn, n, <span class="org-keyword">sizeof</span>(t))))
-</pre>
-</div>
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">建议</th>
+<th scope="col" class="org-left">描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">lmem.h</td>
+<td class="org-left">仔细阅读</td>
+<td class="org-left">关于内存分配的全部方法</td>
+</tr>
+
+<tr>
+<td class="org-left">lmem.c</td>
+<td class="org-left">仔细阅读</td>
+<td class="org-left">相关函数实现</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-28 一 17:08</p>
-<p>Created: 2020-12-28 一 17:07</p>
+<p>Updated: 2020-12-29 二 11:51</p>
+<p>Created: 2020-12-23 三 11:59</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
 </body>

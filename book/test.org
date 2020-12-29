@@ -55,14 +55,3 @@ typedef union Closure {
 #define isLfunction(o)	(ttype(o) == LUA_TFUNCTION && !clvalue(o)->c.isC)
 #+END_SRC
 
-
-#+begin_src asymptote :file learn-asymptote.png
-size(10cm, 10cm);
-fill(box((0,0), (100, 100)), white);
-
-draw((0,0) -- (200, 100));
-label("$A$", (0, 0), NE);
-#+end_src
-
-#+RESULTS:
-[[file:learn-asymptote.png]]
