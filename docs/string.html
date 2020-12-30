@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-29 二 17:25 -->
+<!-- 2020-12-30 三 11:55 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>string</title>
@@ -269,6 +269,12 @@ TString 看上去是 union 结构，但是 dummy 只用来做对齐，并不用�
 而实际的数据部分，紧紧跟在 TString 的后面，而没有使用如 next 之类的指针来引用，是一种巧妙的方法。
 </p>
 
+
+<div id="orge9ae2cd" class="figure">
+<p><img src="string-tstring.png" alt="string-tstring.png">
+</p>
+</div>
+
 <p>
 data 部分是通用的 char[]。
 </p>
@@ -339,7 +345,7 @@ TString 的空间大小就是 meta + data 的大小，+1 是因为要计入末�
 </p>
 
 
-<div id="org0622d54" class="figure">
+<div id="org66f10b5" class="figure">
 <p><img src="string-immutable.png" alt="string-immutable.png">
 </p>
 </div>
@@ -383,14 +389,21 @@ stringtable 就是教科书式的 hash table 实现。
 <li>nuse，已存储 TString 的数量</li>
 <li>size，桶数组的长度</li>
 </ul>
+
+
+<div id="orgab357cd" class="figure">
+<p><img src="string-hashtable.png" alt="string-hashtable.png">
+</p>
 </div>
 </div>
+</div>
+
 
 <div id="outline-container-orgef7704b" class="outline-3">
 <h3 id="orgef7704b"><span class="section-number-3">2.3</span> method</h3>
 <div class="outline-text-3" id="text-2-3">
 
-<div id="org30bd10e" class="figure">
+<div id="org236d6a1" class="figure">
 <p><img src="string-call.png" alt="string-call.png">
 </p>
 </div>
@@ -569,7 +582,7 @@ resize 方法的作用是用于动态调整 hash table 中桶的数量，
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-29 二 17:25</p>
+<p>Updated: 2020-12-30 三 11:53</p>
 <p>Created: 2020-12-29 二 11:57</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

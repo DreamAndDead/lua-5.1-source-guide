@@ -1,6 +1,7 @@
 #+SETUPFILE: setup.org
 
-* TODO table
+#+TITLE: table
+#+DATE: <2020-12-30 三 11:53>
 
 - num not in array part, before hash nodes part?
 - how to decide array size
@@ -14,7 +15,7 @@
 
 lua 内部出于效率考虑，有特别的实现方式。
 
-** feature
+* feature
 
 table 核心上来说，是一个 hash 结构。
 table 的作用是，是 get set kv 对。
@@ -35,7 +36,7 @@ assert(a[1] == 1, "index start from 1")
 所以 table 的 k v 可以是任意 lua 数据（nil 是例外）。
 无论是 function 还是 string。这是一个非常大的自由度。
 
-** data representation
+* data representation
 
 table 的结构很简明，
 
@@ -43,7 +44,7 @@ table 的结构很简明，
 
 事实上，为了效率，table 还是将 array 部分 和 dict 部分分开存储
 
-** dict
+* dict
 
 先来看 dict 部分，
 - lsizenode，指 node 桶的大小 Log2，桶的大小总是 2 的幂，进行 2 倍的伸缩（缩？）
@@ -69,7 +70,7 @@ next 用于在发生位置碰撞时，将所有相同 hash 的 key 的 node chai
 #+INCLUDE: ../lua-5.1.5/src/ltable.h src c -n 13 :lines "13-19"
 
 
-*** method
+** method
 
 dict 部分有 3 个核心方法
 
@@ -85,11 +86,11 @@ get 和 set 之前，必须先找到对应的 main position 才能进一步进�
 - ~luaH_set~
 - ~luaH_get~
 
-**** main position
-     :LOGBOOK:
-     - Note taken on [2020-12-03 四 11:53] \\
-       - TODO avoid -0?
-     :END:
+*** main position
+    :LOGBOOK:
+    - Note taken on [2020-12-03 四 11:53] \\
+    - TODO avoid -0?
+    :END:
 
 前面提到，除了 nil，其它 7 种类型都可以作为 key
 
@@ -107,11 +108,11 @@ get 和 set 之前，必须先找到对应的 main position 才能进一步进�
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 96 :lines "81-114"
 
-**** TODO set key
-     :LOGBOOK:
-     - Note taken on [2020-12-03 四 11:38] \\
-       hash use a mix of chained scatter table with brent's variation?
-     :END:
+*** TODO set key
+    :LOGBOOK:
+    - Note taken on [2020-12-03 四 11:38] \\
+    hash use a mix of chained scatter table with brent's variation?
+    :END:
 
 ~luaH_set~ 中只有 key 参数，而没有 v 参数。
 它只返回 key 在 table 中相应 node 的 tvalue *，至于如何修改，则由外部调用者决定
@@ -135,7 +136,7 @@ get 和 set 之前，必须先找到对应的 main position 才能进一步进�
 
 #+CAPTION: new key process
 
-**** get
+*** get
 
 有了 set 阶段对内存结构的理解，get 就很容易理解
 
@@ -144,7 +145,7 @@ get 方法的核心很简单，先计算得到 main pos，再一路 next 寻找�
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
     
-** array
+* array
 
 当用 table 来表示 array 的概念，默认索引从 1 开始。
 
@@ -202,7 +203,7 @@ array 在 table 中，只是单纯用 TValue 数组来存储，
 - get
 - set
 
-*** get
+** get
 
 本质上，get 返回的是 相应的 key 对应的 v 的存储空间的指针
 如果 table 中从没有这个 key，则返回 luaO_nilobject(它是一个指针，而不是值)
@@ -219,17 +220,17 @@ array 在 table 中，只是单纯用 TValue 数组来存储，
 如果存在相应的 key，则返回相应的存储空间指针，
 没有，则返回 nilobject
 
-*** set
-    :LOGBOOK:
-    - Note taken on [2020-12-03 四 14:44] \\
-      nil 应该是删除键来理解，对于 array part 是不可能删除空间的
-      对于 dict 部分，是如何处理删除的？可能只是在 rehash 的时候发生
-    - Note taken on [2020-12-03 四 14:43] \\
-      dummynode 的作用？
-      dummynode 用于表明可用的空间，还没有 key 来使用其空间
-      与之相对的， deadkey 只是由 gc 来处理的，标识 deadkey 是当值为 nil 的时候
-      但是这部分空间仍然是被占据的
-    :END:
+** set
+   :LOGBOOK:
+   - Note taken on [2020-12-03 四 14:44] \\
+   nil 应该是删除键来理解，对于 array part 是不可能删除空间的
+   对于 dict 部分，是如何处理删除的？可能只是在 rehash 的时候发生
+   - Note taken on [2020-12-03 四 14:43] \\
+   dummynode 的作用？
+   dummynode 用于表明可用的空间，还没有 key 来使用其空间
+   与之相对的， deadkey 只是由 gc 来处理的，标识 deadkey 是当值为 nil 的时候
+   但是这部分空间仍然是被占据的
+   :END:
 
 在 =luaH_set= 中，先通过 get 来寻找存储空间
 
@@ -248,14 +249,14 @@ get 只关注位置，而不关注位置上对应的值
 
 这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
 
-** other method
+* other method
    
-*** DRAFT next
-    :LOGBOOK:
-    - Note taken on [2020-12-03 四 15:44] \\
-      TODO deadkey?
-      deadkey maybe key with nil value?
-    :END:
+** DRAFT next
+   :LOGBOOK:
+   - Note taken on [2020-12-03 四 15:44] \\
+   TODO deadkey?
+   deadkey maybe key with nil value?
+   :END:
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 116 :lines "116-180"
 
@@ -297,13 +298,13 @@ TODO 当 next 返回 0 时，意味着结束，上层一定进行了封装，以
 
 这里直接进行了栈操作，参考 c api
 
-*** TODO rehash
-    :LOGBOOK:
-    - Note taken on [2020-12-03 四 17:49] \\
-      TODO resize 操作
-    - Note taken on [2020-12-03 四 17:46] \\
-      TODO 理解 computesizes
-    :END:
+** TODO rehash
+   :LOGBOOK:
+   - Note taken on [2020-12-03 四 17:49] \\
+   TODO resize 操作
+   - Note taken on [2020-12-03 四 17:46] \\
+   TODO 理解 computesizes
+   :END:
 
 在 newkey 进行插入的时候，如果发生了空间不足
 就会引发 rehash 操作
@@ -345,7 +346,7 @@ a 统计的是 < 2^i 的个数 == twotoi
 
 
 
-*** TODO len
+** TODO len
 
 如何确定 table 的长度？
 
@@ -384,16 +385,16 @@ print(#t)
 
 =#= 本身的行为，在 array 有空洞的时候，对于不理解底层机制的用户，表现出的行为是“不确定的”
 
-** TODO metatable
+* TODO metatable
 
 tagmethod cache
 
 机制不在这里发生作用
 
-** TODO weaktable
+* TODO weaktable
 
 
-** practice
+* practice
 
 new/free
 
@@ -401,4 +402,4 @@ get/set num/str
 
 考虑将 rehash 的部分放到这里，非重点
 
-*** TODO print table value
+** TODO print table value

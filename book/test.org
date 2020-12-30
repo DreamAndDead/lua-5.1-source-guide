@@ -55,3 +55,24 @@ typedef union Closure {
 #define isLfunction(o)	(ttype(o) == LUA_TFUNCTION && !clvalue(o)->c.isC)
 #+END_SRC
 
+#+begin_src dot :file test-dot.png
+digraph G {
+	subgraph cluster0 {
+		node [style=filled,color=white];
+		style=filled;
+		color=lightgrey;
+		a0 -> a1 -> a2 -> a3;
+		label = "process #1";
+	}
+
+	subgraph cluster1 {
+		node [style=filled];
+		b0 -> b1 -> b2 -> b3;
+		label = "process #2";
+		color=blue;
+	}
+}
+#+end_src
+
+#+RESULTS:
+[[file:test-dot.png]]

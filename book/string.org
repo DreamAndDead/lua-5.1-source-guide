@@ -25,7 +25,51 @@ TString 看上去是 union 结构，但是 dummy 只用来做对齐，并不用�
 除去 CommonHeader 部分，新增了 3 个字段，存储 string 的元数据，
 而实际的数据部分，紧紧跟在 TString 的后面，而没有使用如 next 之类的指针来引用，是一种巧妙的方法。
 
-#+CAPTION: tstring structure
+#+caption: TString structure
+#+begin_src ditaa :file string-tstring.png :cmdline -E
+
+        +-----------------------------+         <------------ TString pointer
+        |                             |
+        |    CommonHeader             |
+        |                             |
+        +-----------------------------+ -----+
+        |    lu_byte reserverd        |      |
+        +-----------------------------+      |
+        |    unsigned int hash        |      |  meta part
+        +-----------------------------+      |
++-------+    size_t len               |      |
+|       +-----------------------------+ -----+
+|       |cBLK padding maybe           |
+|   +---+-----------------------------+ -----+  <------------ TString pointer + 1
+|   |   |    'h'                      |      |
+|   |   +-----------------------------+      |
+|   |   |    'e'                      |      |
+|   |   +-----------------------------+      |
+|   |   |    'l'                      |      |
+|   |   +-----------------------------+      |
+|   |   |    'l'                      |      |
+|   |   +-----------------------------+      |
+|   |   |    'o'                      |      |
++-->|   +-----------------------------+      |  data part
+ 10 |   |    'w'                      |      |
+    |   +-----------------------------+      |
+    |   |    'o'                      |      |
+    |   +-----------------------------+      |
+    |   |    'r'                      |      |
+    |   +-----------------------------+      |
+    |   |    'l'                      |      |
+    |   +-----------------------------+      |
+    |   |    'd'                      |      |
+    +---+-----------------------------+      |
+        |    '\0'                     |      |
+        +-----------------------------+ -----+
+        |                             |
+        +-----------------------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:string-tstring.png]]
 
 data 部分是通用的 char[]。
 
@@ -103,53 +147,88 @@ stringtable 就是教科书式的 hash table 实现。
 - nuse，已存储 TString 的数量
 - size，桶数组的长度
 
-#+caption: hash table bucket overview, hash func, mod and colli
 #+begin_src dot :file string-hashtable.png
 digraph {
 	rankdir = LR;
-	
-	subgraph string {
-		node[shape=box];
+
+	subgraph cluster_string {
+		node [shape=record,style=filled,fillcolor=white];
+		style=filled;
+		color=lightgrey;
+		label = "char * & hash";
 
 		{ rank=same;
-			spre[label="\"pre\""];
-			spost[label="\"post\""];
-			spp[label="\"prepost\""];
-		}
-
-		label = "process #1";
-	}
-
-	node[shape=record, width=.1, height=.1];
-	buckets [label="<b0> 0 | <b1> | <b2> | <b3> | <b4> | <b5> | <b6> | <b7>"];
-
-	subgraph tstring {
-		node[shape=box];
-
-		{ rank=same;
-			pre;
-			post;
-			prepost;
+			sfunction[label="{\"function\" | <p> 49}"];
+			send[label="{\"end\" | <p> 67}"];
+			slocal[label="{\"local\" | <p> 12}"];
+			sdo[label="{\"do\" | <p> 76}"];
+			sfor[label="{\"for\" | <p> 28}"];
+			shello[label="{\"hello\" | <p> 13}"];
+			sworld[label="{\"world\" | <p> 85}"];
 		}
 	}
 
-	spre -> buckets:b1 -> pre;
-	spost -> buckets:b4 -> prepost -> post;
-	spp -> buckets:b4;
+	subgraph cluster_table {
+		node[shape=record, width=.8, height=.1, style=filled, fillcolor=white];
+		style=filled;
+		color=lightgrey;
+		label = "Hash Table\nsize=8, nuse=7";
 
-	
+ 		hash [label="
+			 {<n0> 0 | <p0> GCObject *} |
+			 {<n1> 1 | <p1> GCObject *} |
+			 {<n2> 2 | <p2> GCObject *} |
+			 {<n3> 3 | <p3> GCObject *} |
+			 {<n4> 4 | <p4> GCObject *} |
+			 {<n5> 5 | <p5> GCObject *} |
+			 {<n6> 6 | <p6> GCObject *} |
+			 {<n7> 7 | <p7> GCObject *}
+			 "];
+	}
+
+	subgraph cluster_tstring {
+		node [shape=box,style=filled,color=white];
+		style=filled;
+		color=lightgrey;
+		label = "TString";
+
+		function;
+		end;
+		local;
+		do;
+		for;
+		hello;
+		world;
+	}
+
+	sfunction -> hash:n1;
+	send -> hash:n3;
+	slocal -> hash:n4;
+	sdo -> hash:n4;
+	sfor -> hash:n4;
+	shello -> hash:n5;
+	sworld -> hash:n5;
+
+	hash:p1 -> function;
+	hash:p3 -> end;
+	hash:p4 -> for;
+	hash:p5 -> world;
+
+	for -> do -> local[label="next"];
+	world -> hello[label="next"];
 }
 #+end_src
 
 #+RESULTS:
 [[file:string-hashtable.png]]
 
+
 ** method
 
 #+begin_src dot :file string-call.png
 digraph {
 	node[shape=box];
-	
+
 	luaS_new -> luaS_newlstr;
 	luaS_newliteral -> luaS_newlstr;
 
@@ -263,4 +342,3 @@ resize 方法的作用是用于动态调整 hash table 中桶的数量，
 |-----------+----------|
 | lstring.h | 仔细阅读 |
 | lstring.c | 仔细阅读 |
-
