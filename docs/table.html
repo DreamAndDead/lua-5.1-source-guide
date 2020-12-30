@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-30 三 11:55 -->
+<!-- 2020-12-30 三 17:29 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>table</title>
@@ -219,76 +219,100 @@
 <body>
 <div id="content">
 <h1 class="title">table</h1>
-<ul class="org-ul">
-<li>num not in array part, before hash nodes part?</li>
-<li>how to decide array size
-<ul class="org-ul">
-<li>largest size where n/2 are used (use log method to iterate)</li>
-</ul></li>
-</ul>
-
 <p>
-学习 lua 的人都有困惑，lua 中只有 table 而没有 array，
-换句话说，用 table 同时表示 array 和 dict 的概念。
+初次接触 lua 的人都有困惑，
+多数动态语言都会内建 dict 和 array 的概念，而 lua 用 table 同时表示这两个概念。
 </p>
 
 <p>
-如果将数组，看作 k 为整数的一种特殊情况，也无不可。
-毕竟使用者只是从使用感觉上来区分两者的。
+所谓 dict 不过是 kv 存储，从某种角度来看，可以将 array 看作 k 是整数的一种特殊情况。
 </p>
 
 <p>
-lua 内部出于效率考虑，有特别的实现方式。
+本章就来从源码角度认识 lua 中的 table。
 </p>
 
-<div id="outline-container-org3201d56" class="outline-2">
-<h2 id="org3201d56"><span class="section-number-2">1</span> feature</h2>
+<div id="outline-container-org56f3858" class="outline-2">
+<h2 id="org56f3858"><span class="section-number-2">1</span> structure</h2>
 <div class="outline-text-2" id="text-1">
-<p>
-table 核心上来说，是一个 hash 结构。
-table 的作用是，是 get set kv 对。
-</p>
-
-<p>
-约定，在 lua 中，k 不能是 nil。如果 v 是 nil，代表删除 k。
-</p>
-
-<p>
-array 可以理解为是 hash 结构，不过 key 是整数罢了。
-所以 array 的概念也一同由 table 表示了。
-</p>
-
-<p>
-array 默认的索引从 1 开始。
-</p>
-
 <div class="org-src-container">
-<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = {1, 2, 3, 4}
-<span class="org-builtin">assert</span>(a[1] == 1, <span class="org-string">"index start from 1"</span>)
+<pre class="src src-C"><span class="linenr">338: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Table</span> {
+<span class="linenr">339: </span>  CommonHeader;
+<span id="coderef-flags" class="coderef-off"><span class="linenr">340: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">flags</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">1&lt;&lt;p means tagmethod(p) is not present</span><span class="org-comment-delimiter"> */</span></span>
+<span id="coderef-lsizenode" class="coderef-off"><span class="linenr">341: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">lsizenode</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">log2 of size of `node' array</span><span class="org-comment-delimiter"> */</span></span>
+<span id="coderef-metatable" class="coderef-off"><span class="linenr">342: </span>  <span class="org-keyword">struct</span> <span class="org-type">Table</span> *<span class="org-variable-name">metatable</span>;</span>
+<span id="coderef-array" class="coderef-off"><span class="linenr">343: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">array</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">array part</span><span class="org-comment-delimiter"> */</span></span>
+<span id="coderef-node" class="coderef-off"><span class="linenr">344: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">node</span>;</span>
+<span id="coderef-lastfree" class="coderef-off"><span class="linenr">345: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">lastfree</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">any free position is before this position</span><span class="org-comment-delimiter"> */</span></span>
+<span class="linenr">346: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
+<span id="coderef-sizearray" class="coderef-off"><span class="linenr">347: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizearray</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `array' array</span><span class="org-comment-delimiter"> */</span></span>
+<span class="linenr">348: </span>} <span class="org-type">Table</span>;
 </pre>
 </div>
 
 <p>
-最重要的特点，之前已经用 TValue 统一表示了所有数据类型。
-所以 table 的 k v 可以是任意 lua 数据（nil 是例外）。
-无论是 function 还是 string。这是一个非常大的自由度。
+table 的结构并不复杂，除去 CommonHeader 和 gclist，剩余的字段可分为 3 部分。
+</p>
+
+<p>
+dict 相关
+</p>
+<ul class="org-ul">
+<li><a href="#coderef-node" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-node');" onmouseout="CodeHighlightOff(this, 'coderef-node');">Node * node</a> ，kv 存储的数组</li>
+<li><a href="#coderef-lsizenode" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-lsizenode');" onmouseout="CodeHighlightOff(this, 'coderef-lsizenode');"><code>lu_byte</code> lsizenode</a> ，数组的大小，用 log2 表示</li>
+<li><a href="#coderef-lastfree" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-lastfree');" onmouseout="CodeHighlightOff(this, 'coderef-lastfree');">Node * lastfree</a> ，在数组中从尾向前，第一个空闲位置的指针</li>
+</ul>
+
+<p>
+array 相关
+</p>
+<ul class="org-ul">
+<li><a href="#coderef-array" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-array');" onmouseout="CodeHighlightOff(this, 'coderef-array');">TValue * array</a></li>
+<li><a href="#coderef-sizearray" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-sizearray');" onmouseout="CodeHighlightOff(this, 'coderef-sizearray');">int sizearray</a></li>
+</ul>
+
+<p>
+metatable 相关
+</p>
+<ul class="org-ul">
+<li><a href="#coderef-metatable" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-metatable');" onmouseout="CodeHighlightOff(this, 'coderef-metatable');">struct Table * metatable</a></li>
+<li><a href="#coderef-flags" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-flags');" onmouseout="CodeHighlightOff(this, 'coderef-flags');"><code>lu_byte</code> flags</a></li>
+</ul>
+
+<p>
+从结构中可以发现，table 并不只是单纯的 dict 结构，为了效率，在内部也用 array 的方式进行辅助存储。
+</p>
+
+<p>
+下面就 3 个部分，分别讨论
 </p>
 </div>
 </div>
 
-<div id="outline-container-org7b4b563" class="outline-2">
-<h2 id="org7b4b563"><span class="section-number-2">2</span> data representation</h2>
+<div id="outline-container-org9670fea" class="outline-2">
+<h2 id="org9670fea"><span class="section-number-2">2</span> dict</h2>
 <div class="outline-text-2" id="text-2">
 <p>
-table 的结构很简明，
+在 lua 中，用 table 表示 dict 概念，有非常大的自由度。
 </p>
 
+<p>
+使用 k v 存储时
+</p>
+<ul class="org-ul">
+<li>k 不能是 nil</li>
+<li>若 v 是 nil，表示从 dict 中删除 k v</li>
+<li>除此之外，k v 可以是任意值，无论是 function 还是 string</li>
+</ul>
+
+<p>
+本质上来看，这就是用 TValue 统一表示所有“值”所带来的好处。
+这一点从 Node 结构中可以清楚的看出来。
+</p>
+
+
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">319: </span><span class="org-comment-delimiter">/*</span>
-<span class="linenr">320: </span><span class="org-comment">** Tables</span>
-<span class="linenr">321: </span><span class="org-comment-delimiter">*/</span>
-<span class="linenr">322: </span>
-<span class="linenr">323: </span><span class="org-keyword">typedef</span> <span class="org-keyword">union</span> <span class="org-type">TKey</span> {
+<pre class="src src-C"><span class="linenr">323: </span><span class="org-keyword">typedef</span> <span class="org-keyword">union</span> <span class="org-type">TKey</span> {
 <span class="linenr">324: </span>  <span class="org-keyword">struct</span> {
 <span class="linenr">325: </span>    TValuefields;
 <span class="linenr">326: </span>    <span class="org-keyword">struct</span> <span class="org-type">Node</span> *<span class="org-variable-name">next</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">for chaining</span><span class="org-comment-delimiter"> */</span>
@@ -301,70 +325,64 @@ table 的结构很简明，
 <span class="linenr">333: </span>  <span class="org-type">TValue</span> <span class="org-variable-name">i_val</span>;
 <span class="linenr">334: </span>  <span class="org-type">TKey</span> <span class="org-variable-name">i_key</span>;
 <span class="linenr">335: </span>} <span class="org-type">Node</span>;
-<span class="linenr">336: </span>
-<span class="linenr">337: </span>
-<span class="linenr">338: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Table</span> {
-<span class="linenr">339: </span>  CommonHeader;
-<span class="linenr">340: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">flags</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">1&lt;&lt;p means tagmethod(p) is not present</span><span class="org-comment-delimiter"> */</span> 
-<span class="linenr">341: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">lsizenode</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">log2 of size of `node' array</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">342: </span>  <span class="org-keyword">struct</span> <span class="org-type">Table</span> *<span class="org-variable-name">metatable</span>;
-<span class="linenr">343: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">array</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">array part</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">344: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">node</span>;
-<span class="linenr">345: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">lastfree</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">any free position is before this position</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">346: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
-<span class="linenr">347: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizearray</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `array' array</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">348: </span>} <span class="org-type">Table</span>;
 </pre>
 </div>
 
-<p>
-事实上，为了效率，table 还是将 array 部分 和 dict 部分分开存储
+
+<div id="org7684e9e" class="figure">
+<p><img src="table-node.png" alt="table-node.png">
 </p>
 </div>
-</div>
 
-<div id="outline-container-org9670fea" class="outline-2">
-<h2 id="org9670fea"><span class="section-number-2">3</span> dict</h2>
-<div class="outline-text-2" id="text-3">
-<p>
-先来看 dict 部分，
-</p>
-<ul class="org-ul">
-<li>lsizenode，指 node 桶的大小 Log2，桶的大小总是 2 的幂，进行 2 倍的伸缩（缩？）</li>
-<li>node，桶</li>
-<li>lastfree，初始化在 node array 的最后，刚好在 size 边界外，
-和 getfreepos 配合使用，由后向前，进行 node 的遍历，如果 key 为 nil，说明其
-为未使用空间，因为 nil 作为 key 是无法被 set 的</li>
-</ul>
 
 <p>
-Node 代表一个 kv 存储
-</p>
-<ul class="org-ul">
-<li>i<sub>val</sub></li>
-<li>i<sub>key</sub></li>
-</ul>
-
-<p>
-不是桶的实现，
-根据 key 的 hash 值，放到不同的位置中，不同于 tstring 的实现
+Node 代表一个 k v 存储，k v 分别用 <code>i_key</code> 和 <code>i_val</code> 来表示。
+<code>i_val</code> 本身是 TValue， <code>i_key</code> 是 TKey。
 </p>
 
 <p>
-TKey 中使用的技巧，保留了 TKey 的 value 的同时，添加了 next 指针。
-和 gch 使用一样的技巧。
+TKey 本身是一个 union，其中用 tvk 来索引本身的值，即 TValue。
+另一项 nk 则添加了 next 指针，辅助在 Node 数组中做链接。
+所以本质上， <code>i_key</code> 也是 TValue。
+</p>
+
+
+<p>
+dict 表示的是多个 kv 的集合，在 table 内部，所有 kv 经过相应的安排，存储在 Node 数组中。
 </p>
 
 <p>
-next 用于在发生位置碰撞时，将所有相同 hash 的 key 的 node chain 起来。
-</p>
-
-<p>
-这样，一些相关的宏就容易理解了
+比如下面的代码，在 table 内部将可能会如此表示。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">13: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">gnode</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">i</span>)      (&amp;(t)-&gt;node[i])
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">t</span> = {}
+
+t[<span class="org-builtin">print</span>] = <span class="org-constant">true</span>
+t[<span class="org-string">"name"</span>] = <span class="org-string">"print"</span>
+t[<span class="org-string">"return"</span>] = 0
+t[<span class="org-constant">true</span>] = <span class="org-constant">false</span>
+t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span>
+</pre>
+</div>
+
+
+<div id="orgb7a15ba" class="figure">
+<p><img src="table-dict.png" alt="table-dict.png">
+</p>
+</div>
+
+<p>
+至于 kv 存取的方式，在 get set 小节详细讨论。
+</p>
+
+
+<p>
+有了上面的理解，相关的宏也就容易理解了。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>ltable.h</label><pre class="src src-c"><span class="linenr">13: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">gnode</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">i</span>)      (&amp;(t)-&gt;node[i])
 <span class="linenr">14: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">gkey</span>(<span class="org-variable-name">n</span>)         (&amp;(n)-&gt;i_key.nk)
 <span class="linenr">15: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">gval</span>(<span class="org-variable-name">n</span>)         (&amp;(n)-&gt;i_val)
 <span class="linenr">16: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">gnext</span>(<span class="org-variable-name">n</span>)        ((n)-&gt;i_key.nk.next)
@@ -373,372 +391,11 @@ next 用于在发生位置碰撞时，将所有相同 hash 的 key 的 node chai
 </pre>
 </div>
 </div>
-
-
-<div id="outline-container-org359af4f" class="outline-3">
-<h3 id="org359af4f"><span class="section-number-3">3.1</span> method</h3>
-<div class="outline-text-3" id="text-3-1">
-<p>
-dict 部分有 3 个核心方法
-</p>
-
-<p>
-get 和 set，发挥 dict 的作用
-</p>
-
-<p>
-另外，需要一种方法，决定相应的 node 存储在什么位置，这一点通过 hash 来计算。
-</p>
-
-<p>
-相应 node 的位置称为 main position。
-</p>
-
-<p>
-get 和 set 之前，必须先找到对应的 main position 才能进一步进行下一步操作。
-</p>
-
-<ul class="org-ul">
-<li><code>mainposition</code></li>
-<li><code>luaH_set</code></li>
-<li><code>luaH_get</code></li>
-</ul>
-</div>
-
-<div id="outline-container-org5aaa59e" class="outline-4">
-<h4 id="org5aaa59e"><span class="section-number-4">3.1.1</span> main position</h4>
-<div class="outline-text-4" id="text-3-1-1">
-<p>
-前面提到，除了 nil，其它 7 种类型都可以作为 key
-</p>
-
-<p>
-对于相应的类型，分别计算其 hash 值
-</p>
-<ul class="org-ul">
-<li>bool，直接取 0 1</li>
-<li>string，使用其自身的 hash（复习 string chapter）</li>
-<li>其实分为两部分处理，在 get 方法中，如果 num 是 int 类型，可直接使用 number 值，使用 getnum 进一步处理
-如果不是，则是浮点，不能作用数组来理解，将 double 从位角度，分拆为 unsigned int 来计算和</li>
-<li>其它类型，将指针地址强制转换为 int 作为 hash
-其中 mod (size - 1) ，地址一般是对齐的，减小碰撞的概率，
-<code>| 1</code> 是避免出现 mod 0 的情况
-<ul class="org-ul">
-<li>lightudata 和 gc 各自的指针</li>
-</ul></li>
-</ul>
-
-<div class="org-src-container">
-<pre class="src src-c"><span class="linenr">50: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashpow2</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">n</span>)      (gnode(t, lmod((n), sizenode(t))))
-<span class="linenr">51: </span>
-<span class="linenr">52: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashstr</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">str</span>)  hashpow2(t, (str)-&gt;tsv.hash)
-<span class="linenr">53: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashboolean</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">p</span>)        hashpow2(t, p)
-<span class="linenr">54: </span>
-<span class="linenr">55: </span>
-<span class="linenr">56: </span><span class="org-comment-delimiter">/*</span>
-<span class="linenr">57: </span><span class="org-comment">** for some types, it is better to avoid modulus by power of 2, as</span>
-<span class="linenr">58: </span><span class="org-comment">** they tend to have many 2 factors.</span>
-<span class="linenr">59: </span><span class="org-comment-delimiter">*/</span>
-<span class="linenr">60: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashmod</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">n</span>)    (gnode(t, ((n) % ((sizenode(t)-1)|1))))
-<span class="linenr">61: </span>
-<span class="linenr">62: </span>
-<span class="linenr">63: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashpointer</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">p</span>)        hashmod(t, IntPoint(p))
-</pre>
-</div>
-
-<div class="org-src-container">
-<pre class="src src-c"><span class="linenr"> 96: </span><span class="org-comment-delimiter">/*</span>
-<span class="linenr"> 97: </span><span class="org-comment">** hash for lua_Numbers</span>
-<span class="linenr"> 98: </span><span class="org-comment-delimiter">*/</span>
-<span class="linenr"> 99: </span><span class="org-keyword">static</span> <span class="org-type">Node</span> *<span class="org-function-name">hashnum</span> (<span class="org-keyword">const</span> <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-type">lua_Number</span> <span class="org-variable-name">n</span>) {
-<span class="linenr">100: </span>  <span class="org-type">unsigned</span> <span class="org-type">int</span> <span class="org-variable-name">a</span>[numints];
-<span class="linenr">101: </span>  <span class="org-type">int</span> <span class="org-variable-name">i</span>;
-<span class="linenr">102: </span>  <span class="org-keyword">if</span> (luai_numeq(n, 0))  <span class="org-comment-delimiter">/* </span><span class="org-comment">avoid problems with -0</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">103: </span>    <span class="org-keyword">return</span> gnode(t, 0);
-<span class="linenr">104: </span>  memcpy(a, &amp;n, <span class="org-keyword">sizeof</span>(a));
-<span class="linenr">105: </span>  <span class="org-keyword">for</span> (i = 1; i &lt; numints; i++) a[0] += a[i];
-<span class="linenr">106: </span>  <span class="org-keyword">return</span> hashmod(t, a[0]);
-<span class="linenr">107: </span>}
-<span class="linenr">108: </span>
-<span class="linenr">109: </span>
-<span class="linenr">110: </span>
-<span class="linenr">111: </span><span class="org-comment-delimiter">/*</span>
-<span class="linenr">112: </span><span class="org-comment">** returns the `main' position of an element in a table (that is, the index</span>
-<span class="linenr">113: </span><span class="org-comment">** of its hash value)</span>
-<span class="linenr">114: </span><span class="org-comment-delimiter">*/</span>
-<span class="linenr">115: </span><span class="org-keyword">static</span> <span class="org-type">Node</span> *<span class="org-function-name">mainposition</span> (<span class="org-keyword">const</span> <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
-<span class="linenr">116: </span>  <span class="org-keyword">switch</span> (ttype(key)) {
-<span class="linenr">117: </span>    <span class="org-keyword">case</span> LUA_TNUMBER:
-<span class="linenr">118: </span>      <span class="org-keyword">return</span> hashnum(t, nvalue(key));
-<span class="linenr">119: </span>    <span class="org-keyword">case</span> LUA_TSTRING:
-<span class="linenr">120: </span>      <span class="org-keyword">return</span> hashstr(t, rawtsvalue(key));
-<span class="linenr">121: </span>    <span class="org-keyword">case</span> LUA_TBOOLEAN:
-<span class="linenr">122: </span>      <span class="org-keyword">return</span> hashboolean(t, bvalue(key));
-<span class="linenr">123: </span>    <span class="org-keyword">case</span> LUA_TLIGHTUSERDATA:
-<span class="linenr">124: </span>      <span class="org-keyword">return</span> hashpointer(t, pvalue(key));
-<span class="linenr">125: </span>    <span class="org-keyword">default</span>:
-<span class="linenr">126: </span>      <span class="org-keyword">return</span> hashpointer(t, gcvalue(key));
-<span class="linenr">127: </span>  }
-<span class="linenr">128: </span>}
-</pre>
-</div>
-</div>
-</div>
-
-<div id="outline-container-orgca7dec3" class="outline-4">
-<h4 id="orgca7dec3"><span class="section-number-4">3.1.2</span> get</h4>
-<div class="outline-text-4" id="text-3-1-2">
-<p>
-有了 set 阶段对内存结构的理解，get 就很容易理解
-</p>
-
-<p>
-get 方法的核心很简单，先计算得到 main pos，再一路 next 寻找相同的 key，
-找到则返回其 node 中存在的 v，没有则返回 nil
-</p>
-
-<div class="org-src-container">
-<pre class="src src-c"><span class="linenr">466: </span><span class="org-comment-delimiter">/*</span>
-<span class="linenr">467: </span><span class="org-comment">** main search function</span>
-<span class="linenr">468: </span><span class="org-comment-delimiter">*/</span>
-<span class="linenr">469: </span><span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-function-name">luaH_get</span> (<span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
-<span class="linenr">470: </span>  <span class="org-keyword">switch</span> (ttype(key)) {
-<span class="linenr">471: </span>    <span class="org-keyword">case</span> LUA_TNIL: <span class="org-keyword">return</span> luaO_nilobject;
-<span class="linenr">472: </span>    <span class="org-keyword">case</span> LUA_TSTRING: <span class="org-keyword">return</span> luaH_getstr(t, rawtsvalue(key));
-<span class="linenr">473: </span>    <span class="org-keyword">case</span> LUA_TNUMBER: {
-<span class="linenr">474: </span>      <span class="org-type">int</span> <span class="org-variable-name">k</span>;
-<span class="linenr">475: </span>      <span class="org-type">lua_Number</span> <span class="org-variable-name">n</span> = nvalue(key);
-<span class="linenr">476: </span>      lua_number2int(k, n);
-<span class="linenr">477: </span>      <span class="org-keyword">if</span> (luai_numeq(cast_num(k), nvalue(key))) <span class="org-comment-delimiter">/* </span><span class="org-comment">index is int?</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">478: </span>        <span class="org-keyword">return</span> luaH_getnum(t, k);  <span class="org-comment-delimiter">/* </span><span class="org-comment">use specialized version</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">479: </span>      <span class="org-comment-delimiter">/* </span><span class="org-comment">else go through</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">480: </span>    }
-<span class="linenr">481: </span>    <span class="org-keyword">default</span>: {
-<span class="linenr">482: </span>      <span class="org-type">Node</span> *<span class="org-variable-name">n</span> = mainposition(t, key);
-<span class="linenr">483: </span>      <span class="org-keyword">do</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">check whether `key' is somewhere in the chain</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">484: </span>        <span class="org-keyword">if</span> (luaO_rawequalObj(key2tval(n), key))
-<span class="linenr">485: </span>          <span class="org-keyword">return</span> gval(n);  <span class="org-comment-delimiter">/* </span><span class="org-comment">that's it</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">486: </span>        <span class="org-keyword">else</span> n = gnext(n);
-<span class="linenr">487: </span>      } <span class="org-keyword">while</span> (n);
-<span class="linenr">488: </span>      <span class="org-keyword">return</span> luaO_nilobject;
-<span class="linenr">489: </span>    }
-<span class="linenr">490: </span>  }
-<span class="linenr">491: </span>}
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-
-<div id="outline-container-org07c955e" class="outline-2">
-<h2 id="org07c955e"><span class="section-number-2">4</span> array</h2>
-<div class="outline-text-2" id="text-4">
-<p>
-当用 table 来表示 array 的概念，默认索引从 1 开始。
-</p>
-
-<p>
-相应的，struct Table 中的 TValue *array 只存储正整数索引（&gt;= 1）对应的值。
-</p>
-
-<p>
-首先，在 C 语言中，直接通过数字索引到数组的元素效率是非常高的，
-</p>
-
-<p>
-将部分数字索引的 kv 放在 * array 中，将其索引对应起来，提高存取效率。
-</p>
-
-<p>
-1 -&gt; 0
-2 -&gt; 1
-</p>
-
-<p>
-有 1 个位置偏移。
-</p>
-
-<p>
-其次，可以节省空间，因为 node 中的 key 和 val 两个部分，但是如果用 array 来存储，
-就节省了 key 的空间。
-</p>
-
-
-<p>
-采用这样的安排后，一个主要问题就出现了，使用时候用 array 部分，使用时候用 node 部分？
-</p>
-
-<p>
-如果
-</p>
-
-<div class="org-src-container">
-<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">t</span> = {1, 2, 3, 4}
-</pre>
-</div>
-
-<p>
-这样紧密的情况下，全部使用 array part 来存储，自然效率是最高的，完全看作一个数组。
-</p>
-
-<p>
-如果
-</p>
-
-<div class="org-src-container">
-<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">t</span> = {1, 2, 3, 4, [1000] = 1000}
-</pre>
-</div>
-
-<p>
-其中全部是整数索引，但是最大的索引是 1000，
-</p>
-
-<p>
-如果这种情况下，使用 1000 大小的 TValue 来存储就不划算，中间空余所浪费的空间太多了
-比如 70， 900，没有明显设置的值，如果直接索引就是 nil 值。
-</p>
-
-
-<p>
-lua 基于这样的思路，使用一种权衡的的方式来决定使用多大的 array 来存储整数索引的 kv。
-</p>
-
-<p>
-找到一个最大的整数 n，其中 0 到 n 之前至少有 n/2 个整数是有值的。
-这样至少可以保持 50% 的利用率。
-</p>
-
-
-<p>
-array 在 table 中，只是单纯用 TValue 数组来存储，
-</p>
-<ul class="org-ul">
-<li>TValue * array，存储</li>
-<li>int sizearray，当前 array 的空间大小</li>
-</ul>
-
-<div class="org-src-container">
-<pre class="src src-c"><span class="linenr">338: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Table</span> {
-<span class="linenr">339: </span>  CommonHeader;
-<span class="linenr">340: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">flags</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">1&lt;&lt;p means tagmethod(p) is not present</span><span class="org-comment-delimiter"> */</span> 
-<span class="linenr">341: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">lsizenode</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">log2 of size of `node' array</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">342: </span>  <span class="org-keyword">struct</span> <span class="org-type">Table</span> *<span class="org-variable-name">metatable</span>;
-<span class="linenr">343: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">array</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">array part</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">344: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">node</span>;
-<span class="linenr">345: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">lastfree</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">any free position is before this position</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">346: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
-<span class="linenr">347: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizearray</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `array' array</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">348: </span>} <span class="org-type">Table</span>;
-</pre>
-</div>
-
-
-<p>
-与 dict 部分相同，array 也有 2 个核心方法
-</p>
-<ul class="org-ul">
-<li>get</li>
-<li>set</li>
-</ul>
-</div>
-
-<div id="outline-container-orgc5045ac" class="outline-3">
-<h3 id="orgc5045ac"><span class="section-number-3">4.1</span> get</h3>
-<div class="outline-text-3" id="text-4-1">
-<p>
-本质上，get 返回的是 相应的 key 对应的 v 的存储空间的指针
-如果 table 中从没有这个 key，则返回 luaO<sub>nilobject</sub>(它是一个指针，而不是值)
-</p>
-
-<p>
-在 <code>luaH_get</code> 中，对于 number 做了特殊处理
-</p>
-<ul class="org-ul">
-<li>如果 key 是 number 和 int，使用 <code>luaH_getnum</code>
-是浮点，则正常使用 <code>hashnum</code> 来计算</li>
-</ul>
-
-<p>
-在 <code>luaH_getnum</code> 中，在 1 - sizearray 范围内，可以直接索引，即所谓 array part 区域的指针
-它是一定不同于 luaO<sub>nilobject</sub> 的
-</p>
-
-<p>
-否则，还是通过 <code>hashnum</code> ，从 dict 部分，顺着 next 进行搜索
-</p>
-
-<p>
-如果存在相应的 key，则返回相应的存储空间指针，
-没有，则返回 nilobject
-</p>
-</div>
-</div>
-
-<div id="outline-container-orgb6e8534" class="outline-3">
-<h3 id="orgb6e8534"><span class="section-number-3">4.2</span> set</h3>
-<div class="outline-text-3" id="text-4-2">
-<p>
-在 <code>luaH_set</code> 中，先通过 get 来寻找存储空间
-</p>
-
-<p>
-通过对 get 的理解，
-</p>
-
-<p>
-p != luaO<sub>nilobject</sub>
-</p>
-
-<p>
-就容易判断了
-</p>
-
-<p>
-对于 num，假如在 array part ，则一定返回数组位置，
-不在，则像 dict 一样查找，返回相应位置
-</p>
-
-<p>
-get 只关注位置，而不关注位置上对应的值
-</p>
-
-<p>
-如果没有相应的 key，就使用 newkey 来插入 node（在 array part 的 num 是不可能使用 newkey 的）
-</p>
-
-<p>
-这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
-</p>
-</div>
-</div>
-</div>
-
-<div id="outline-container-orgfab7936" class="outline-2">
-<h2 id="orgfab7936"><span class="section-number-2">5</span> other method</h2>
-</div>
-
-<div id="outline-container-org7cb45dc" class="outline-2">
-<h2 id="org7cb45dc"><span class="section-number-2">6</span> practice</h2>
-<div class="outline-text-2" id="text-6">
-<p>
-new/free
-</p>
-
-<p>
-get/set num/str
-</p>
-
-<p>
-考虑将 rehash 的部分放到这里，非重点
-</p>
-</div>
 </div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-30 三 11:54</p>
+<p>Updated: 2020-12-30 三 17:27</p>
 <p>Created: 2020-12-30 三 11:53</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

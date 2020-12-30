@@ -3,94 +3,165 @@
 #+TITLE: table
 #+DATE: <2020-12-30 三 11:53>
 
-- num not in array part, before hash nodes part?
-- how to decide array size
-  - largest size where n/2 are used (use log method to iterate)
+初次接触 lua 的人都有困惑，
+多数动态语言都会内建 dict 和 array 的概念，而 lua 用 table 同时表示这两个概念。
 
-学习 lua 的人都有困惑，lua 中只有 table 而没有 array，
-换句话说，用 table 同时表示 array 和 dict 的概念。
+所谓 dict 不过是 kv 存储，从某种角度来看，可以将 array 看作 k 是整数的一种特殊情况。
 
-如果将数组，看作 k 为整数的一种特殊情况，也无不可。
-毕竟使用者只是从使用感觉上来区分两者的。
+本章就来从源码角度认识 lua 中的 table。
 
-lua 内部出于效率考虑，有特别的实现方式。
+* structure
 
-* feature
-
-table 核心上来说，是一个 hash 结构。
-table 的作用是，是 get set kv 对。
-
-约定，在 lua 中，k 不能是 nil。如果 v 是 nil，代表删除 k。
-
-array 可以理解为是 hash 结构，不过 key 是整数罢了。
-所以 array 的概念也一同由 table 表示了。
-
-array 默认的索引从 1 开始。
-
-#+begin_src lua
-local a = {1, 2, 3, 4}
-assert(a[1] == 1, "index start from 1")
+#+begin_src C -n 338 -r
+typedef struct Table {
+  CommonHeader;
+  lu_byte flags;  /* 1<<p means tagmethod(p) is not present */       (ref:flags)
+  lu_byte lsizenode;  /* log2 of size of `node' array */             (ref:lsizenode)
+  struct Table *metatable;                                           (ref:metatable)
+  TValue *array;  /* array part */                                   (ref:array)
+  Node *node;                                                        (ref:node)
+  Node *lastfree;  /* any free position is before this position */   (ref:lastfree)
+  GCObject *gclist;
+  int sizearray;  /* size of `array' array */                        (ref:sizearray)
+} Table;
 #+end_src
 
-最重要的特点，之前已经用 TValue 统一表示了所有数据类型。
-所以 table 的 k v 可以是任意 lua 数据（nil 是例外）。
-无论是 function 还是 string。这是一个非常大的自由度。
+table 的结构并不复杂，除去 CommonHeader 和 gclist，剩余的字段可分为 3 部分。
 
-* data representation
+dict 相关
+- [[(node)][Node * node]] ，kv 存储的数组
+- [[(lsizenode)][=lu_byte= lsizenode]] ，数组的大小，用 log2 表示
+- [[(lastfree)][Node * lastfree]] ，在数组中从尾向前，第一个空闲位置的指针
 
-table 的结构很简明，
+array 相关
+- [[(array)][TValue * array]]
+- [[(sizearray)][int sizearray]]
 
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 319 :lines "319-349"
+metatable 相关
+- [[(metatable)][struct Table * metatable]]
+- [[(flags)][=lu_byte= flags]]
 
-事实上，为了效率，table 还是将 array 部分 和 dict 部分分开存储
+从结构中可以发现，table 并不只是单纯的 dict 结构，为了效率，在内部也用 array 的方式进行辅助存储。
+
+下面就 3 个部分，分别讨论
 
 * dict
 
-先来看 dict 部分，
-- lsizenode，指 node 桶的大小 Log2，桶的大小总是 2 的幂，进行 2 倍的伸缩（缩？）
-- node，桶
-- lastfree，初始化在 node array 的最后，刚好在 size 边界外，
-  和 getfreepos 配合使用，由后向前，进行 node 的遍历，如果 key 为 nil，说明其
-  为未使用空间，因为 nil 作为 key 是无法被 set 的
-  
-Node 代表一个 kv 存储
-- i_val
-- i_key
+在 lua 中，用 table 表示 dict 概念，有非常大的自由度。
 
-不是桶的实现，
-根据 key 的 hash 值，放到不同的位置中，不同于 tstring 的实现
+使用 k v 存储时
+- k 不能是 nil
+- 若 v 是 nil，表示从 dict 中删除 k v
+- 除此之外，k v 可以是任意值，无论是 function 还是 string
 
-TKey 中使用的技巧，保留了 TKey 的 value 的同时，添加了 next 指针。
-和 gch 使用一样的技巧。
+本质上来看，这就是用 TValue 统一表示所有“值”所带来的好处。
+这一点从 Node 结构中可以清楚的看出来。
 
-next 用于在发生位置碰撞时，将所有相同 hash 的 key 的 node chain 起来。
 
-这样，一些相关的宏就容易理解了
+#+begin_src C -n 323 -r
+typedef union TKey {
+  struct {
+    TValuefields;
+    struct Node *next;  /* for chaining */
+  } nk;
+  TValue tvk;
+} TKey;
 
+
+typedef struct Node {
+  TValue i_val;
+  TKey i_key;
+} Node;
+#+end_src
+
+#+caption: dict node
+#+begin_src ditaa :file table-node.png :cmdline -E
+    Node                                 TKey
++-----------------+               +-- +------------------------+ --+
+| TValue i_val    |               |   | Value value            |   |
++-----------------+               |   +------------------------+   | TValue tvk
+|  TKey i_key     |            nk |   | int tt                 |   |
++-----------------+               |   +------------------------+ --+
+                                  |   |  next cBLK             |
+                                  +-- +------------------------+
+#+end_src
+
+#+RESULTS:
+[[file:table-node.png]]
+
+
+Node 代表一个 k v 存储，k v 分别用 =i_key= 和 =i_val= 来表示。
+=i_val= 本身是 TValue， =i_key= 是 TKey。
+
+TKey 本身是一个 union，其中用 tvk 来索引本身的值，即 TValue。
+另一项 nk 则添加了 next 指针，辅助在 Node 数组中做链接。
+所以本质上， =i_key= 也是 TValue。
+
+
+dict 表示的是多个 kv 的集合，在 table 内部，所有 kv 经过相应的安排，存储在 Node 数组中。
+
+比如下面的代码，在 table 内部将可能会如此表示。
+
+#+begin_src lua :results output
+local t = {}
+
+t[print] = true
+t["name"] = "print"
+t["return"] = 0
+t[true] = false
+t["tool"] = "dot"
+#+end_src
+
+#+caption: dict structure
+#+begin_src dot :file table-dict.png
+digraph {
+	node[shape=record, width=.1, height=.1];
+	
+	nd[label="
+	   {<i> index | <v> i_val | <k> i_key} |
+	   {<i0> 0| <v0> true | <k0> #f print} |
+	   {<i1> 1| <v1>  | <k1> } |
+	   {<i2> 2| <v2> \"print\" | <k2> \"name\" } |
+	   {<i3> 3| <v3> 0 | <k3> \"return\" } |
+	   {<i4> 4| <v4>  | <k4> } |
+	   {<i5> 5| <v5>  | <k5> } |
+	   {<i6> 6| <v6> false  | <k6> true } |
+	   {<i7> 7| <v7> \"dot\"  | <k7> \"tool\" }
+	   "];
+
+	sz[label="lsizenode = log(8) = 3", shape=none];
+
+	lf[label="Node * lastfree"];
+	n[label="Node * node"];
+
+	n -> nd:i0:nw;
+
+	lf -> nd:i5:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-dict.png]]
+
+至于 kv 存取的方式，在 get set 小节详细讨论。
+
+
+有了上面的理解，相关的宏也就容易理解了。
+
+#+caption: ltable.h
 #+INCLUDE: ../lua-5.1.5/src/ltable.h src c -n 13 :lines "13-19"
 
-
-** method
-
-dict 部分有 3 个核心方法
-
-get 和 set，发挥 dict 的作用
+** DRAFT main position
+   :LOGBOOK:
+   - Note taken on [2020-12-03 四 11:53] \\
+   - TODO avoid -0?
+   :END:
 
 另外，需要一种方法，决定相应的 node 存储在什么位置，这一点通过 hash 来计算。
 
 相应 node 的位置称为 main position。
 
 get 和 set 之前，必须先找到对应的 main position 才能进一步进行下一步操作。
-
-- ~mainposition~
-- ~luaH_set~
-- ~luaH_get~
-
-*** main position
-    :LOGBOOK:
-    - Note taken on [2020-12-03 四 11:53] \\
-    - TODO avoid -0?
-    :END:
 
 前面提到，除了 nil，其它 7 种类型都可以作为 key
 
@@ -108,11 +179,11 @@ get 和 set 之前，必须先找到对应的 main position 才能进一步进�
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 96 :lines "81-114"
 
-*** TODO set key
-    :LOGBOOK:
-    - Note taken on [2020-12-03 四 11:38] \\
-    hash use a mix of chained scatter table with brent's variation?
-    :END:
+** DRAFT set key
+   :LOGBOOK:
+   - Note taken on [2020-12-03 四 11:38] \\
+   hash use a mix of chained scatter table with brent's variation?
+   :END:
 
 ~luaH_set~ 中只有 key 参数，而没有 v 参数。
 它只返回 key 在 table 中相应 node 的 tvalue *，至于如何修改，则由外部调用者决定
@@ -136,16 +207,21 @@ get 和 set 之前，必须先找到对应的 main position 才能进一步进�
 
 #+CAPTION: new key process
 
-*** get
-
-有了 set 阶段对内存结构的理解，get 就很容易理解
+** DRAFT get
 
 get 方法的核心很简单，先计算得到 main pos，再一路 next 寻找相同的 key，
 找到则返回其 node 中存在的 v，没有则返回 nil
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
-    
-* array
+
+* DRAFT array
+
+array 默认的索引从 1 开始。
+
+#+begin_src lua
+local a = {1, 2, 3, 4}
+assert(a[1] == 1, "index start from 1")
+#+end_src
 
 当用 table 来表示 array 的概念，默认索引从 1 开始。
 
@@ -249,9 +325,9 @@ get 只关注位置，而不关注位置上对应的值
 
 这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
 
-* other method
-   
-** DRAFT next
+* DRAFT other method
+
+** next
    :LOGBOOK:
    - Note taken on [2020-12-03 四 15:44] \\
    TODO deadkey?
@@ -279,8 +355,12 @@ findindex，意义是返回 key 的下一个位置
 
 next
 - 通过 findindex，一个 key 会返回平铺序列下的索引
+
+  #+begin_example
   aaaaaaaaaaadddddddddddddddd
   -----------+---------------
+  #+end_example
+
 - next 通过这个索引，++，以数组的方式，索引下一个非 nil 值
   - key <- 下一个索引对应的 key
   - key+1 <- 当前 key 对应的 value
@@ -298,7 +378,7 @@ TODO 当 next 返回 0 时，意味着结束，上层一定进行了封装，以
 
 这里直接进行了栈操作，参考 c api
 
-** TODO rehash
+** rehash
    :LOGBOOK:
    - Note taken on [2020-12-03 四 17:49] \\
    TODO resize 操作
@@ -344,9 +424,7 @@ a 统计的是 < 2^i 的个数 == twotoi
 
 得到大小之后，进行 resize 操作
 
-
-
-** TODO len
+** len
 
 如何确定 table 的长度？
 
@@ -385,16 +463,15 @@ print(#t)
 
 =#= 本身的行为，在 array 有空洞的时候，对于不理解底层机制的用户，表现出的行为是“不确定的”
 
-* TODO metatable
+* DRAFT metatable
 
 tagmethod cache
 
 机制不在这里发生作用
 
-* TODO weaktable
+* DRAFT weaktable
 
-
-* practice
+* DRAFT practice
 
 new/free
 
@@ -402,4 +479,4 @@ get/set num/str
 
 考虑将 rehash 的部分放到这里，非重点
 
-** TODO print table value
+** print table value
