@@ -157,10 +157,6 @@ digraph {
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 352 :lines "352-361"
 
 ** main position
-   :LOGBOOK:
-   - Note taken on [2020-12-03 四 11:53] \\
-   - TODO avoid -0?
-   :END:
 
 table 内部使用精妙的结构来存储 kv，其中关键的概念是 main position。
 
@@ -196,6 +192,7 @@ static Node *mainposition (const Table *t, const TValue *key) {
 
 针对不同类型详细来看，
 
+#+caption: ltable.c
 #+begin_src C -n 50 -r
 #define hashpow2(t,n)      (gnode(t, lmod((n), sizenode(t))))
   
@@ -237,6 +234,7 @@ hashmod 末尾的 =| 1= 是避免出现 mod 0 的情况。
 
 *** number
 
+#+caption: ltable.c
 #+begin_src C -n 66 -r
 /*
 ,** number of ints inside a lua_Number
@@ -317,33 +315,308 @@ printf("%d %d\n", n.i[1], n.i[0]);
 
 二是在模除的过程中， =hashmod= 并非使用 node size 进行模除，而是 node size - 1，原因同上。
 
-** DRAFT set key
-   :LOGBOOK:
-   - Note taken on [2020-12-03 四 11:38] \\
-   hash use a mix of chained scatter table with brent's variation?
-   :END:
+** set
 
-~luaH_set~ 中只有 key 参数，而没有 v 参数。
-它只返回 key 在 table 中相应 node 的 tvalue *，至于如何修改，则由外部调用者决定
+明确 main position 之后，下一步来了解如何存储 kv。
 
-并不是桶的实现，因为如果出现碰撞，则找到一个 freepos，用 next 串联起来，相当于是数组链表
+根据代码中的注释，dict 部分的实现 use a mix of chained scatter table with brent's variation。
 
-=luaH_set= 进行基本的检测，如果找到位置，直接返回
+#+include: ../lua-5.1.5/src/ltable.c src c -n 8 :lines "8-20"
+
+有兴趣的可以研究论文[fn:1]，这里仅从代码方面解析其实现。
+
+
+table 模块中提供了 =luaH_set= 实现 kv 存储。
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-506"
 
-若没有，则使用 =newkey= 新建 node，其中 key 为参数，value 则作为返回值
+可以观察到，其中只有 k 参数，而没有 v 参数。
+这是因为这个方法只返回参数 k 在 table 中对应 =node.i_val= 的指针，由外部调用者自行进行 v 的赋值。
 
-=newkey=
-- 先找到 key 的 mp
-- 如果 mp 上已经有元素
-  - 如果它已经在其位置上，则将 key 放置在 freepos，链接起来
-  - 如果它不在位置，则由其 mp 位置，一直 next 找到其 previous 位置
-    将 key 放在 mp 位置，另外放在 freepos，并改变指针的指向
+=luaH_set= 很简单，如果已经存在相应的 k，则直接返回；
+通过一系列错误检测之后，调用 =newkey= 方法，添加 k。
 
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 392 :lines "392-430"
+#+begin_src C -n 392 -r
+/*
+,** inserts a new key into a hash table; first, check whether key's main 
+,** position is free. If not, check whether colliding node is in its main 
+,** position or not: if it is not, move colliding node to an empty place and 
+,** put new key in its main position; otherwise (colliding node is in its main 
+,** position), new key goes to an empty position. 
+*/
+static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
+  Node *mp = mainposition(t, key);
+  if (!ttisnil(gval(mp)) || mp == dummynode) {                   (ref:iffree)
+    Node *othern;
+    Node *n = getfreepos(t);  /* get a free place */
+    if (n == NULL) {  /* cannot find a free place? */
+      rehash(L, t, key);  /* grow table */
+      return luaH_set(L, t, key);  /* re-insert key into grown table */
+    }
+    lua_assert(n != dummynode);
+    othern = mainposition(t, key2tval(mp));
+    if (othern != mp) {  /* is colliding node out of its main position? */ (ref:mpne)
+      /* yes; move colliding node into free position */
+      while (gnext(othern) != mp) othern = gnext(othern);  /* find previous */
+      gnext(othern) = n;  /* redo the chain with `n' in place of `mp' */
+      *n = *mp;  /* copy colliding node into free pos. (mp->next also goes) */
+      gnext(mp) = NULL;  /* now `mp' is free */
+      setnilvalue(gval(mp));
+    }
+    else {  /* colliding node is in its own main position */    (ref:mpeq)
+      /* new node will go into free position */
+      gnext(n) = gnext(mp);  /* chain new position */
+      gnext(mp) = n;
+      mp = n;
+    }
+  }
+  gkey(mp)->value = key->value; gkey(mp)->tt = key->tt;         (ref:store)
+  luaC_barriert(L, t, key);
+  lua_assert(ttisnil(gval(mp)));
+  return gval(mp);
+}
+#+end_src
 
-#+CAPTION: new key process
+=newkey= 是理解内部结构的关键。
+调用时可能遇到 3 种情况，下面一一讨论。
+
+*** mp free
+
+k 的 main position 是空闲的，即相应的 =node.i_val= 是 nil 值。
+
+#+caption: no collision before
+#+begin_src dot :file table-no-collision-before.png
+digraph {
+	nodes[shape=none,
+	      label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="n0" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n1" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n2" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n3" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n4" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n5" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n6" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n7" border="1" bgcolor="white" width="40" height="40"></td>
+		</tr>
+	      </table>
+	      >]
+
+	n[label="",shape=box,width=.5,height=.5,style=filled,fillcolor=lightblue];
+
+	mp[shape=plain];
+
+	n -> mp;
+	mp -> nodes:n5:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-no-collision-before.png]]
+
+这种情况下，mp 的位置就是要插入的位置，说明 [[(iffree)][line (iffree)]] 为 false，直接执行 [[(store)][line (store)]] 。
+
+#+caption: no collision after
+#+begin_src dot :file table-no-collision-after.png
+digraph {
+	nodes[shape=none,
+	      label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="n0" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n1" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n2" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n3" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n4" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n5" border="1" bgcolor="lightblue" width="40" height="40"></td>
+		  <td port="n6" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n7" border="1" bgcolor="white" width="40" height="40"></td>
+		</tr>
+	      </table>
+	      >]
+
+	mp[shape=plain];
+
+	mp -> nodes:n5:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-no-collision-after.png]]
+
+*** colliding node in own mp
+
+如果 k 的 main position（mp）已经被占用，说明出现了冲突，
+占用 mp 的结点称为 colliding node。
+
+colliding node 根据 =i_key= 也可以计算出自身的 main position（othern）。
+
+巧合的是，othern 和 mp 是相同的，说明两者确实发生了 hash 冲突，[[(mpeq)][都应该使用这个位置]]。
+
+#+caption: collision with mp equal before
+#+begin_src dot :file table-collision-eq-before.png
+digraph {
+	nodes[shape=none,
+	      label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="n0" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n1" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n2" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n3" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n4" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n5" border="1" bgcolor="tomato" width="40" height="40"></td>
+		  <td port="n6" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n7" border="1" bgcolor="white" width="40" height="40"></td>
+		</tr>
+	      </table>
+	      >]
+
+	n[label="",shape=box,width=.5,height=.5,style=filled,fillcolor=lightblue];
+	mp[shape=plain];
+	othern[shape=plain];
+	l[label="n",shape=plain];
+
+	n -> mp;
+	mp -> nodes:n5;
+
+	othern -> nodes:n5;
+
+	nodes:n5:s -> nodes:n3:s;
+	nodes:n3:s -> nodes:n0:s;
+
+	l -> nodes:n7:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-collision-eq-before.png]]
+
+但是位置只有一个，只能从当前空闲的结点借用一个位置（n），
+然后使用头插法，用 =i_key= 中的 next 将其链接起来。
+
+这个链条的起点是 main position，其中链接的全部是 main position 相同（即 hash 冲突）的结点。
+
+#+caption: collision with mp equal after
+#+begin_src dot :file table-collision-eq-after.png
+digraph {
+	nodes[shape=none,
+	      label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="n0" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n1" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n2" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n3" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n4" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n5" border="1" bgcolor="tomato" width="40" height="40"></td>
+		  <td port="n6" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n7" border="1" bgcolor="lightblue" width="40" height="40"></td>
+		</tr>
+	      </table>
+	      >]
+
+	mp[shape=plain];
+	othern[shape=plain];
+	l[label="n",shape=plain];
+
+	mp -> nodes:n7;
+	othern -> nodes:n5;
+	l -> nodes:n7:n;
+
+	nodes:n5:s -> nodes:n7;
+	nodes:n7:s -> nodes:n3:s;
+	nodes:n3:s -> nodes:n0:s;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-collision-eq-after.png]]
+
+*** colliding node not in own mp
+
+[[(mpne)][如果 othern 和 mp 不相同，]]说明 colliding node 是在之前冲突时，借用了此结点的位置。
+
+当时是空闲的，可以借用，但是现在，明确拥有 mp 的 k 要来拿回属于自己的位置，colliding node 只能让出来。
+
+#+caption: collision with mp not equal before
+#+begin_src dot :file table-collision-ne-before.png
+digraph {
+	nodes[shape=none,
+	      label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="n0" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n1" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n2" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n3" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n4" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n5" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n6" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n7" border="1" bgcolor="tomato" width="40" height="40"></td>
+		</tr>
+	      </table>
+	      >]
+
+	n[label="",shape=box,width=.5,height=.5,style=filled,fillcolor=lightblue];
+	mp[shape=plain];
+	othern[shape=plain];
+	l[label="n",shape=plain];
+
+	n -> mp;
+	mp -> nodes:n7;
+	othern -> nodes:n3;
+
+	nodes:n3:s -> nodes:n0;
+	nodes:n0:s -> nodes:n7:s;
+
+	l -> nodes:n6:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-collision-ne-before.png]]
+
+让出的方法很简单，再另外找到一个空闲位置，放置 colliding node，原来的位置就还回去。
+
+为了将新位置链接回去，同时从 othern 一路向下，查找到 colliding node 的上一个结点，并链接新的结点。
+
+#+caption: collision with mp not equal after
+#+begin_src dot :file table-collision-ne-after.png
+digraph {
+	nodes[shape=none,
+	      label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="n0" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n1" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n2" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n3" border="1" bgcolor="pink" width="40" height="40"></td>
+		  <td port="n4" border="1" bgcolor="white"  width="40" height="40"></td>
+		  <td port="n5" border="1" bgcolor="white" width="40" height="40"></td>
+		  <td port="n6" border="1" bgcolor="tomato" width="40" height="40"></td>
+		  <td port="n7" border="1" bgcolor="lightblue" width="40" height="40"></td>
+		</tr>
+	      </table>
+	      >]
+
+	mp[shape=plain];
+	othern[shape=plain];
+	l[label="n",shape=plain];
+
+	mp -> nodes:n7;
+	othern -> nodes:n0;
+
+	nodes:n3:s -> nodes:n0;
+	nodes:n0:s -> nodes:n6:s;
+
+	l -> nodes:n6:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-collision-ne-after.png]]
 
 ** DRAFT get
 
