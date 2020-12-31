@@ -618,12 +618,14 @@ digraph {
 #+RESULTS:
 [[file:table-collision-ne-after.png]]
 
-** DRAFT get
+** get
 
-get 方法的核心很简单，先计算得到 main pos，再一路 next 寻找相同的 key，
-找到则返回其 node 中存在的 v，没有则返回 nil
+在 set 小节明确了 node 内部组织的方法之后，get 方法就很容易理解了。
 
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
+
+核心就是先计算得到 main position，再一路通过 next 向下查找，
+如果 k 匹配，就返回相应的 v；否则返回 nil。
 
 * DRAFT array
 

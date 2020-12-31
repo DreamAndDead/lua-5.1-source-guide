@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-31 四 16:16 -->
+<!-- 2020-12-31 四 16:54 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>table</title>
@@ -329,7 +329,7 @@ metatable 相关
 </div>
 
 
-<div id="org5360157" class="figure">
+<div id="org40fb5f3" class="figure">
 <p><img src="table-node.png" alt="table-node.png">
 </p>
 <p><span class="figure-number">Figure 1: </span>Node &amp; TKey</p>
@@ -368,7 +368,7 @@ t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span
 </div>
 
 
-<div id="org6dedd72" class="figure">
+<div id="orgcbde23e" class="figure">
 <p><img src="table-dict.png" alt="table-dict.png">
 </p>
 <p><span class="figure-number">Figure 2: </span>kv stored in Node array</p>
@@ -547,7 +547,7 @@ hashmod 末尾的 <code>| 1</code> 是避免出现 mod 0 的情况。
 </div>
 
 
-<div id="orgc143675" class="figure">
+<div id="orgd3d43b1" class="figure">
 <p><img src="table-number-hash.png" alt="table-number-hash.png">
 </p>
 </div>
@@ -694,7 +694,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org50de47a" class="figure">
+<div id="org1b68489" class="figure">
 <p><img src="table-no-collision-before.png" alt="table-no-collision-before.png">
 </p>
 </div>
@@ -704,7 +704,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org21b2011" class="figure">
+<div id="org727ad9e" class="figure">
 <p><img src="table-no-collision-after.png" alt="table-no-collision-after.png">
 </p>
 </div>
@@ -728,7 +728,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org19b7ff2" class="figure">
+<div id="org8a07641" class="figure">
 <p><img src="table-collision-eq-before.png" alt="table-collision-eq-before.png">
 </p>
 </div>
@@ -743,7 +743,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org0687e69" class="figure">
+<div id="orgb23d39e" class="figure">
 <p><img src="table-collision-eq-after.png" alt="table-collision-eq-after.png">
 </p>
 </div>
@@ -762,7 +762,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org0367d03" class="figure">
+<div id="org31121db" class="figure">
 <p><img src="table-collision-ne-before.png" alt="table-collision-ne-before.png">
 </p>
 </div>
@@ -776,11 +776,55 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org4003ed9" class="figure">
+<div id="org02ec9b3" class="figure">
 <p><img src="table-collision-ne-after.png" alt="table-collision-ne-after.png">
 </p>
 </div>
 </div>
+</div>
+</div>
+
+<div id="outline-container-org89f8a37" class="outline-3">
+<h3 id="org89f8a37"><span class="section-number-3">2.3</span> get</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+在 set 小节明确了 node 内部组织的方法之后，get 方法就很容易理解了。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="linenr">466: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">467: </span><span class="org-comment">** main search function</span>
+<span class="linenr">468: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">469: </span><span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-function-name">luaH_get</span> (<span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
+<span class="linenr">470: </span>  <span class="org-keyword">switch</span> (ttype(key)) {
+<span class="linenr">471: </span>    <span class="org-keyword">case</span> LUA_TNIL: <span class="org-keyword">return</span> luaO_nilobject;
+<span class="linenr">472: </span>    <span class="org-keyword">case</span> LUA_TSTRING: <span class="org-keyword">return</span> luaH_getstr(t, rawtsvalue(key));
+<span class="linenr">473: </span>    <span class="org-keyword">case</span> LUA_TNUMBER: {
+<span class="linenr">474: </span>      <span class="org-type">int</span> <span class="org-variable-name">k</span>;
+<span class="linenr">475: </span>      <span class="org-type">lua_Number</span> <span class="org-variable-name">n</span> = nvalue(key);
+<span class="linenr">476: </span>      lua_number2int(k, n);
+<span class="linenr">477: </span>      <span class="org-keyword">if</span> (luai_numeq(cast_num(k), nvalue(key))) <span class="org-comment-delimiter">/* </span><span class="org-comment">index is int?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">478: </span>        <span class="org-keyword">return</span> luaH_getnum(t, k);  <span class="org-comment-delimiter">/* </span><span class="org-comment">use specialized version</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">479: </span>      <span class="org-comment-delimiter">/* </span><span class="org-comment">else go through</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">480: </span>    }
+<span class="linenr">481: </span>    <span class="org-keyword">default</span>: {
+<span class="linenr">482: </span>      <span class="org-type">Node</span> *<span class="org-variable-name">n</span> = mainposition(t, key);
+<span class="linenr">483: </span>      <span class="org-keyword">do</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">check whether `key' is somewhere in the chain</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">484: </span>        <span class="org-keyword">if</span> (luaO_rawequalObj(key2tval(n), key))
+<span class="linenr">485: </span>          <span class="org-keyword">return</span> gval(n);  <span class="org-comment-delimiter">/* </span><span class="org-comment">that's it</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">486: </span>        <span class="org-keyword">else</span> n = gnext(n);
+<span class="linenr">487: </span>      } <span class="org-keyword">while</span> (n);
+<span class="linenr">488: </span>      <span class="org-keyword">return</span> luaO_nilobject;
+<span class="linenr">489: </span>    }
+<span class="linenr">490: </span>  }
+<span class="linenr">491: </span>}
+</pre>
+</div>
+
+<p>
+核心就是先计算得到 main position，再一路通过 next 向下查找，
+如果 k 匹配，就返回相应的 v；否则返回 nil。
+</p>
 </div>
 </div>
 </div>
@@ -801,7 +845,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-31 四 16:16</p>
+<p>Updated: 2020-12-31 四 16:54</p>
 <p>Created: 2020-12-30 三 11:53</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
