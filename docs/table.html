@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-30 三 18:08 -->
+<!-- 2020-12-31 四 11:45 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>table</title>
@@ -329,7 +329,7 @@ metatable 相关
 </div>
 
 
-<div id="org003d4b8" class="figure">
+<div id="org2477f01" class="figure">
 <p><img src="table-node.png" alt="table-node.png">
 </p>
 <p><span class="figure-number">Figure 1: </span>Node &amp; TKey</p>
@@ -360,15 +360,15 @@ dict 表示的是多个 kv 的集合，在 table 内部，所有 kv 经过相应
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">t</span> = {}
 
 t[<span class="org-builtin">print</span>] = <span class="org-constant">true</span>
-t[<span class="org-string">"name"</span>] = <span class="org-string">"print"</span>
-t[<span class="org-string">"return"</span>] = 0
 t[<span class="org-constant">true</span>] = <span class="org-constant">false</span>
+t[<span class="org-string">"return"</span>] = 0
+t[<span class="org-string">"name"</span>] = <span class="org-string">"print"</span>
 t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span>
 </pre>
 </div>
 
 
-<div id="org7d32d28" class="figure">
+<div id="orgb297ed7" class="figure">
 <p><img src="table-dict.png" alt="table-dict.png">
 </p>
 <p><span class="figure-number">Figure 2: </span>kv stored in Node array</p>
@@ -392,12 +392,204 @@ t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span
 <span class="linenr">18: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">key2tval</span>(<span class="org-variable-name">n</span>)     (&amp;(n)-&gt;i_key.tvk)
 </pre>
 </div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>lobject.h</label><pre class="src src-c"><span class="linenr">352: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">353: </span><span class="org-comment">** `module' operation for hashing (size is always a power of 2)</span>
+<span class="linenr">354: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">355: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">lmod</span>(<span class="org-variable-name">s</span>,<span class="org-variable-name">size</span>) \
+<span class="linenr">356: </span>        (check_exp((size&amp;(size-1))==0, (cast(<span class="org-type">int</span>, (s) &amp; ((size)-1)))))
+<span class="linenr">357: </span>
+<span class="linenr">358: </span>
+<span class="linenr">359: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">twoto</span>(<span class="org-variable-name">x</span>)        (1&lt;&lt;(x))
+<span class="linenr">360: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">sizenode</span>(<span class="org-variable-name">t</span>)     (twoto((t)-&gt;lsizenode))
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org7b365a9" class="outline-3">
+<h3 id="org7b365a9"><span class="section-number-3">2.1</span> main position</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+table 内部使用精妙的结构来存储 kv，其中关键的概念是 main position。
+</p>
+
+<p>
+因为 k 可以是任意类型的值，在存储 kv 之前，必须先确定将其安排在什么位置，
+这个位置就是 kv 的 main position。
+</p>
+
+<p>
+计算的方式并不陌生，先计算 k 的 hash 值，再模除 node 数组长度，得到 main position。
+</p>
+
+<p>
+前面提到，k 可以是 nil 之外任意类型的值，所以在计算 main position 的时候，
+针对不同的类型有不同的计算方式。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>ltable.c</label><pre class="src src-C"><span class="linenr"> 96: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr"> 97: </span><span class="org-comment">** returns the `main' position of an element in a table (that is, the index</span>
+<span class="linenr"> 98: </span><span class="org-comment">** of its hash value)</span>
+<span class="linenr"> 99: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">100: </span><span class="org-keyword">static</span> <span class="org-type">Node</span> *<span class="org-function-name">mainposition</span> (<span class="org-keyword">const</span> <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
+<span class="linenr">101: </span>  <span class="org-keyword">switch</span> (ttype(key)) {
+<span class="linenr">102: </span>    <span class="org-keyword">case</span> LUA_TNUMBER:
+<span class="linenr">103: </span>      <span class="org-keyword">return</span> hashnum(t, nvalue(key));
+<span class="linenr">104: </span>    <span class="org-keyword">case</span> LUA_TSTRING:
+<span class="linenr">105: </span>      <span class="org-keyword">return</span> hashstr(t, rawtsvalue(key));
+<span class="linenr">106: </span>    <span class="org-keyword">case</span> LUA_TBOOLEAN:
+<span class="linenr">107: </span>      <span class="org-keyword">return</span> hashboolean(t, bvalue(key));
+<span class="linenr">108: </span>    <span class="org-keyword">case</span> LUA_TLIGHTUSERDATA:
+<span class="linenr">109: </span>      <span class="org-keyword">return</span> hashpointer(t, pvalue(key));
+<span class="linenr">110: </span>    <span class="org-keyword">default</span>:
+<span class="linenr">111: </span>      <span class="org-keyword">return</span> hashpointer(t, gcvalue(key));
+<span class="linenr">112: </span>  }
+<span class="linenr">113: </span>}
+</pre>
+</div>
+
+<p>
+针对不同类型详细来看，
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C"><span class="linenr">50: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashpow2</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">n</span>)      (gnode(t, lmod((n), sizenode(t))))
+<span class="linenr">51: </span>
+<span class="linenr">52: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashstr</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">str</span>)  hashpow2(t, (str)-&gt;tsv.hash)
+<span class="linenr">53: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashboolean</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">p</span>)        hashpow2(t, p)
+<span class="linenr">54: </span>
+<span class="linenr">55: </span>
+<span class="linenr">56: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">57: </span><span class="org-comment">** for some types, it is better to avoid modulus by power of 2, as</span>
+<span class="linenr">58: </span><span class="org-comment">** they tend to have many 2 factors.</span>
+<span class="linenr">59: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">60: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashmod</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">n</span>)    (gnode(t, ((n) % ((sizenode(t)-1)|1))))
+<span class="linenr">61: </span>
+<span class="linenr">62: </span>
+<span class="linenr">63: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">hashpointer</span>(<span class="org-variable-name">t</span>,<span class="org-variable-name">p</span>)        hashmod(t, IntPoint(p))
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org0d5bb01" class="outline-4">
+<h4 id="org0d5bb01"><span class="section-number-4">2.1.1</span> string</h4>
+<div class="outline-text-4" id="text-2-1-1">
+<p>
+string 比较简单，依旧使用自身的 hash，再模除 node size 得到 main position。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgf4c1ad1" class="outline-4">
+<h4 id="orgf4c1ad1"><span class="section-number-4">2.1.2</span> bool</h4>
+<div class="outline-text-4" id="text-2-1-2">
+<p>
+bool 类型更简单，直接锁定了 main position 的 0 1 位置。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org1667bda" class="outline-4">
+<h4 id="org1667bda"><span class="section-number-4">2.1.3</span> light userdata</h4>
+<div class="outline-text-4" id="text-2-1-3">
+<p>
+对于 light userdata，强制将 pointer 地址解析为 unsigned int 作为 hash 值，
+模除 node size - 1 得到 main position。
+</p>
+
+<p>
+因为地址一般按照 2 的幂对齐，而且 node size 也是 2 的幂，直接模除不容易将值分散开来，
+所以就使用 node size - 1。
+</p>
+
+<p>
+hashmod 末尾的 <code>| 1</code> 是避免出现 mod 0 的情况。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org6b13dfc" class="outline-4">
+<h4 id="org6b13dfc"><span class="section-number-4">2.1.4</span> GCObject</h4>
+<div class="outline-text-4" id="text-2-1-4">
+<p>
+同 light userdata，进行指针运算。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org66ef2b6" class="outline-4">
+<h4 id="org66ef2b6"><span class="section-number-4">2.1.5</span> number</h4>
+<div class="outline-text-4" id="text-2-1-5">
+<div class="org-src-container">
+<pre class="src src-C"><span class="linenr">66: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">67: </span><span class="org-comment">** number of ints inside a lua_Number</span>
+<span class="linenr">68: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">69: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">numints</span>         cast_int(<span class="org-keyword">sizeof</span>(lua_Number)/<span class="org-keyword">sizeof</span>(<span class="org-type">int</span>))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-C"><span class="linenr">81: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">82: </span><span class="org-comment">** hash for lua_Numbers</span>
+<span class="linenr">83: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">84: </span><span class="org-keyword">static</span> <span class="org-type">Node</span> *<span class="org-function-name">hashnum</span> (<span class="org-keyword">const</span> <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-type">lua_Number</span> <span class="org-variable-name">n</span>) {
+<span class="linenr">85: </span>  <span class="org-type">unsigned</span> <span class="org-type">int</span> <span class="org-variable-name">a</span>[numints];
+<span class="linenr">86: </span>  <span class="org-type">int</span> <span class="org-variable-name">i</span>;
+<span id="coderef-neg0" class="coderef-off"><span class="linenr">87: </span>  <span class="org-keyword">if</span> (luai_numeq(n, 0))  <span class="org-comment-delimiter">/* </span><span class="org-comment">avoid problems with -0</span><span class="org-comment-delimiter"> */</span></span>
+<span class="linenr">88: </span>    <span class="org-keyword">return</span> gnode(t, 0);
+<span class="linenr">89: </span>  memcpy(a, &amp;n, <span class="org-keyword">sizeof</span>(a));
+<span class="linenr">90: </span>  <span class="org-keyword">for</span> (i = 1; i &lt; numints; i++) a[0] += a[i];
+<span class="linenr">91: </span>  <span class="org-keyword">return</span> hashmod(t, a[0]);
+<span class="linenr">92: </span>}
+</pre>
+</div>
+
+
+<div id="orgbb842f5" class="figure">
+<p><img src="table-number-hash.png" alt="table-number-hash.png">
+</p>
+</div>
+
+
+<p>
+<code>lua_Number</code> 默认用 double 来表示，在 32 位系统中，double 通常占用 64 位。
+从二进制表示层面，将 double 分拆为 2 个 unsigned int，求和后再模除 node size - 1 得到 main position。
+</p>
+
+<p>
+这里要注意两个细节，
+</p>
+
+<p>
+一是对 <code>+0 -0</code> 做了统一处理。
+<code>+0 -0</code> 在数值角度上是相等的，但是在二进制浮点表示<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>上，
+存在标志位的不同，如果依旧使用分拆 unsigned int 的方式， <code>+0 -0</code> 将计算得到不同的 main position，
+这显然不是我们想要的，所以这里统一用 main position 0 来处理。
+</p>
+
+<p>
+二是在模除的过程中， <code>hashmod</code> 并非使用 node size 进行模除，而是 node size - 1，原因同上。
+</p>
 </div>
 </div>
 </div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+: <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format">https://en.wikipedia.org/wiki/Double-precision_floating-point_format</a>
+</p></div></div>
+
+
+</div>
+</div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-30 三 18:07</p>
+<p>Updated: 2020-12-31 四 11:44</p>
 <p>Created: 2020-12-30 三 11:53</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

@@ -107,9 +107,9 @@ dict 表示的是多个 kv 的集合，在 table 内部，所有 kv 经过相应
 local t = {}
 
 t[print] = true
-t["name"] = "print"
-t["return"] = 0
 t[true] = false
+t["return"] = 0
+t["name"] = "print"
 t["tool"] = "dot"
 #+end_src
 
@@ -121,12 +121,12 @@ digraph {
 	nd[label="
 	   {<i> index | <v> i_val | <k> i_key} |
 	   {<i0> 0| <v0> true | <k0> #f print} |
-	   {<i1> 1| <v1>  | <k1> } |
-	   {<i2> 2| <v2> \"print\" | <k2> \"name\" } |
+	   {<i1> 1| <v1> false  | <k1> true } |
+	   {<i2> 2| <v2>  | <k2> } |
 	   {<i3> 3| <v3> 0 | <k3> \"return\" } |
 	   {<i4> 4| <v4>  | <k4> } |
 	   {<i5> 5| <v5>  | <k5> } |
-	   {<i6> 6| <v6> false  | <k6> true } |
+	   {<i6> 6| <v6> \"print\" | <k6> \"name\" } |
 	   {<i7> 7| <v7> \"dot\"  | <k7> \"tool\" }
 	   "];
 
@@ -153,33 +153,169 @@ digraph {
 #+caption: ltable.h
 #+INCLUDE: ../lua-5.1.5/src/ltable.h src c -n 13 :lines "13-19"
 
-** DRAFT main position
+#+caption: lobject.h
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 352 :lines "352-361"
+
+** main position
    :LOGBOOK:
    - Note taken on [2020-12-03 四 11:53] \\
    - TODO avoid -0?
    :END:
 
-另外，需要一种方法，决定相应的 node 存储在什么位置，这一点通过 hash 来计算。
+table 内部使用精妙的结构来存储 kv，其中关键的概念是 main position。
 
-相应 node 的位置称为 main position。
+因为 k 可以是任意类型的值，在存储 kv 之前，必须先确定将其安排在什么位置，
+这个位置就是 kv 的 main position。
 
-get 和 set 之前，必须先找到对应的 main position 才能进一步进行下一步操作。
+计算的方式并不陌生，先计算 k 的 hash 值，再模除 node 数组长度，得到 main position。
 
-前面提到，除了 nil，其它 7 种类型都可以作为 key
+前面提到，k 可以是 nil 之外任意类型的值，所以在计算 main position 的时候，
+针对不同的类型有不同的计算方式。
 
-对于相应的类型，分别计算其 hash 值
-- bool，直接取 0 1
-- string，使用其自身的 hash（复习 string chapter）
-- 其实分为两部分处理，在 get 方法中，如果 num 是 int 类型，可直接使用 number 值，使用 getnum 进一步处理
-  如果不是，则是浮点，不能作用数组来理解，将 double 从位角度，分拆为 unsigned int 来计算和
-- 其它类型，将指针地址强制转换为 int 作为 hash
-  其中 mod (size - 1) ，地址一般是对齐的，减小碰撞的概率，
-  =| 1= 是避免出现 mod 0 的情况
-  - lightudata 和 gc 各自的指针
+#+caption: ltable.c
+#+begin_src C -n 96 -r
+/*
+,** returns the `main' position of an element in a table (that is, the index
+,** of its hash value)
+*/
+static Node *mainposition (const Table *t, const TValue *key) {
+  switch (ttype(key)) {
+    case LUA_TNUMBER:
+      return hashnum(t, nvalue(key));
+    case LUA_TSTRING:
+      return hashstr(t, rawtsvalue(key));
+    case LUA_TBOOLEAN:
+      return hashboolean(t, bvalue(key));
+    case LUA_TLIGHTUSERDATA:
+      return hashpointer(t, pvalue(key));
+    default:
+      return hashpointer(t, gcvalue(key));
+  }
+}
+#+end_src
 
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 50 :lines "50-64"
+针对不同类型详细来看，
 
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 96 :lines "81-114"
+#+begin_src C -n 50 -r
+#define hashpow2(t,n)      (gnode(t, lmod((n), sizenode(t))))
+  
+#define hashstr(t,str)  hashpow2(t, (str)->tsv.hash)
+#define hashboolean(t,p)        hashpow2(t, p)
+
+
+/*
+,** for some types, it is better to avoid modulus by power of 2, as
+,** they tend to have many 2 factors.
+*/
+#define hashmod(t,n)	(gnode(t, ((n) % ((sizenode(t)-1)|1))))
+
+
+#define hashpointer(t,p)	hashmod(t, IntPoint(p))
+#+end_src
+
+*** string
+
+string 比较简单，依旧使用自身的 hash，再模除 node size 得到 main position。
+
+*** bool
+
+bool 类型更简单，直接锁定了 main position 的 0 1 位置。
+
+*** light userdata
+
+对于 light userdata，强制将 pointer 地址解析为 unsigned int 作为 hash 值，
+模除 node size - 1 得到 main position。
+
+因为地址一般按照 2 的幂对齐，而且 node size 也是 2 的幂，直接模除不容易将值分散开来，
+所以就使用 node size - 1。
+
+hashmod 末尾的 =| 1= 是避免出现 mod 0 的情况。
+
+*** GCObject
+    
+同 light userdata，进行指针运算。
+
+*** number
+
+#+begin_src C -n 66 -r
+/*
+,** number of ints inside a lua_Number
+*/
+#define numints		cast_int(sizeof(lua_Number)/sizeof(int))
+#+end_src
+
+#+begin_src C -n 81 -r
+/*
+,** hash for lua_Numbers
+*/
+static Node *hashnum (const Table *t, lua_Number n) {
+  unsigned int a[numints];
+  int i;
+  if (luai_numeq(n, 0))  /* avoid problems with -0 */   (ref:neg0)
+    return gnode(t, 0);
+  memcpy(a, &n, sizeof(a));
+  for (i = 1; i < numints; i++) a[0] += a[i];
+  return hashmod(t, a[0]);
+}
+#+end_src
+
+#+caption: number hash
+#+begin_src dot :file table-number-hash.png
+digraph {
+	node[shape=record];
+
+	binary[label="
+	      <b1> 01000010 10111011 01001000 11101011 |
+	      <b0> 01010111 11100000 00000000 11001010
+	       "];
+
+	d[label="3e13 + 0.79"];
+	n1[label="1119570155"];
+	n0[label="1474298058"];
+
+	d -> binary:w[label="as double"];
+
+	n1 -> binary:b1:n[label="as unsigned int"];
+	n0 -> binary:b0:n[label="as unsigned int"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-number-hash.png]]
+
+
+#+begin_src C :exports none
+typedef union num {
+  double d;
+  int i[2];
+} num;
+
+num n;
+
+n.d = 3e13 + 0.79;
+
+printf("%d\n", sizeof(num));
+printf("%f\n", n.d);
+printf("%d %d\n", n.i[1], n.i[0]);
+#+end_src
+
+#+RESULTS:
+|                 8 |            |
+| 30000000000000.79 |            |
+|        1119570155 | 1474298058 |
+
+
+=lua_Number= 默认用 double 来表示，在 32 位系统中，double 通常占用 64 位。
+从二进制表示层面，将 double 分拆为 2 个 unsigned int，求和后再模除 node size - 1 得到 main position。
+
+这里要注意两个细节，
+
+一是对 =+0 -0= 做了统一处理。
+=+0 -0= 在数值角度上是相等的，但是在二进制浮点表示[fn:2]上，
+存在标志位的不同，如果依旧使用分拆 unsigned int 的方式， =+0 -0= 将计算得到不同的 main position，
+这显然不是我们想要的，所以这里统一用 main position 0 来处理。
+
+二是在模除的过程中， =hashmod= 并非使用 node size 进行模除，而是 node size - 1，原因同上。
 
 ** DRAFT set key
    :LOGBOOK:
@@ -482,3 +618,10 @@ get/set num/str
 考虑将 rehash 的部分放到这里，非重点
 
 ** print table value
+
+* Footnotes
+
+[fn:1]: https://maths-people.anu.edu.au/~brent/pub/pub013.html
+
+[fn:2]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
+
