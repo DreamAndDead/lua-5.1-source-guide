@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-31 四 16:54 -->
+<!-- 2020-12-31 四 17:44 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>table</title>
@@ -329,7 +329,7 @@ metatable 相关
 </div>
 
 
-<div id="org40fb5f3" class="figure">
+<div id="org9f31de7" class="figure">
 <p><img src="table-node.png" alt="table-node.png">
 </p>
 <p><span class="figure-number">Figure 1: </span>Node &amp; TKey</p>
@@ -368,7 +368,7 @@ t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span
 </div>
 
 
-<div id="orgcbde23e" class="figure">
+<div id="org751ec53" class="figure">
 <p><img src="table-dict.png" alt="table-dict.png">
 </p>
 <p><span class="figure-number">Figure 2: </span>kv stored in Node array</p>
@@ -547,7 +547,7 @@ hashmod 末尾的 <code>| 1</code> 是避免出现 mod 0 的情况。
 </div>
 
 
-<div id="orgd3d43b1" class="figure">
+<div id="org8ecbd9c" class="figure">
 <p><img src="table-number-hash.png" alt="table-number-hash.png">
 </p>
 </div>
@@ -694,7 +694,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org1b68489" class="figure">
+<div id="org467a4ad" class="figure">
 <p><img src="table-no-collision-before.png" alt="table-no-collision-before.png">
 </p>
 </div>
@@ -704,7 +704,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org727ad9e" class="figure">
+<div id="org5635a26" class="figure">
 <p><img src="table-no-collision-after.png" alt="table-no-collision-after.png">
 </p>
 </div>
@@ -728,7 +728,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org8a07641" class="figure">
+<div id="orga360097" class="figure">
 <p><img src="table-collision-eq-before.png" alt="table-collision-eq-before.png">
 </p>
 </div>
@@ -743,7 +743,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="orgb23d39e" class="figure">
+<div id="org8a520d9" class="figure">
 <p><img src="table-collision-eq-after.png" alt="table-collision-eq-after.png">
 </p>
 </div>
@@ -762,7 +762,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org31121db" class="figure">
+<div id="org0e15fb0" class="figure">
 <p><img src="table-collision-ne-before.png" alt="table-collision-ne-before.png">
 </p>
 </div>
@@ -776,7 +776,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org02ec9b3" class="figure">
+<div id="org80f3cee" class="figure">
 <p><img src="table-collision-ne-after.png" alt="table-collision-ne-after.png">
 </p>
 </div>
@@ -828,6 +828,191 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </div>
 </div>
 </div>
+
+<div id="outline-container-org1d63fde" class="outline-2">
+<h2 id="org1d63fde"><span class="section-number-2">3</span> array</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+array 默认的索引从 1 开始。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = {1, 2, 3, 4}
+<span class="org-builtin">assert</span>(a[1] == 1, <span class="org-string">"index start from 1"</span>)
+</pre>
+</div>
+
+<p>
+当用 table 来表示 array 的概念，默认索引从 1 开始。
+</p>
+
+<p>
+相应的，struct Table 中的 TValue *array 只存储正整数索引（&gt;= 1）对应的值。
+</p>
+
+<p>
+首先，在 C 语言中，直接通过数字索引到数组的元素效率是非常高的，
+</p>
+
+<p>
+将部分数字索引的 kv 放在 * array 中，将其索引对应起来，提高存取效率。
+</p>
+
+<p>
+1 -&gt; 0
+2 -&gt; 1
+</p>
+
+<p>
+有 1 个位置偏移。
+</p>
+
+<p>
+其次，可以节省空间，因为 node 中的 key 和 val 两个部分，但是如果用 array 来存储，
+就节省了 key 的空间。
+</p>
+
+
+<p>
+采用这样的安排后，一个主要问题就出现了，使用时候用 array 部分，使用时候用 node 部分？
+</p>
+
+<p>
+如果
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">t</span> = {1, 2, 3, 4}
+</pre>
+</div>
+
+<p>
+这样紧密的情况下，全部使用 array part 来存储，自然效率是最高的，完全看作一个数组。
+</p>
+
+<p>
+如果
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">t</span> = {1, 2, 3, 4, [1000] = 1000}
+</pre>
+</div>
+
+<p>
+其中全部是整数索引，但是最大的索引是 1000，
+</p>
+
+<p>
+如果这种情况下，使用 1000 大小的 TValue 来存储就不划算，中间空余所浪费的空间太多了
+比如 70， 900，没有明显设置的值，如果直接索引就是 nil 值。
+</p>
+
+
+<p>
+lua 基于这样的思路，使用一种权衡的的方式来决定使用多大的 array 来存储整数索引的 kv。
+</p>
+
+<p>
+找到一个最大的整数 n，其中 0 到 n 之前至少有 n/2 个整数是有值的。
+这样至少可以保持 50% 的利用率。
+</p>
+
+
+<p>
+array 在 table 中，只是单纯用 TValue 数组来存储，
+</p>
+<ul class="org-ul">
+<li>TValue * array，存储</li>
+<li>int sizearray，当前 array 的空间大小</li>
+</ul>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="linenr">338: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Table</span> {
+<span class="linenr">339: </span>  CommonHeader;
+<span class="linenr">340: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">flags</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">1&lt;&lt;p means tagmethod(p) is not present</span><span class="org-comment-delimiter"> */</span> 
+<span class="linenr">341: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">lsizenode</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">log2 of size of `node' array</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">342: </span>  <span class="org-keyword">struct</span> <span class="org-type">Table</span> *<span class="org-variable-name">metatable</span>;
+<span class="linenr">343: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">array</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">array part</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">344: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">node</span>;
+<span class="linenr">345: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">lastfree</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">any free position is before this position</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">346: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
+<span class="linenr">347: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizearray</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `array' array</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">348: </span>} <span class="org-type">Table</span>;
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org9576a9d" class="outline-3">
+<h3 id="org9576a9d"><span class="section-number-3">3.1</span> get</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+本质上，get 返回的是 相应的 key 对应的 v 的存储空间的指针
+如果 table 中从没有这个 key，则返回 luaO<sub>nilobject</sub>(它是一个指针，而不是值)
+</p>
+
+<p>
+在 <code>luaH_get</code> 中，对于 number 做了特殊处理
+</p>
+<ul class="org-ul">
+<li>如果 key 是 number 和 int，使用 <code>luaH_getnum</code>
+是浮点，则正常使用 <code>hashnum</code> 来计算</li>
+</ul>
+
+<p>
+在 <code>luaH_getnum</code> 中，在 1 - sizearray 范围内，可以直接索引，即所谓 array part 区域的指针
+它是一定不同于 luaO<sub>nilobject</sub> 的
+</p>
+
+<p>
+否则，还是通过 <code>hashnum</code> ，从 dict 部分，顺着 next 进行搜索
+</p>
+
+<p>
+如果存在相应的 key，则返回相应的存储空间指针，
+没有，则返回 nilobject
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgbc28768" class="outline-3">
+<h3 id="orgbc28768"><span class="section-number-3">3.2</span> set</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+在 <code>luaH_set</code> 中，先通过 get 来寻找存储空间
+</p>
+
+<p>
+通过对 get 的理解，
+</p>
+
+<p>
+p != luaO<sub>nilobject</sub>
+</p>
+
+<p>
+就容易判断了
+</p>
+
+<p>
+对于 num，假如在 array part ，则一定返回数组位置，
+不在，则像 dict 一样查找，返回相应位置
+</p>
+
+<p>
+get 只关注位置，而不关注位置上对应的值
+</p>
+
+<p>
+如果没有相应的 key，就使用 newkey 来插入 node（在 array part 的 num 是不可能使用 newkey 的）
+</p>
+
+<p>
+这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
+</p>
+</div>
+</div>
+</div>
 <div id="footnotes">
 <h2 class="footnotes">Footnotes: </h2>
 <div id="text-footnotes">
@@ -845,7 +1030,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-31 四 16:54</p>
+<p>Updated: 2020-12-31 四 17:44</p>
 <p>Created: 2020-12-30 三 11:53</p>
 <p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>

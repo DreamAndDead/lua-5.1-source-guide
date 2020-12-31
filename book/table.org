@@ -34,12 +34,12 @@ dict 相关
 - [[(lastfree)][Node * lastfree]] ，在数组中从尾向前，第一个空闲位置的指针
 
 array 相关
-- [[(array)][TValue * array]]
-- [[(sizearray)][int sizearray]]
+- [[(array)][TValue * array]] ，array 存储的数组
+- [[(sizearray)][int sizearray]] ，array 的大小
 
 metatable 相关
-- [[(metatable)][struct Table * metatable]]
-- [[(flags)][=lu_byte= flags]]
+- [[(metatable)][struct Table * metatable]] ，metatable 的指针
+- [[(flags)][=lu_byte= flags]] ，一个字节，用于缓存加速 meta method 的搜索
 
 从结构中可以发现，table 并不只是单纯的 dict 结构，为了效率，在内部也用 array 的方式进行辅助存储。
 
@@ -627,16 +627,38 @@ digraph {
 核心就是先计算得到 main position，再一路通过 next 向下查找，
 如果 k 匹配，就返回相应的 v；否则返回 nil。
 
-* DRAFT array
+* array
 
-array 默认的索引从 1 开始。
+前面已经提到过，table 内部有特定的区域用于存储 array 相关的数据（k 为正整数）。
+
+考虑如下代码，
 
 #+begin_src lua
-local a = {1, 2, 3, 4}
-assert(a[1] == 1, "index start from 1")
+local t = {1, 2, 3, 4}
 #+end_src
 
-当用 table 来表示 array 的概念，默认索引从 1 开始。
+如果内部使用 TValue array 来存储，效率自然是最高的。
+空间上，Node 结构大小至少为 2 * TValue，如果直接用数组表示，只需要 1 个 TValue 的空间；
+时间上，内部使用数组，可以直接索引元素，速度是非常快的，不需要在 Node 中依次使用 next 遍历。
+
+假如出现这种情况，
+
+#+begin_src lua
+local t = {1, 2, 3, 4, [1000] = 1000}
+#+end_src
+
+索引都为正整数，但是中间并不连续，从 4 到 1000 出现了巨大的空隙。
+
+假如依旧使用 TValue array 来存储就不划算了，大小必须为 1000，中间浪费的空间太多。
+
+基于这种思路，lua 使用一种权衡的方式来安排正整数索引的数据。
+
+具体而言，就是找到一个最大的整数 n，其中 0 到 n 之前至少有 n/2 个整数索引，
+这样至少可以保持 50% 的利用率。
+
+其中需要注意的细节是，
+
+table 表示 array 的时候，默认索引从 1 开始。
 
 相应的，struct Table 中的 TValue *array 只存储正整数索引（>= 1）对应的值。
 
@@ -649,48 +671,6 @@ assert(a[1] == 1, "index start from 1")
 
 有 1 个位置偏移。
 
-其次，可以节省空间，因为 node 中的 key 和 val 两个部分，但是如果用 array 来存储，
-就节省了 key 的空间。
-
-
-采用这样的安排后，一个主要问题就出现了，使用时候用 array 部分，使用时候用 node 部分？
-
-如果
-
-#+begin_src lua
-local t = {1, 2, 3, 4}
-#+end_src
-
-这样紧密的情况下，全部使用 array part 来存储，自然效率是最高的，完全看作一个数组。
-
-如果
-
-#+begin_src lua
-local t = {1, 2, 3, 4, [1000] = 1000}
-#+end_src
-
-其中全部是整数索引，但是最大的索引是 1000，
-
-如果这种情况下，使用 1000 大小的 TValue 来存储就不划算，中间空余所浪费的空间太多了
-比如 70， 900，没有明显设置的值，如果直接索引就是 nil 值。
-
-
-lua 基于这样的思路，使用一种权衡的的方式来决定使用多大的 array 来存储整数索引的 kv。
-
-找到一个最大的整数 n，其中 0 到 n 之前至少有 n/2 个整数是有值的。
-这样至少可以保持 50% 的利用率。
-
-
-array 在 table 中，只是单纯用 TValue 数组来存储，
-- TValue * array，存储
-- int sizearray，当前 array 的空间大小
-
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 338 :lines "338-349"
-
-
-与 dict 部分相同，array 也有 2 个核心方法
-- get
-- set
 
 ** get
 
@@ -712,7 +692,6 @@ array 在 table 中，只是单纯用 TValue 数组来存储，
 ** set
    :LOGBOOK:
    - Note taken on [2020-12-03 四 14:44] \\
-   nil 应该是删除键来理解，对于 array part 是不可能删除空间的
    对于 dict 部分，是如何处理删除的？可能只是在 rehash 的时候发生
    - Note taken on [2020-12-03 四 14:43] \\
    dummynode 的作用？
@@ -738,8 +717,7 @@ get 只关注位置，而不关注位置上对应的值
 
 这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
 
-* DRAFT other method
-
+* DRAFT method
 ** next
    :LOGBOOK:
    - Note taken on [2020-12-03 四 15:44] \\
