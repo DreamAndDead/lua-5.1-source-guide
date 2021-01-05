@@ -55,24 +55,11 @@ typedef union Closure {
 #define isLfunction(o)	(ttype(o) == LUA_TFUNCTION && !clvalue(o)->c.isC)
 #+END_SRC
 
-#+begin_src dot :file test-dot.png
-digraph G {
-	subgraph cluster0 {
-		node [style=filled,color=white];
-		style=filled;
-		color=lightgrey;
-		a0 -> a1 -> a2 -> a3;
-		label = "process #1";
-	}
 
-	subgraph cluster1 {
-		node [style=filled];
-		b0 -> b1 -> b2 -> b3;
-		label = "process #2";
-		color=blue;
-	}
-}
-#+end_src
+** test org table ch and en
 
-#+RESULTS:
-[[file:test-dot.png]]
+| English     | 中文         | desc           |
+|-------------+--------------+----------------|
+| iscfunction | enenenen     | 在源代码文件中 |
+| jJJJ        | 中文中文ej j |                |
+| 中文        | 东西是什么   |                |

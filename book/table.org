@@ -46,6 +46,14 @@ metatable 相关
 下面就 3 个部分，分别讨论
 
 * dict
+   :LOGBOOK:
+   - Note taken on [2020-12-03 四 14:44] \\
+   对于 dict 部分，是如何处理删除的？可能只是在 rehash 的时候发生
+   - Note taken on [2020-12-03 四 14:43] \\
+   dummynode 用于表明可用的空间，还没有 key 来使用其空间
+   与之相对的， deadkey 只是由 gc 来处理的，标识 deadkey 是当值为 nil 的时候
+   但是这部分空间仍然是被占据的
+   :END:
 
 在 lua 中，用 table 表示 dict 概念，有非常大的自由度。
 
@@ -158,7 +166,7 @@ digraph {
 
 ** main position
 
-table 内部使用精妙的结构来存储 kv，其中关键的概念是 main position。
+table 内部使用巧妙的方式来存储 kv，其中关键的概念是 main position。
 
 因为 k 可以是任意类型的值，在存储 kv 之前，必须先确定将其安排在什么位置，
 这个位置就是 kv 的 main position。
@@ -328,6 +336,7 @@ printf("%d %d\n", n.i[1], n.i[0]);
 
 table 模块中提供了 =luaH_set= 实现 kv 存储。
 
+#+caption: ltable.c
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-506"
 
 可以观察到，其中只有 k 参数，而没有 v 参数。
@@ -336,6 +345,7 @@ table 模块中提供了 =luaH_set= 实现 kv 存储。
 =luaH_set= 很简单，如果已经存在相应的 k，则直接返回；
 通过一系列错误检测之后，调用 =newkey= 方法，添加 k。
 
+#+caption: ltable.c
 #+begin_src C -n 392 -r
 /*
 ,** inserts a new key into a hash table; first, check whether key's main 
@@ -452,7 +462,7 @@ digraph {
 
 colliding node 根据 =i_key= 也可以计算出自身的 main position（othern）。
 
-巧合的是，othern 和 mp 是相同的，说明两者确实发生了 hash 冲突，[[(mpeq)][都应该使用这个位置]]。
+如果 othern 和 mp 是相同的，说明两者确实发生了 hash 冲突，[[(mpeq)][都应该使用这个位置]]。
 
 #+caption: collision with mp equal before
 #+begin_src dot :file table-collision-eq-before.png
@@ -494,9 +504,9 @@ digraph {
 [[file:table-collision-eq-before.png]]
 
 但是位置只有一个，只能从当前空闲的结点借用一个位置（n），
-然后使用头插法，用 =i_key= 中的 next 将其链接起来。
+然后使用头插法，用 =i_key.next= 将其链接起来。
 
-这个链条的起点是 main position，其中链接的全部是 main position 相同（即 hash 冲突）的结点。
+可以发现，这个链条的起点从 main position 开始，链接的全部是 main position 相同（即 hash 冲突）的结点。
 
 #+caption: collision with mp equal after
 #+begin_src dot :file table-collision-eq-after.png
@@ -538,7 +548,7 @@ digraph {
 
 [[(mpne)][如果 othern 和 mp 不相同，]]说明 colliding node 是在之前冲突时，借用了此结点的位置。
 
-当时是空闲的，可以借用，但是现在，明确拥有 mp 的 k 要来拿回属于自己的位置，colliding node 只能让出来。
+之前是空闲的，可以借用，但是现在，明确拥有 mp 的 k 要来拿回属于自己的位置，colliding node 只能让出来。
 
 #+caption: collision with mp not equal before
 #+begin_src dot :file table-collision-ne-before.png
@@ -622,6 +632,7 @@ digraph {
 
 在 set 小节明确了 node 内部组织的方法之后，get 方法就很容易理解了。
 
+#+caption: ltable.c
 #+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
 
 核心就是先计算得到 main position，再一路通过 next 向下查找，
@@ -629,7 +640,7 @@ digraph {
 
 * array
 
-前面已经提到过，table 内部有特定的区域用于存储 array 相关的数据（k 为正整数）。
+前面提到，为了效率，table 内部有特定的区域用于存储 array 相关的数据（k 为正整数）。
 
 考虑如下代码，
 
@@ -637,11 +648,11 @@ digraph {
 local t = {1, 2, 3, 4}
 #+end_src
 
-如果内部使用 TValue array 来存储，效率自然是最高的。
-空间上，Node 结构大小至少为 2 * TValue，如果直接用数组表示，只需要 1 个 TValue 的空间；
-时间上，内部使用数组，可以直接索引元素，速度是非常快的，不需要在 Node 中依次使用 next 遍历。
+如果内部使用 =TValue[]= 来存储，效率自然是最高的。
+- 空间上，Node 结构大小至少为 2 * TValue，若直接用数组表示，只需要 1 * TValue 的空间；
+- 时间上，若直接使用数组，可以直接索引元素，速度非常快，而 Node 需要在整个链条中使用 next 遍历。
 
-假如出现这种情况，
+但是，假如出现这种情况，
 
 #+begin_src lua
 local t = {1, 2, 3, 4, [1000] = 1000}
@@ -649,73 +660,99 @@ local t = {1, 2, 3, 4, [1000] = 1000}
 
 索引都为正整数，但是中间并不连续，从 4 到 1000 出现了巨大的空隙。
 
-假如依旧使用 TValue array 来存储就不划算了，大小必须为 1000，中间浪费的空间太多。
+假如依旧使用 =TValue[]= 来存储就不划算了，大小必须为 1000，中间浪费的空间太多。
 
-基于这种思路，lua 使用一种权衡的方式来安排正整数索引的数据。
+综合考虑，lua 使用一种权衡的方式来安排正整数索引的数据。
 
-具体而言，就是找到一个最大的整数 n，其中 0 到 n 之前至少有 n/2 个整数索引，
-这样至少可以保持 50% 的利用率。
+具体而言，就是找到一个最大的整数 n，其中 0 到 n 之间至少有 n/2 个整数索引，
+这样可以保持至少 50% 的利用率。
 
-其中需要注意的细节是，
+剩余在 n 范围之外的索引，依旧使用 kv 方式来存储。
 
-table 表示 array 的时候，默认索引从 1 开始。
+#+caption: num in array and dict two part
+#+begin_src dot :file table-num-array-dict.png
+digraph {
+	node[shape=record, width=.1, height=.1];
+	
+	nd[label="
+	   {<i> index | <v> i_val | <k> i_key} |
+	   {<i0> 0| <v0> | <k0> } |
+	   {<i1> 1| <v1> | <k1> } |
+	   {<i2> 2| <v2> true | <k2> false } |
+	   {<i3> 3| <v3> | <k3> } |
+	   {<i4> 4| <v4> | <k4> } |
+	   {<i5> 5| <v5> 1000 | <k5> 1000 } |
+	   {<i6> 6| <v6> | <k6> } |
+	   {<i7> 7| <v7> \"table\" | <k7> \"section\" }
+	   "];
 
-相应的，struct Table 中的 TValue *array 只存储正整数索引（>= 1）对应的值。
+	sz[label="lsizenode = log(8) = 3", shape=none];
 
-首先，在 C 语言中，直接通过数字索引到数组的元素效率是非常高的，
+	lf[shape=box,label="Node * lastfree"];
+	n[shape=box,label="Node * node"];
 
-将部分数字索引的 kv 放在 * array 中，将其索引对应起来，提高存取效率。
+	n -> nd:i0:nw;
+	lf -> nd:i7:n;
+	nd:k2:s -> nd:k7:s;
 
-1 -> 0
-2 -> 1
+	node[shape=record, width=.1, height=.1];
+	
+	ar[label="
+	   {
+		   index  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+	   } | {
+		   <tv> TValue | 1 | 2 | 3 | 4 |   |   |   |
+	   }
+	   "];
 
-有 1 个位置偏移。
+	a[shape=box,label="TValue * array"];
+	asz[label="sizearray = 8", shape = none];
 
+	a -> ar:tv:nw;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-num-array-dict.png]]
+
+需要注意的细节是，table 表示 array 的时候，默认索引从 1 开始。
+
+相应的，table 中的 TValue *array 只存储正整数索引（>= 1）对应的值。
+由于 C 语言数组的索引从 0 开始，所以存储时，有 1 个位置偏移。
 
 ** get
 
-本质上，get 返回的是 相应的 key 对应的 v 的存储空间的指针
-如果 table 中从没有这个 key，则返回 luaO_nilobject(它是一个指针，而不是值)
+在讲解 get 之前，需要明确一点，并且所有数字索引的 kv 都会存储在内部的 array 中。
 
-在 =luaH_get= 中，对于 number 做了特殊处理
-- 如果 key 是 number 和 int，使用 =luaH_getnum=
-  是浮点，则正常使用 =hashnum= 来计算
+对于类型是 number 的 k，需要其
+- 不是浮点值，是整数值
+- 是 ~>= 1~ 的正整数
+- 范围在 ~1 - sizearray~ 之间
 
-在 =luaH_getnum= 中，在 1 - sizearray 范围内，可以直接索引，即所谓 array part 区域的指针
-它是一定不同于 luaO_nilobject 的
+不在这个范围内的 kv，依旧按照 dict 来处理，从代码中可以明确看到这一点。
 
-否则，还是通过 =hashnum= ，从 dict 部分，顺着 next 进行搜索
+#+caption: ltable.c
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
 
-如果存在相应的 key，则返回相应的存储空间指针，
-没有，则返回 nilobject
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 432 :lines "432-450"
 
 ** set
-   :LOGBOOK:
-   - Note taken on [2020-12-03 四 14:44] \\
-   对于 dict 部分，是如何处理删除的？可能只是在 rehash 的时候发生
-   - Note taken on [2020-12-03 四 14:43] \\
-   dummynode 的作用？
-   dummynode 用于表明可用的空间，还没有 key 来使用其空间
-   与之相对的， deadkey 只是由 gc 来处理的，标识 deadkey 是当值为 nil 的时候
-   但是这部分空间仍然是被占据的
-   :END:
 
-在 =luaH_set= 中，先通过 get 来寻找存储空间
+set 的逻辑也很简单，不过其中有一点需要注意。
 
-通过对 get 的理解，
+回忆之前 dict 部分的 set 方法，返回的是存储 v 的指针，而如果 kv 安排在 array 部分，
+则不需要 newkey 过程，直接返回相应的 array 位置即可。
 
-p != luaO_nilobject
+#+caption: ltable.c
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-518"
 
-就容易判断了
+先调用 get 方法，得到结果 p， ~if (p != luaO_nilobject)~ 非常关键。
 
-对于 num，假如在 array part ，则一定返回数组位置，
-不在，则像 dict 一样查找，返回相应位置
+回忆 get 方法，
+如果相应 kv 存储在 array 中，直接返回 array 中相应的地址，地址必定不是 =luaO_nilobject= ；
+而如果存储在 Node 中，如果找不到相应的 k，才会返回 =luaO_nilobject= 。
 
-get 只关注位置，而不关注位置上对应的值
-
-如果没有相应的 key，就使用 newkey 来插入 node（在 array part 的 num 是不可能使用 newkey 的）
-
-这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
+这一点细节，和之前的逻辑完美统一起来。
 
 * DRAFT method
 ** next
@@ -869,6 +906,8 @@ new/free
 get/set num/str
 
 考虑将 rehash 的部分放到这里，非重点
+
+dummynode 的作用？
 
 ** print table value
 

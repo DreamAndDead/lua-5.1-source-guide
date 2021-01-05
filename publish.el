@@ -4,7 +4,8 @@
 (setq org-html-postamble "
 <p>Updated: %C</p>
 <p>Created: %d</p>
-<p>Contact: %a %e</p>
+<p>Author: %a</p>
+<p>Email: %e</p>
 ")
 
 

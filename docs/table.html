@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-12-31 四 17:44 -->
+<!-- 2021-01-05 二 10:29 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>table</title>
@@ -267,16 +267,16 @@ dict 相关
 array 相关
 </p>
 <ul class="org-ul">
-<li><a href="#coderef-array" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-array');" onmouseout="CodeHighlightOff(this, 'coderef-array');">TValue * array</a></li>
-<li><a href="#coderef-sizearray" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-sizearray');" onmouseout="CodeHighlightOff(this, 'coderef-sizearray');">int sizearray</a></li>
+<li><a href="#coderef-array" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-array');" onmouseout="CodeHighlightOff(this, 'coderef-array');">TValue * array</a> ，array 存储的数组</li>
+<li><a href="#coderef-sizearray" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-sizearray');" onmouseout="CodeHighlightOff(this, 'coderef-sizearray');">int sizearray</a> ，array 的大小</li>
 </ul>
 
 <p>
 metatable 相关
 </p>
 <ul class="org-ul">
-<li><a href="#coderef-metatable" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-metatable');" onmouseout="CodeHighlightOff(this, 'coderef-metatable');">struct Table * metatable</a></li>
-<li><a href="#coderef-flags" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-flags');" onmouseout="CodeHighlightOff(this, 'coderef-flags');"><code>lu_byte</code> flags</a></li>
+<li><a href="#coderef-metatable" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-metatable');" onmouseout="CodeHighlightOff(this, 'coderef-metatable');">struct Table * metatable</a> ，metatable 的指针</li>
+<li><a href="#coderef-flags" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-flags');" onmouseout="CodeHighlightOff(this, 'coderef-flags');"><code>lu_byte</code> flags</a> ，一个字节，用于缓存加速 meta method 的搜索</li>
 </ul>
 
 <p>
@@ -329,7 +329,7 @@ metatable 相关
 </div>
 
 
-<div id="org9f31de7" class="figure">
+<div id="orgab4ecc8" class="figure">
 <p><img src="table-node.png" alt="table-node.png">
 </p>
 <p><span class="figure-number">Figure 1: </span>Node &amp; TKey</p>
@@ -368,7 +368,7 @@ t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span
 </div>
 
 
-<div id="org751ec53" class="figure">
+<div id="org3c652fd" class="figure">
 <p><img src="table-dict.png" alt="table-dict.png">
 </p>
 <p><span class="figure-number">Figure 2: </span>kv stored in Node array</p>
@@ -411,7 +411,7 @@ t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span
 <h3 id="org7b365a9"><span class="section-number-3">2.1</span> main position</h3>
 <div class="outline-text-3" id="text-2-1">
 <p>
-table 内部使用精妙的结构来存储 kv，其中关键的概念是 main position。
+table 内部使用巧妙的方式来存储 kv，其中关键的概念是 main position。
 </p>
 
 <p>
@@ -547,7 +547,7 @@ hashmod 末尾的 <code>| 1</code> 是避免出现 mod 0 的情况。
 </div>
 
 
-<div id="org8ecbd9c" class="figure">
+<div id="org23a2636" class="figure">
 <p><img src="table-number-hash.png" alt="table-number-hash.png">
 </p>
 </div>
@@ -576,8 +576,8 @@ hashmod 末尾的 <code>| 1</code> 是避免出现 mod 0 的情况。
 </div>
 </div>
 
-<div id="outline-container-org0e9a677" class="outline-3">
-<h3 id="org0e9a677"><span class="section-number-3">2.2</span> set</h3>
+<div id="outline-container-orgb9bd3e0" class="outline-3">
+<h3 id="orgb9bd3e0"><span class="section-number-3">2.2</span> set</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
 明确 main position 之后，下一步来了解如何存储 kv。
@@ -613,7 +613,7 @@ table 模块中提供了 <code>luaH_set</code> 实现 kv 存储。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">494: </span><span class="org-type">TValue</span> *<span class="org-function-name">luaH_set</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>ltable.c</label><pre class="src src-c"><span class="linenr">494: </span><span class="org-type">TValue</span> *<span class="org-function-name">luaH_set</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
 <span class="linenr">495: </span>  <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">p</span> = luaH_get(t, key);
 <span class="linenr">496: </span>  t-&gt;flags = 0;
 <span class="linenr">497: </span>  <span class="org-keyword">if</span> (p != luaO_nilobject)
@@ -639,7 +639,7 @@ table 模块中提供了 <code>luaH_set</code> 实现 kv 存储。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C"><span class="linenr">392: </span><span class="org-comment-delimiter">/*</span>
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>ltable.c</label><pre class="src src-C"><span class="linenr">392: </span><span class="org-comment-delimiter">/*</span>
 <span class="linenr">393: </span><span class="org-comment">** inserts a new key into a hash table; first, check whether key's main </span>
 <span class="linenr">394: </span><span class="org-comment">** position is free. If not, check whether colliding node is in its main </span>
 <span class="linenr">395: </span><span class="org-comment">** position or not: if it is not, move colliding node to an empty place and </span>
@@ -694,7 +694,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org467a4ad" class="figure">
+<div id="org8d2edf3" class="figure">
 <p><img src="table-no-collision-before.png" alt="table-no-collision-before.png">
 </p>
 </div>
@@ -704,7 +704,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org5635a26" class="figure">
+<div id="org2085c59" class="figure">
 <p><img src="table-no-collision-after.png" alt="table-no-collision-after.png">
 </p>
 </div>
@@ -724,26 +724,26 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 <p>
-巧合的是，othern 和 mp 是相同的，说明两者确实发生了 hash 冲突，<a href="#coderef-mpeq" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-mpeq');" onmouseout="CodeHighlightOff(this, 'coderef-mpeq');">都应该使用这个位置</a>。
+如果 othern 和 mp 是相同的，说明两者确实发生了 hash 冲突，<a href="#coderef-mpeq" class="coderef" onmouseover="CodeHighlightOn(this, 'coderef-mpeq');" onmouseout="CodeHighlightOff(this, 'coderef-mpeq');">都应该使用这个位置</a>。
 </p>
 
 
-<div id="orga360097" class="figure">
+<div id="orgae2932d" class="figure">
 <p><img src="table-collision-eq-before.png" alt="table-collision-eq-before.png">
 </p>
 </div>
 
 <p>
 但是位置只有一个，只能从当前空闲的结点借用一个位置（n），
-然后使用头插法，用 <code>i_key</code> 中的 next 将其链接起来。
+然后使用头插法，用 <code>i_key.next</code> 将其链接起来。
 </p>
 
 <p>
-这个链条的起点是 main position，其中链接的全部是 main position 相同（即 hash 冲突）的结点。
+可以发现，这个链条的起点从 main position 开始，链接的全部是 main position 相同（即 hash 冲突）的结点。
 </p>
 
 
-<div id="org8a520d9" class="figure">
+<div id="org970b2a4" class="figure">
 <p><img src="table-collision-eq-after.png" alt="table-collision-eq-after.png">
 </p>
 </div>
@@ -758,11 +758,11 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 <p>
-当时是空闲的，可以借用，但是现在，明确拥有 mp 的 k 要来拿回属于自己的位置，colliding node 只能让出来。
+之前是空闲的，可以借用，但是现在，明确拥有 mp 的 k 要来拿回属于自己的位置，colliding node 只能让出来。
 </p>
 
 
-<div id="org0e15fb0" class="figure">
+<div id="orgadb9396" class="figure">
 <p><img src="table-collision-ne-before.png" alt="table-collision-ne-before.png">
 </p>
 </div>
@@ -776,7 +776,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org80f3cee" class="figure">
+<div id="org66c283f" class="figure">
 <p><img src="table-collision-ne-after.png" alt="table-collision-ne-after.png">
 </p>
 </div>
@@ -784,15 +784,15 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </div>
 </div>
 
-<div id="outline-container-org89f8a37" class="outline-3">
-<h3 id="org89f8a37"><span class="section-number-3">2.3</span> get</h3>
+<div id="outline-container-org1f19c33" class="outline-3">
+<h3 id="org1f19c33"><span class="section-number-3">2.3</span> get</h3>
 <div class="outline-text-3" id="text-2-3">
 <p>
 在 set 小节明确了 node 内部组织的方法之后，get 方法就很容易理解了。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">466: </span><span class="org-comment-delimiter">/*</span>
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>ltable.c</label><pre class="src src-c"><span class="linenr">466: </span><span class="org-comment-delimiter">/*</span>
 <span class="linenr">467: </span><span class="org-comment">** main search function</span>
 <span class="linenr">468: </span><span class="org-comment-delimiter">*/</span>
 <span class="linenr">469: </span><span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-function-name">luaH_get</span> (<span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
@@ -833,52 +833,11 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 <h2 id="org1d63fde"><span class="section-number-2">3</span> array</h2>
 <div class="outline-text-2" id="text-3">
 <p>
-array 默认的索引从 1 开始。
-</p>
-
-<div class="org-src-container">
-<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = {1, 2, 3, 4}
-<span class="org-builtin">assert</span>(a[1] == 1, <span class="org-string">"index start from 1"</span>)
-</pre>
-</div>
-
-<p>
-当用 table 来表示 array 的概念，默认索引从 1 开始。
+前面提到，为了效率，table 内部有特定的区域用于存储 array 相关的数据（k 为正整数）。
 </p>
 
 <p>
-相应的，struct Table 中的 TValue *array 只存储正整数索引（&gt;= 1）对应的值。
-</p>
-
-<p>
-首先，在 C 语言中，直接通过数字索引到数组的元素效率是非常高的，
-</p>
-
-<p>
-将部分数字索引的 kv 放在 * array 中，将其索引对应起来，提高存取效率。
-</p>
-
-<p>
-1 -&gt; 0
-2 -&gt; 1
-</p>
-
-<p>
-有 1 个位置偏移。
-</p>
-
-<p>
-其次，可以节省空间，因为 node 中的 key 和 val 两个部分，但是如果用 array 来存储，
-就节省了 key 的空间。
-</p>
-
-
-<p>
-采用这样的安排后，一个主要问题就出现了，使用时候用 array 部分，使用时候用 node 部分？
-</p>
-
-<p>
-如果
+考虑如下代码，
 </p>
 
 <div class="org-src-container">
@@ -887,11 +846,15 @@ array 默认的索引从 1 开始。
 </div>
 
 <p>
-这样紧密的情况下，全部使用 array part 来存储，自然效率是最高的，完全看作一个数组。
+如果内部使用 <code>TValue[]</code> 来存储，效率自然是最高的。
 </p>
+<ul class="org-ul">
+<li>空间上，Node 结构大小至少为 2 * TValue，若直接用数组表示，只需要 1 * TValue 的空间；</li>
+<li>时间上，若直接使用数组，可以直接索引元素，速度非常快，而 Node 需要在整个链条中使用 next 遍历。</li>
+</ul>
 
 <p>
-如果
+但是，假如出现这种情况，
 </p>
 
 <div class="org-src-container">
@@ -900,115 +863,168 @@ array 默认的索引从 1 开始。
 </div>
 
 <p>
-其中全部是整数索引，但是最大的索引是 1000，
+索引都为正整数，但是中间并不连续，从 4 到 1000 出现了巨大的空隙。
 </p>
 
 <p>
-如果这种情况下，使用 1000 大小的 TValue 来存储就不划算，中间空余所浪费的空间太多了
-比如 70， 900，没有明显设置的值，如果直接索引就是 nil 值。
-</p>
-
-
-<p>
-lua 基于这样的思路，使用一种权衡的的方式来决定使用多大的 array 来存储整数索引的 kv。
+假如依旧使用 <code>TValue[]</code> 来存储就不划算了，大小必须为 1000，中间浪费的空间太多。
 </p>
 
 <p>
-找到一个最大的整数 n，其中 0 到 n 之前至少有 n/2 个整数是有值的。
-这样至少可以保持 50% 的利用率。
+综合考虑，lua 使用一种权衡的方式来安排正整数索引的数据。
+</p>
+
+<p>
+具体而言，就是找到一个最大的整数 n，其中 0 到 n 之间至少有 n/2 个整数索引，
+这样可以保持至少 50% 的利用率。
+</p>
+
+<p>
+剩余在 n 范围之外的索引，依旧使用 kv 方式来存储。
 </p>
 
 
+<div id="org4d24a5c" class="figure">
+<p><img src="table-num-array-dict.png" alt="table-num-array-dict.png">
+</p>
+</div>
+
 <p>
-array 在 table 中，只是单纯用 TValue 数组来存储，
+需要注意的细节是，table 表示 array 的时候，默认索引从 1 开始。
+</p>
+
+<p>
+相应的，table 中的 TValue *array 只存储正整数索引（&gt;= 1）对应的值。
+由于 C 语言数组的索引从 0 开始，所以存储时，有 1 个位置偏移。
+</p>
+</div>
+
+<div id="outline-container-org886c1c4" class="outline-3">
+<h3 id="org886c1c4"><span class="section-number-3">3.1</span> get</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+在讲解 get 之前，需要明确一点，并且所有数字索引的 kv 都会存储在内部的 array 中。
+</p>
+
+<p>
+对于类型是 number 的 k，需要其
 </p>
 <ul class="org-ul">
-<li>TValue * array，存储</li>
-<li>int sizearray，当前 array 的空间大小</li>
+<li>不是浮点值，是整数值</li>
+<li>是 <code>&gt;= 1</code> 的正整数</li>
+<li>范围在 <code>1 - sizearray</code> 之间</li>
 </ul>
 
+<p>
+不在这个范围内的 kv，依旧按照 dict 来处理，从代码中可以明确看到这一点。
+</p>
+
 <div class="org-src-container">
-<pre class="src src-c"><span class="linenr">338: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Table</span> {
-<span class="linenr">339: </span>  CommonHeader;
-<span class="linenr">340: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">flags</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">1&lt;&lt;p means tagmethod(p) is not present</span><span class="org-comment-delimiter"> */</span> 
-<span class="linenr">341: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">lsizenode</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">log2 of size of `node' array</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">342: </span>  <span class="org-keyword">struct</span> <span class="org-type">Table</span> *<span class="org-variable-name">metatable</span>;
-<span class="linenr">343: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">array</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">array part</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">344: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">node</span>;
-<span class="linenr">345: </span>  <span class="org-type">Node</span> *<span class="org-variable-name">lastfree</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">any free position is before this position</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">346: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
-<span class="linenr">347: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizearray</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `array' array</span><span class="org-comment-delimiter"> */</span>
-<span class="linenr">348: </span>} <span class="org-type">Table</span>;
+<label class="org-src-name"><span class="listing-number">Listing 9: </span>ltable.c</label><pre class="src src-c"><span class="linenr">466: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">467: </span><span class="org-comment">** main search function</span>
+<span class="linenr">468: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">469: </span><span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-function-name">luaH_get</span> (<span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
+<span class="linenr">470: </span>  <span class="org-keyword">switch</span> (ttype(key)) {
+<span class="linenr">471: </span>    <span class="org-keyword">case</span> LUA_TNIL: <span class="org-keyword">return</span> luaO_nilobject;
+<span class="linenr">472: </span>    <span class="org-keyword">case</span> LUA_TSTRING: <span class="org-keyword">return</span> luaH_getstr(t, rawtsvalue(key));
+<span class="linenr">473: </span>    <span class="org-keyword">case</span> LUA_TNUMBER: {
+<span class="linenr">474: </span>      <span class="org-type">int</span> <span class="org-variable-name">k</span>;
+<span class="linenr">475: </span>      <span class="org-type">lua_Number</span> <span class="org-variable-name">n</span> = nvalue(key);
+<span class="linenr">476: </span>      lua_number2int(k, n);
+<span class="linenr">477: </span>      <span class="org-keyword">if</span> (luai_numeq(cast_num(k), nvalue(key))) <span class="org-comment-delimiter">/* </span><span class="org-comment">index is int?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">478: </span>        <span class="org-keyword">return</span> luaH_getnum(t, k);  <span class="org-comment-delimiter">/* </span><span class="org-comment">use specialized version</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">479: </span>      <span class="org-comment-delimiter">/* </span><span class="org-comment">else go through</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">480: </span>    }
+<span class="linenr">481: </span>    <span class="org-keyword">default</span>: {
+<span class="linenr">482: </span>      <span class="org-type">Node</span> *<span class="org-variable-name">n</span> = mainposition(t, key);
+<span class="linenr">483: </span>      <span class="org-keyword">do</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">check whether `key' is somewhere in the chain</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">484: </span>        <span class="org-keyword">if</span> (luaO_rawequalObj(key2tval(n), key))
+<span class="linenr">485: </span>          <span class="org-keyword">return</span> gval(n);  <span class="org-comment-delimiter">/* </span><span class="org-comment">that's it</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">486: </span>        <span class="org-keyword">else</span> n = gnext(n);
+<span class="linenr">487: </span>      } <span class="org-keyword">while</span> (n);
+<span class="linenr">488: </span>      <span class="org-keyword">return</span> luaO_nilobject;
+<span class="linenr">489: </span>    }
+<span class="linenr">490: </span>  }
+<span class="linenr">491: </span>}
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="linenr">432: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">433: </span><span class="org-comment">** search function for integers</span>
+<span class="linenr">434: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">435: </span><span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-function-name">luaH_getnum</span> (<span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-type">int</span> <span class="org-variable-name">key</span>) {
+<span class="linenr">436: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">(1 &lt;= key &amp;&amp; key &lt;= t-&gt;sizearray)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">437: </span>  <span class="org-keyword">if</span> (cast(<span class="org-type">unsigned</span> <span class="org-type">int</span>, key-1) &lt; cast(<span class="org-type">unsigned</span> <span class="org-type">int</span>, t-&gt;sizearray))
+<span class="linenr">438: </span>    <span class="org-keyword">return</span> &amp;t-&gt;array[key-1];
+<span class="linenr">439: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">440: </span>    <span class="org-type">lua_Number</span> <span class="org-variable-name">nk</span> = cast_num(key);
+<span class="linenr">441: </span>    <span class="org-type">Node</span> *<span class="org-variable-name">n</span> = hashnum(t, nk);
+<span class="linenr">442: </span>    <span class="org-keyword">do</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">check whether `key' is somewhere in the chain</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">443: </span>      <span class="org-keyword">if</span> (ttisnumber(gkey(n)) &amp;&amp; luai_numeq(nvalue(gkey(n)), nk))
+<span class="linenr">444: </span>        <span class="org-keyword">return</span> gval(n);  <span class="org-comment-delimiter">/* </span><span class="org-comment">that's it</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">445: </span>      <span class="org-keyword">else</span> n = gnext(n);
+<span class="linenr">446: </span>    } <span class="org-keyword">while</span> (n);
+<span class="linenr">447: </span>    <span class="org-keyword">return</span> luaO_nilobject;
+<span class="linenr">448: </span>  }
+<span class="linenr">449: </span>}
 </pre>
 </div>
 </div>
-
-<div id="outline-container-org9576a9d" class="outline-3">
-<h3 id="org9576a9d"><span class="section-number-3">3.1</span> get</h3>
-<div class="outline-text-3" id="text-3-1">
-<p>
-本质上，get 返回的是 相应的 key 对应的 v 的存储空间的指针
-如果 table 中从没有这个 key，则返回 luaO<sub>nilobject</sub>(它是一个指针，而不是值)
-</p>
-
-<p>
-在 <code>luaH_get</code> 中，对于 number 做了特殊处理
-</p>
-<ul class="org-ul">
-<li>如果 key 是 number 和 int，使用 <code>luaH_getnum</code>
-是浮点，则正常使用 <code>hashnum</code> 来计算</li>
-</ul>
-
-<p>
-在 <code>luaH_getnum</code> 中，在 1 - sizearray 范围内，可以直接索引，即所谓 array part 区域的指针
-它是一定不同于 luaO<sub>nilobject</sub> 的
-</p>
-
-<p>
-否则，还是通过 <code>hashnum</code> ，从 dict 部分，顺着 next 进行搜索
-</p>
-
-<p>
-如果存在相应的 key，则返回相应的存储空间指针，
-没有，则返回 nilobject
-</p>
-</div>
 </div>
 
-<div id="outline-container-orgbc28768" class="outline-3">
-<h3 id="orgbc28768"><span class="section-number-3">3.2</span> set</h3>
+<div id="outline-container-orgb782cca" class="outline-3">
+<h3 id="orgb782cca"><span class="section-number-3">3.2</span> set</h3>
 <div class="outline-text-3" id="text-3-2">
 <p>
-在 <code>luaH_set</code> 中，先通过 get 来寻找存储空间
+set 的逻辑也很简单，不过其中有一点需要注意。
 </p>
 
 <p>
-通过对 get 的理解，
+回忆之前 dict 部分的 set 方法，返回的是存储 v 的指针，而如果 kv 安排在 array 部分，
+则不需要 newkey 过程，直接返回相应的 array 位置即可。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span>ltable.c</label><pre class="src src-c"><span class="linenr">494: </span><span class="org-type">TValue</span> *<span class="org-function-name">luaH_set</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">key</span>) {
+<span class="linenr">495: </span>  <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">p</span> = luaH_get(t, key);
+<span class="linenr">496: </span>  t-&gt;flags = 0;
+<span class="linenr">497: </span>  <span class="org-keyword">if</span> (p != luaO_nilobject)
+<span class="linenr">498: </span>    <span class="org-keyword">return</span> cast(<span class="org-type">TValue</span> *, p);
+<span class="linenr">499: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">500: </span>    <span class="org-keyword">if</span> (ttisnil(key)) luaG_runerror(L, <span class="org-string">"table index is nil"</span>);
+<span class="linenr">501: </span>    <span class="org-keyword">else</span> <span class="org-keyword">if</span> (ttisnumber(key) &amp;&amp; luai_numisnan(nvalue(key)))
+<span class="linenr">502: </span>      luaG_runerror(L, <span class="org-string">"table index is NaN"</span>);
+<span class="linenr">503: </span>    <span class="org-keyword">return</span> newkey(L, t, key);
+<span class="linenr">504: </span>  }
+<span class="linenr">505: </span>}
+<span class="linenr">506: </span>
+<span class="linenr">507: </span>
+<span class="linenr">508: </span><span class="org-type">TValue</span> *<span class="org-function-name">luaH_setnum</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">Table</span> *<span class="org-variable-name">t</span>, <span class="org-type">int</span> <span class="org-variable-name">key</span>) {
+<span class="linenr">509: </span>  <span class="org-keyword">const</span> <span class="org-type">TValue</span> *<span class="org-variable-name">p</span> = luaH_getnum(t, key);
+<span class="linenr">510: </span>  <span class="org-keyword">if</span> (p != luaO_nilobject)
+<span class="linenr">511: </span>    <span class="org-keyword">return</span> cast(<span class="org-type">TValue</span> *, p);
+<span class="linenr">512: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">513: </span>    <span class="org-type">TValue</span> <span class="org-variable-name">k</span>;
+<span class="linenr">514: </span>    setnvalue(&amp;k, cast_num(key));
+<span class="linenr">515: </span>    <span class="org-keyword">return</span> newkey(L, t, &amp;k);
+<span class="linenr">516: </span>  }
+<span class="linenr">517: </span>}
+</pre>
+</div>
+
+<p>
+先调用 get 方法，得到结果 p， <code>if (p != luaO_nilobject)</code> 非常关键。
 </p>
 
 <p>
-p != luaO<sub>nilobject</sub>
+回忆 get 方法，
+如果相应 kv 存储在 array 中，直接返回 array 中相应的地址，地址必定不是 <code>luaO_nilobject</code> ；
+而如果存储在 Node 中，如果找不到相应的 k，才会返回 <code>luaO_nilobject</code> 。
 </p>
 
 <p>
-就容易判断了
-</p>
-
-<p>
-对于 num，假如在 array part ，则一定返回数组位置，
-不在，则像 dict 一样查找，返回相应位置
-</p>
-
-<p>
-get 只关注位置，而不关注位置上对应的值
-</p>
-
-<p>
-如果没有相应的 key，就使用 newkey 来插入 node（在 array part 的 num 是不可能使用 newkey 的）
-</p>
-
-<p>
-这样看来，set 和 get 区别，只是多了 newkey 部分，确保一定返回一个 key 的位置。
+这一点细节，和之前的逻辑完美统一起来。
 </p>
 </div>
 </div>
@@ -1030,9 +1046,10 @@ get 只关注位置，而不关注位置上对应的值
 </div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2020-12-31 四 17:44</p>
+<p>Updated: 2021-01-05 二 10:29</p>
 <p>Created: 2020-12-30 三 11:53</p>
-<p>Contact: DreamAndDead <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+<p>Author: DreamAndDead</p>
+<p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 </div>
 </body>
 </html>
