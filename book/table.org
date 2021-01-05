@@ -754,59 +754,166 @@ set 的逻辑也很简单，不过其中有一点需要注意。
 
 这一点细节，和之前的逻辑完美统一起来。
 
-* DRAFT method
+* method
+
+除了 table 内部组织数据的方式，一些相应的方法也值得关注。
+
 ** next
-   :LOGBOOK:
-   - Note taken on [2020-12-03 四 15:44] \\
-   TODO deadkey?
-   deadkey maybe key with nil value?
-   :END:
 
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 116 :lines "116-180"
+在 lua 语言中，我们可以使用 next 方法来遍历 table。
+next 接收两个参考，一个是 table，一个是 k。
 
-=luaH_next=
+next 的行为也很容易理解，
+- 如果 k 是 nil，则返回 table 的第一项；
+- 如果 table 中没有相应的 k，则出错；
+- 如果存在相应的 k，则返回存储在 k 之后的 k 和 v；
+- 如果 k 是最后一项，则返回 nil nil
 
-被 lapi.c lua_next 使用，实现 next 功能
-遍历所有元素
+#+begin_src lua :results output :exports both
+local t = { 1, 2, 3, 4, ["name"] = "t", ["section"] = "table" }
+t[3] = nil
 
-findindex，意义是返回 key 的下一个位置
-- nil，返回 -1，意味着从头开始，其后访问的所有元素都是 k v 非 nil 的值
-  回到 next 中，则访问到 0
-- 若是整数，且在 sizearray 范围内，直接 -1 返回，因为 C 索引的关系
-- 计算 mp node
-  - 如果 node 和 key 相同
-  - 或者 如果是 deadkey 但是和 key 的 gc 部分相同，则可认为寻找到
-    返回 sizearray + node 中的偏移
-    否则在 next 链表中寻找
-- 未找到，则用 error 处理（TODO 如何不影响继续运行？）
+local k = nil
+local v
 
+repeat
+   k, v = next(t, k)
+   print(k, v)
+until k == nil
+#+end_src
 
-next
-- 通过 findindex，一个 key 会返回平铺序列下的索引
+#+RESULTS:
+: 1	1
+: 2	2
+: 4	4
+: name	t
+: section	table
+: nil	nil
 
-  #+begin_example
-  aaaaaaaaaaadddddddddddddddd
-  -----------+---------------
-  #+end_example
+上面的示例代码，k 以 nil 为开始，不断输入 next，最终遍历整个 table。
 
-- next 通过这个索引，++，以数组的方式，索引下一个非 nil 值
-  - key <- 下一个索引对应的 key
-  - key+1 <- 当前 key 对应的 value
-- TODO detail 从数组过渡到 dict 的时刻
-- TODO 在 dict 时刻如何与 ++ 结合起来
-- 对于 dict 部分
-  - key <- 当前 key index 对应的 key，在下一轮中，会 ++ 递增
-  - key+1 <- 当前 key index 对应的 value
+#+caption: next figure for example code
+#+begin_src dot :file table-next-example.png
+digraph {
+	node[shape=record, width=.1, height=.1];
 
+	r0[label="
+	    { <k> nil } |
+	    {          }
+	    "];
 
-对应 next api，next 每次返回两个值，key 和 value
-当 key 为 nil 时，TODO 意味着结束？
+	n0[label="
+	     next( | t | <k> nil | )
+	     "];
 
-TODO 当 next 返回 0 时，意味着结束，上层一定进行了封装，以符合 lua 上层封装的 api
+	r1[label="
+	    { <k> 1 } |
+	    {     1 }
+	    "];
 
-这里直接进行了栈操作，参考 c api
+	n1[label="
+	     next( | t | <k> 1 | )
+	     "];
 
-** rehash
+	r2[label="
+	    { <k> 2 } |
+	    {     2 }
+	    "];
+
+	n2[label="
+	     next( | t | <k> 2 | )
+	     "];
+
+	r3[label="
+	    { <k> 4 } |
+	    {     4 }
+	    "];
+
+	n3[label="
+	     next( | t | <k> 4 | )
+	     "];
+
+	r4[label="
+	    { <k> \"name\" } |
+	    {     \"t\" }
+	    "];
+
+	n4[label="
+	     next( | t | <k> \"name\" | )
+	     "];
+
+	r5[label="
+	    { <k> \"section\" } |
+	    {     \"table\" }
+	    "];
+
+	n5[label="
+	     next( | t | <k> \"section\" | )
+	     "];
+
+	r6[label="
+	    { <k> nil } |
+	    {     nil }
+	    "];
+
+	r0:k -> n0:k -> r1:k -> n1:k -> r2:k -> n2:k -> r3:k -> n3:k -> r4:k -> n4:k -> r5:k -> n5:k -> r6:k;
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-next-example.png]]
+
+这里要思考的问题是，next 的顺序是如何决定的。
+上面的示例代码，无论运行多少次，输出结果都是一样的。说明内部有明显的顺序安排，而不是随机的。
+
+观察代码不难发现，顺序正是依次遍历 array 数组和 node 数组来决定的。
+
+#+caption: next figure in detail
+#+begin_src dot :file table-next-detail.png
+digraph {
+	node[shape=record, width=.1, height=.1];
+	
+	ar[label="
+	   {
+		   index  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+	   } | {
+		   <tv> TValue | 1 ❶ | 2 ❷ |   | 4 ❸ |   |   |   |
+	   }
+	   ", xlabel="TValue * array"];
+
+	nd[label="
+	   {<i> index | <v> i_val | <k> i_key} |
+	   {<i0> 0| <v0> | <k0> } |
+	   {<i1> 1| <v1> | <k1> } |
+	   {<i2> 2| <v2> \"t\" | <k2> \"name\" ❹ } |
+	   {<i3> 3| <v3> | <k3> } |
+	   {<i4> 4| <v4> | <k4> } |
+	   {<i5> 5| <v5> | <k5> } |
+	   {<i6> 6| <v6> | <k6> } |
+	   {<i7> 7| <v7> \"table\" | <k7> \"section\" ❺ }
+	   ", xlabel="Node * node"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:table-next-detail.png]]
+
+语言中使用的 next 是在 api 层面定义的，而底层使用的方法正是 =luaH_next= 。
+
+#+caption: ltable.c
+#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 132 :lines "132-180"
+
+=luaH_next= 输入的是 k，
+- 首先，通过 findindex 找到 k 在 array/node 数组中的索引，
+- 然后，将索引 i 自增， Line 164 ~for (i++, ...)~
+- 先遍历 array 部分，再遍历 node 部分，跳过所有 v 为 nil 的项
+- 直到 array 和 node 遍历结束
+
+值得注意的是， =luaH_next= 返回 0/1 说明是否已经遍历结束，方法内部将 k v 存储在栈上。
+
+关于栈和 api 的具体分析，见之后的章节。
+
+** DRAFT rehash
    :LOGBOOK:
    - Note taken on [2020-12-03 四 17:49] \\
    TODO resize 操作
@@ -849,10 +956,9 @@ a 统计的是 < 2^i 的个数 == twotoi
 
 不符合查找条件
 
-
 得到大小之后，进行 resize 操作
 
-** len
+** DRAFT len
 
 如何确定 table 的长度？
 
