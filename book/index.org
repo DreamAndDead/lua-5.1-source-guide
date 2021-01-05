@@ -13,8 +13,7 @@
 | memory         | 内存分配             |     100% | [[file:mem.org][read]]    |
 | string         | 字符串               |     100% | [[file:string.org][read]]    |
 | table          | 表                   |      80% | [[file:table.org][preview]] |
-| compiler       | 编译过程             |       0% |         |
-| lexer          | 词法分析             |       0% |         |
+| lexer          | 词法分析             |      10% | [[file:lexer.org][preview]] |
 | opcode         | 字节码               |       0% |         |
 | generator      | 语法分析与字节码生成 |       0% |         |
 | vm             | 虚拟机               |       0% |         |

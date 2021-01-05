@@ -20,6 +20,21 @@
 - debug 方法
 
 
+同时使用流式的处理方式，如果使用多趟式的处理过程，则需要一次完整的遍历
+token 数组，交给 parser
+
+lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
+核心使用的便是 lexstate
+
+lua 中的 parse 过程使用 lazy 加载 token 的方式
+按需加载 token
+
+
+相应代码不是那么容易阅读
+需要一些编译原理的了解
+
+
+
 ** lang of lang
    :LOGBOOK:
    - Note taken on [2020-12-09 三 09:19] \\

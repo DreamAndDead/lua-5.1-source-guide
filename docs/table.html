@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-05 二 14:35 -->
+<!-- 2021-01-05 二 16:50 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>table</title>
@@ -329,7 +329,7 @@ metatable 相关
 </div>
 
 
-<div id="org7e23301" class="figure">
+<div id="org80adb15" class="figure">
 <p><img src="table-node.png" alt="table-node.png">
 </p>
 <p><span class="figure-number">Figure 1: </span>Node &amp; TKey</p>
@@ -368,7 +368,7 @@ t[<span class="org-string">"tool"</span>] = <span class="org-string">"dot"</span
 </div>
 
 
-<div id="orga21901c" class="figure">
+<div id="org0b6c19a" class="figure">
 <p><img src="table-dict.png" alt="table-dict.png">
 </p>
 <p><span class="figure-number">Figure 2: </span>kv stored in Node array</p>
@@ -547,7 +547,7 @@ hashmod 末尾的 <code>| 1</code> 是避免出现 mod 0 的情况。
 </div>
 
 
-<div id="org62ca53f" class="figure">
+<div id="org9d07e9f" class="figure">
 <p><img src="table-number-hash.png" alt="table-number-hash.png">
 </p>
 </div>
@@ -576,8 +576,8 @@ hashmod 末尾的 <code>| 1</code> 是避免出现 mod 0 的情况。
 </div>
 </div>
 
-<div id="outline-container-org892f7fd" class="outline-3">
-<h3 id="org892f7fd"><span class="section-number-3">2.2</span> set</h3>
+<div id="outline-container-org4cb6231" class="outline-3">
+<h3 id="org4cb6231"><span class="section-number-3">2.2</span> set</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
 明确 main position 之后，下一步来了解如何存储 kv。
@@ -694,7 +694,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org356d11f" class="figure">
+<div id="org764e70f" class="figure">
 <p><img src="table-no-collision-before.png" alt="table-no-collision-before.png">
 </p>
 </div>
@@ -704,7 +704,7 @@ k 的 main position 是空闲的，即相应的 <code>node.i_val</code> 是 nil 
 </p>
 
 
-<div id="org5251432" class="figure">
+<div id="orge561f20" class="figure">
 <p><img src="table-no-collision-after.png" alt="table-no-collision-after.png">
 </p>
 </div>
@@ -728,7 +728,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org3a72511" class="figure">
+<div id="org513d77f" class="figure">
 <p><img src="table-collision-eq-before.png" alt="table-collision-eq-before.png">
 </p>
 </div>
@@ -743,7 +743,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org10224ca" class="figure">
+<div id="org754af87" class="figure">
 <p><img src="table-collision-eq-after.png" alt="table-collision-eq-after.png">
 </p>
 </div>
@@ -762,7 +762,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="orgf96458d" class="figure">
+<div id="org97a32a1" class="figure">
 <p><img src="table-collision-ne-before.png" alt="table-collision-ne-before.png">
 </p>
 </div>
@@ -776,7 +776,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="orgc9691b4" class="figure">
+<div id="orgf5fe4ae" class="figure">
 <p><img src="table-collision-ne-after.png" alt="table-collision-ne-after.png">
 </p>
 </div>
@@ -784,8 +784,8 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </div>
 </div>
 
-<div id="outline-container-orgc12865d" class="outline-3">
-<h3 id="orgc12865d"><span class="section-number-3">2.3</span> get</h3>
+<div id="outline-container-orgd839f72" class="outline-3">
+<h3 id="orgd839f72"><span class="section-number-3">2.3</span> get</h3>
 <div class="outline-text-3" id="text-2-3">
 <p>
 在 set 小节明确了 node 内部组织的方法之后，get 方法就很容易理解了。
@@ -884,7 +884,7 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 
 
-<div id="org7bfd5c8" class="figure">
+<div id="org36decc6" class="figure">
 <p><img src="table-num-array-dict.png" alt="table-num-array-dict.png">
 </p>
 </div>
@@ -899,8 +899,8 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </p>
 </div>
 
-<div id="outline-container-org0000b86" class="outline-3">
-<h3 id="org0000b86"><span class="section-number-3">3.1</span> get</h3>
+<div id="outline-container-org5057942" class="outline-3">
+<h3 id="org5057942"><span class="section-number-3">3.1</span> get</h3>
 <div class="outline-text-3" id="text-3-1">
 <p>
 在讲解 get 之前，需要明确一点，并且所有数字索引的 kv 都会存储在内部的 array 中。
@@ -973,8 +973,8 @@ colliding node 根据 <code>i_key</code> 也可以计算出自身的 main positi
 </div>
 </div>
 
-<div id="outline-container-orgab86c88" class="outline-3">
-<h3 id="orgab86c88"><span class="section-number-3">3.2</span> set</h3>
+<div id="outline-container-orgde011b6" class="outline-3">
+<h3 id="orgde011b6"><span class="section-number-3">3.2</span> set</h3>
 <div class="outline-text-3" id="text-3-2">
 <p>
 set 的逻辑也很简单，不过其中有一点需要注意。
@@ -1085,7 +1085,7 @@ nil	nil
 </p>
 
 
-<div id="org96cda0e" class="figure">
+<div id="orgc183cf4" class="figure">
 <p><img src="table-next-example.png" alt="table-next-example.png">
 </p>
 </div>
@@ -1100,7 +1100,7 @@ nil	nil
 </p>
 
 
-<div id="orgfe9119c" class="figure">
+<div id="orgbc16796" class="figure">
 <p><img src="table-next-detail.png" alt="table-next-detail.png">
 </p>
 </div>
@@ -1239,7 +1239,7 @@ table 模块中还有部分方法没有涉及到，如 <code>rehash, getn</code>
 </div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-05 二 14:35</p>
+<p>Updated: 2021-01-05 二 16:39</p>
 <p>Created: 2020-12-30 三 11:53</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

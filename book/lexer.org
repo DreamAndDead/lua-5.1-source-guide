@@ -1,5 +1,73 @@
 #+SETUPFILE: setup.org
 
+#+TITLE: lexer
+#+DATE: <2021-01-05 二 16:40>
+
+* compile process
+
+传统的编译过程大家都不陌生。
+
+#+begin_src dot :file compiler-trandition.png
+digraph {
+	rankdir = LR;
+	node[shape=box];
+	
+	code[label="Source"];
+	tk[label="Token"];
+	ast[label="AST"];
+	ir[label="IR"];
+	etc[label="..."];
+	byte[label="Bytecode"];
+	ma[label="Machine"];
+
+	code -> tk[label="lex"];
+	tk -> ast[label="parse"];
+	ast -> ir[label="generate"];
+	ir -> etc[label="generate"];
+	etc -> byte[label="generate"];
+	byte -> ma[label="executed"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:compiler-trandition.png]]
+
+lua 是解释型语言，但同样存在从源码到字节码的编译过程，区别在于其运行在 VM 上。
+
+经过历史的演变，lua 的内部实现为了效率，遵从如下的过程。
+
+#+begin_src dot :file compiler-lua-detail-process.png
+digraph {
+	rankdir = TB;
+	node[shape=box];
+
+	lua[label="Lua Code"];
+	tk[label="Token"];
+	ast[label="AST", style="dotted"];
+	vm[label="VM"];
+	{
+		rank=same;
+		op[label="Opcode"];
+		bf[label="Binary File"];
+	}
+
+	lua -> tk[label="lex"];
+	tk -> ast[label="parse"];
+	ast -> op[label="generate"];
+	op -> vm[label="executed"];
+	op -> bf[label="dump"];
+	bf -> op[label="undump"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:compiler-lua-detail-process.png]]
+
+AST 使用虚线表示，是因为内部没有显式的 AST 结构。
+
+也就是说，lexer 完成了从 code 到 token 的过程，
+parser 独自一人完成了从 token 到 opcode 的过程。
+
 * DRAFT lexer
   :LOGBOOK:
   - Note taken on [2020-12-04 五 08:46] \\
@@ -17,7 +85,7 @@
 
 lexer 将源代码转换为 token，将字符流转化为 token 流，作为 parser 的输入。
 
-** token
+* DRAFT token
 
 简单的说，token 就是多个有序字符组成的序列。
 
@@ -40,7 +108,7 @@ lua 中定义了如下 token
 
 #+CAPTION: some example
 
-** process
+* DRAFT process
 
 #+CAPTION: 匹配过程，with eg code example
 
@@ -137,13 +205,13 @@ require 不是关键字，而是 function name，而它的功能是在 vm 中实
 
 
 
-** inside
+* DRAFT inside
 
-*** lexstate
-    :LOGBOOK:
-    - Note taken on [2020-12-04 五 11:13] \\
-      ls 和 fs 及 f 的全局安排，图解
-    :END:
+** lexstate
+   :LOGBOOK:
+   - Note taken on [2020-12-04 五 11:13] \\
+   ls 和 fs 及 f 的全局安排，图解
+   :END:
 
 在 lex 的过程中，需要有相应的数据来记录匹配的过程和结果，这个数据结构就是 lexstate
 
@@ -171,7 +239,7 @@ zio -> buffer -> token -->> lookahead
 
 它和 nil 一样，是一个 singleton 结构，只出现在 front 阶段，做好本职工作
 
-*** =luaX_init=
+** =luaX_init=
 
 先提一下 init 过程，和之前 tstring 连接起来
 
@@ -184,7 +252,7 @@ name -> keyword 过程中发挥作用。
 
 从这里也看出，ts 不只用于对外，也在内部运作中产生重要作用
 
-*** =luaX_next=
+** =luaX_next=
 
 使用 llex 过程，得到 token 内容，并返回 token 类型
 
@@ -200,7 +268,7 @@ lookahead 同样使用 llex，不过存储在 lookahead 中而不是 t
 同时也要注意，lookahead 内部的实现，说明无法进行连续的 lookahead 调用，这样会在 next 中丢失
 
 
-** lexer program
+* DRAFT lexer program
 
 根据对 lex 模块的理解，可以利用其中的方法，做一个简单的 lexer 分析器。
 
@@ -226,7 +294,7 @@ make -s lex
 TODO 或许可以自己主动调用 next，这样就可以避免上面的约束？
 
 
-** practice
+* DRAFT practice
 
 llex.h.c rest
 
@@ -236,7 +304,7 @@ llex.h.c rest
 - mbuffer mini buffer
 
 
-*** more theory
+** more theory
 
 with materials
 
