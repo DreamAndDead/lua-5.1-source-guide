@@ -756,7 +756,7 @@ set 的逻辑也很简单，不过其中有一点需要注意。
 
 * method
 
-除了 table 内部组织数据的方式，一些相应的方法也值得关注。
+除了 table 内部组织数据的方式，部分方法也值得关注。
 
 ** next
 
@@ -914,12 +914,6 @@ digraph {
 关于栈和 api 的具体分析，见之后的章节。
 
 ** DRAFT rehash
-   :LOGBOOK:
-   - Note taken on [2020-12-03 四 17:49] \\
-   TODO resize 操作
-   - Note taken on [2020-12-03 四 17:46] \\
-   TODO 理解 computesizes
-   :END:
 
 在 newkey 进行插入的时候，如果发生了空间不足
 就会引发 rehash 操作
@@ -934,7 +928,7 @@ table 是数组链表的形式，没有空间就没办法了，只能进行扩�
   这里的统计很巧妙，使用 log2 数组进行统计，a[i] 表示数组索引在 2^(i-1) - 2^i 的数量
   - 先统计 array part 的数量
   - 再统计 dict part 的数量
-  - 不要遗漏最新要添加的值（没有判断去重？和调用 rehash 的时机有关，在 newkey 的时候，必定是不会重复的）
+  - 不要遗漏最新要添加的值
 
 computesizes，计算新的 array part 的大小，需要一些理解
 
@@ -1005,17 +999,17 @@ tagmethod cache
 
 * DRAFT weaktable
 
-* DRAFT practice
+* practice
 
-new/free
+table 模块中还有部分方法没有涉及到，如 =rehash, getn= 等，但并非重点内容，
+感兴趣的读者可自行阅读。
 
-get/set num/str
+在明确内部存储结构的基础上，其它方法并不难理解。
 
-考虑将 rehash 的部分放到这里，非重点
-
-dummynode 的作用？
-
-** print table value
+| 文件     | 建议                   |
+|----------+------------------------|
+| ltable.h | 仔细阅读               |
+| ltable.c | 浏览阅读，关注核心方法 |
 
 * Footnotes
 

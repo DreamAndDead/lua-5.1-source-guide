@@ -12,7 +12,7 @@
 | object         | 关键数据结构         |      90% | [[file:object.org][preview]] |
 | memory         | 内存分配             |     100% | [[file:mem.org][read]]    |
 | string         | 字符串               |     100% | [[file:string.org][read]]    |
-| table          | 表                   |      50% | [[file:table.org][preview]] |
+| table          | 表                   |      80% | [[file:table.org][preview]] |
 | compiler       | 编译过程             |       0% |         |
 | lexer          | 词法分析             |       0% |         |
 | opcode         | 字节码               |       0% |         |
@@ -25,9 +25,6 @@
 | gc             | gc 模块              |       0% |         |
 | error handling | 错误处理机制         |       0% |         |
 | userdata       | userdata 结构        |       0% |         |
-
-
-
 
 
 
