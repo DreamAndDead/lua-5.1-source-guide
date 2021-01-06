@@ -6,24 +6,25 @@
 
 * outline
 
-| subject        | desc                 | progress | link    |
-|----------------+----------------------+----------+---------|
-| overview       | 全书总览             |      70% | [[file:overview.org][preview]] |
-| object         | 关键数据结构         |      90% | [[file:object.org][preview]] |
-| memory         | 内存分配             |     100% | [[file:mem.org][read]]    |
-| string         | 字符串               |     100% | [[file:string.org][read]]    |
-| table          | 表                   |      80% | [[file:table.org][preview]] |
-| lexer          | 词法分析             |      10% | [[file:lexer.org][preview]] |
-| opcode         | 字节码               |       0% |         |
-| generator      | 语法分析与字节码生成 |       0% |         |
-| vm             | 虚拟机               |       0% |         |
-| c api          | 外部 api             |       0% |         |
-| lib            | 标准库               |       0% |         |
-| coroutine      | 协程结构             |       0% |         |
-| debug          | debug 模块           |       0% |         |
-| gc             | gc 模块              |       0% |         |
-| error handling | 错误处理机制         |       0% |         |
-| userdata       | userdata 结构        |       0% |         |
+| subject        | desc          | progress | link    |
+|----------------+---------------+----------+---------|
+| overview       | 全书总览      |      70% | [[file:overview.org][preview]] |
+| object         | 关键数据结构  |      90% | [[file:object.org][preview]] |
+| memory         | 内存分配      |     100% | [[file:mem.org][read]]    |
+| string         | 字符串        |     100% | [[file:string.org][read]]    |
+| table          | 表            |      80% | [[file:table.org][preview]] |
+| lexer          | 词法分析      |     100% | [[file:lexer.org][read]]    |
+| opcode         | 字节码        |      20% | [[file:opcode.org][preview]] |
+| parser         | 语法分析      |       0% |         |
+| generator      | 字节码生成    |       0% |         |
+| vm             | 虚拟机        |       0% |         |
+| c api          | 外部 api      |       0% |         |
+| lib            | 标准库        |       0% |         |
+| coroutine      | 协程结构      |       0% |         |
+| debug          | debug 模块    |       0% |         |
+| gc             | gc 模块       |       0% |         |
+| error handling | 错误处理机制  |       0% |         |
+| userdata       | userdata 结构 |       0% |         |
 
 
 

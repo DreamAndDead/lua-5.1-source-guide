@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2021-01-06 三 16:13 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>opcode</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="DreamAndDead">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="htmlize.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">opcode</h1>
+<p>
+opcode 字节码，是编译阶段的最终结果，至此，front phase 的任务才算完成。
+</p>
+
+<p>
+类比为 c 编译为机器码二进制可执行文件的过程。
+</p>
+
+<p>
+剩下的就是 vm 运行 opcode 的过程。
+</p>
+
+<div id="outline-container-orga424c7f" class="outline-2">
+<h2 id="orga424c7f"><span class="section-number-2">1</span> opcode</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+opcode 是定长的，4 bytes 32 bits，所以 Instruction 用 unsigned int 就足以表示
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** type for virtual-machine instructions</span>
+<span class="org-comment">** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h)</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-keyword">typedef</span> <span class="org-type">lu_int32</span> <span class="org-type">Instruction</span>;
+</pre>
+</div>
+
+<p>
+一条 opcode 分为 指令类型 和 指令参数 两大部分。
+</p>
+
+<p>
+指令类型有 38 种，根据参数的安排方式，分为 3 种模式
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-keyword">enum</span> <span class="org-type">OpMode</span> {<span class="org-variable-name">iABC</span>, <span class="org-variable-name">iABx</span>, <span class="org-variable-name">iAsBx</span>};  <span class="org-comment-delimiter">/* </span><span class="org-comment">basic instruction format</span><span class="org-comment-delimiter"> */</span>
+</pre>
+</div>
+
+<ul class="org-ul">
+<li>iABC，a b c 3 个参数</li>
+<li>iABx，a bx 两个参数</li>
+<li>iAsBx，a sbx 两个参数</li>
+</ul>
+
+<p>
+A B C Bx 都是无符号数，只有 sBx 是有符号数
+</p>
+
+<p>
+指令类型加上参数在 32 字节的空间中进行如下的划分
+</p>
+<ul class="org-ul">
+<li>指令类型始终是 6 字节，在最低位</li>
+<li>A C B 为 8 9 9 字节，从低位到高位</li>
+<li>Bx 将 B C 空间进行合并，这也是为什么顺序会有差异</li>
+<li>sBx 和 Bx 的空间是相同的，不过代表了有符号数</li>
+</ul>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** size and position of opcode arguments.</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">SIZE_C</span>          9
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">SIZE_B</span>          9
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">SIZE_Bx</span>         (SIZE_C + SIZE_B)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">SIZE_A</span>          8
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">SIZE_OP</span>         6
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">POS_OP</span>          0
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">POS_A</span>           (POS_OP + SIZE_OP)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">POS_C</span>           (POS_A + SIZE_A)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">POS_B</span>           (POS_C + SIZE_C)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">POS_Bx</span>          POS_C
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgcde4062" class="outline-2">
+<h2 id="orgcde4062"><span class="section-number-2">2</span> param</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+指令类型占据 6 字节，理论上，全部利用，可以有 64 种指令
+现在只利用了其中的 38 个位置，还有很大的扩展空间
+</p>
+
+
+<p>
+A B C 分别是 8 9 9 空间，且都是无符号数，理论上，3 个参数各自的范围为
+</p>
+
+<p>
+0 -&gt; 2<sup>8</sup> 2<sup>9</sup> 2<sup>9</sup> - 1
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_A</span>        ((1&lt;&lt;SIZE_A)-1)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_B</span>        ((1&lt;&lt;SIZE_B)-1)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_C</span>        ((1&lt;&lt;SIZE_C)-1)
+</pre>
+</div>
+
+<p>
+Bx 占据 18 位，理论上大小为 0 -&gt;
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_Bx</span>        ((1&lt;&lt;SIZE_Bx)-1)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_sBx</span>        (MAXARG_Bx&gt;&gt;1)         <span class="org-comment-delimiter">/* </span><span class="org-comment">`sBx' is signed</span><span class="org-comment-delimiter"> */</span>
+</pre>
+</div>
+
+<p>
+sBx 和 Bx 占据同一空间，但是要解释为无符号数
+</p>
+
+<p>
+lua 不是通过将高位理解为符号位这种传统方式，而只是将 Bx - offset = sBx
+建立了两者的对应关系，这个 offset 值，就是 sBx 的最大值
+</p>
+
+<p>
+从位的角度来看，相同的位，解析为两者是不同的含义
+</p>
+
+<pre class="example" id="org7703e5e">
+offset    011111111
+
+Bx        0                 011111111             1111111110     1111111111
+
+sBx       -max              0                     max            -
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org152ccef" class="outline-2">
+<h2 id="org152ccef"><span class="section-number-2">3</span> meta</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+除了定义指令的类型，也对指令整体描述进行了记录。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-preprocessor">#else</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_Bx</span>        MAX_INT
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_sBx</span>        MAX_INT
+<span class="org-preprocessor">#endif</span>
+
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_A</span>        ((1&lt;&lt;SIZE_A)-1)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_B</span>        ((1&lt;&lt;SIZE_B)-1)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXARG_C</span>        ((1&lt;&lt;SIZE_C)-1)
+
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">creates a mask with `n' 1 bits at position `p'</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-function-name">MASK1</span>(<span class="org-variable-name">n</span>,<span class="org-variable-name">p</span>)      ((~((~(<span class="org-type">Instruction</span>)0)&lt;&lt;n))&lt;&lt;p)
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">creates a mask with `n' 0 bits at position `p'</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-function-name">MASK0</span>(<span class="org-variable-name">n</span>,<span class="org-variable-name">p</span>)      (~MASK1(n,p))
+
+<span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** the following macros help to manipulate instructions</span>
+<span class="org-comment-delimiter">*/</span>
+
+<span class="org-preprocessor">#define</span> <span class="org-function-name">GET_OPCODE</span>(<span class="org-variable-name">i</span>)   (cast(OpCode, ((i)&gt;&gt;POS_OP) &amp; MASK1(SIZE_OP,0)))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">SET_OPCODE</span>(<span class="org-variable-name">i</span>,<span class="org-variable-name">o</span>) ((i) = (((i)&amp;MASK0(SIZE_OP,POS_OP)) | \
+                ((cast(Instruction, o)&lt;&lt;POS_OP)&amp;MASK1(SIZE_OP,POS_OP))))
+
+<span class="org-preprocessor">#define</span> <span class="org-function-name">GETARG_A</span>(<span class="org-variable-name">i</span>)     (cast(<span class="org-type">int</span>, ((i)&gt;&gt;POS_A) &amp; MASK1(SIZE_A,0)))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">SETARG_A</span>(<span class="org-variable-name">i</span>,<span class="org-variable-name">u</span>)   ((i) = (((i)&amp;MASK0(SIZE_A,POS_A)) | \
+                ((cast(Instruction, u)&lt;&lt;POS_A)&amp;MASK1(SIZE_A,POS_A))))
+
+<span class="org-preprocessor">#define</span> <span class="org-function-name">GETARG_B</span>(<span class="org-variable-name">i</span>)     (cast(<span class="org-type">int</span>, ((i)&gt;&gt;POS_B) &amp; MASK1(SIZE_B,0)))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">SETARG_B</span>(<span class="org-variable-name">i</span>,<span class="org-variable-name">b</span>)   ((i) = (((i)&amp;MASK0(SIZE_B,POS_B)) | \
+                ((cast(Instruction, b)&lt;&lt;POS_B)&amp;MASK1(SIZE_B,POS_B))))
+
+<span class="org-preprocessor">#define</span> <span class="org-function-name">GETARG_C</span>(<span class="org-variable-name">i</span>)     (cast(<span class="org-type">int</span>, ((i)&gt;&gt;POS_C) &amp; MASK1(SIZE_C,0)))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">SETARG_C</span>(<span class="org-variable-name">i</span>,<span class="org-variable-name">b</span>)   ((i) = (((i)&amp;MASK0(SIZE_C,POS_C)) | \
+                ((cast(Instruction, b)&lt;&lt;POS_C)&amp;MASK1(SIZE_C,POS_C))))
+
+<span class="org-preprocessor">#define</span> <span class="org-function-name">GETARG_Bx</span>(<span class="org-variable-name">i</span>)    (cast(<span class="org-type">int</span>, ((i)&gt;&gt;POS_Bx) &amp; MASK1(SIZE_Bx,0)))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">SETARG_Bx</span>(<span class="org-variable-name">i</span>,<span class="org-variable-name">b</span>)  ((i) = (((i)&amp;MASK0(SIZE_Bx,POS_Bx)) | \
+                ((cast(Instruction, b)&lt;&lt;POS_Bx)&amp;MASK1(SIZE_Bx,POS_Bx))))
+
+<span class="org-preprocessor">#define</span> <span class="org-function-name">GETARG_sBx</span>(<span class="org-variable-name">i</span>)   (GETARG_Bx(i)-MAXARG_sBx)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">SETARG_sBx</span>(<span class="org-variable-name">i</span>,<span class="org-variable-name">b</span>) SETARG_Bx((i),cast(<span class="org-type">unsigned</span> <span class="org-type">int</span>, (b)+MAXARG_sBx))
+</pre>
+</div>
+
+<p>
+顺序和 op 类型的顺序是相同的。
+</p>
+
+<p>
+其中 opmode 使用一个 byte 8 bits 来记录 opcode 的相关信息
+</p>
+<ul class="org-ul">
+<li>T 是否是 test 指令</li>
+<li>A 是否修改了 R(A)</li>
+<li>B C ，B C 参数的使用方式
+<ul class="org-ul">
+<li>未使用</li>
+<li>使用</li>
+<li>是 R 或者 jump offset</li>
+<li>是常量 或者 RK</li>
+</ul></li>
+<li>mode，iABC 等 3 种的哪一种</li>
+</ul>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** masks for instruction properties. The format is:</span>
+<span class="org-comment">** bits 0-1: op mode</span>
+<span class="org-comment">** bits 2-3: C arg mode</span>
+<span class="org-comment">** bits 4-5: B arg mode</span>
+<span class="org-comment">** bit 6: instruction set register A</span>
+<span class="org-comment">** bit 7: operator is a test</span>
+<span class="org-comment-delimiter">*/</span>  
+
+<span class="org-keyword">enum</span> <span class="org-type">OpArgMask</span> {
+  <span class="org-variable-name">OpArgN</span>,  <span class="org-comment-delimiter">/* </span><span class="org-comment">argument is not used</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-variable-name">OpArgU</span>,  <span class="org-comment-delimiter">/* </span><span class="org-comment">argument is used</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-variable-name">OpArgR</span>,  <span class="org-comment-delimiter">/* </span><span class="org-comment">argument is a register or a jump offset</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-variable-name">OpArgK</span>   <span class="org-comment-delimiter">/* </span><span class="org-comment">argument is a constant or register/constant</span><span class="org-comment-delimiter"> */</span>
+};
+</pre>
+</div>
+
+
+<p>
+所以下面的几个 macro 意义也就非常清晰
+</p>
+<ul class="org-ul">
+<li>getOpMode</li>
+<li>getBMode</li>
+<li>getCMode</li>
+<li>testAMode R(A) 是否修改</li>
+<li>testTMode 是否为 test 指令</li>
+</ul>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-preprocessor">#define</span> <span class="org-function-name">getOpMode</span>(<span class="org-variable-name">m</span>)    (cast(<span class="org-keyword">enum</span> <span class="org-type">OpMode</span>, luaP_opmodes[m] &amp; 3))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">getBMode</span>(<span class="org-variable-name">m</span>)     (cast(<span class="org-keyword">enum</span> <span class="org-type">OpArgMask</span>, (luaP_opmodes[m] &gt;&gt; 4) &amp; 3))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">getCMode</span>(<span class="org-variable-name">m</span>)     (cast(<span class="org-keyword">enum</span> <span class="org-type">OpArgMask</span>, (luaP_opmodes[m] &gt;&gt; 2) &amp; 3))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">testAMode</span>(<span class="org-variable-name">m</span>)    (luaP_opmodes[m] &amp; (1 &lt;&lt; 6))
+<span class="org-preprocessor">#define</span> <span class="org-function-name">testTMode</span>(<span class="org-variable-name">m</span>)    (luaP_opmodes[m] &amp; (1 &lt;&lt; 7))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org05145ee" class="outline-2">
+<h2 id="org05145ee"><span class="section-number-2">4</span> model</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+opcode 本身只是 01 编码而已，至于其代表什么样的含义，是 vm 来定义的。
+</p>
+
+<p>
+编译器只是将有相同的语义的源代码转换成 vm 认识的相同语义的 opcode。
+</p>
+
+<p>
+具体理解 opcode 就要对 vm 的运作模型有一些简单的了解。
+</p>
+
+<p>
+粗略而言，和机器运作是类似的
+</p>
+
+<p>
+指令逐个运行，pc 表明当前执行指令的位置
+</p>
+
+<p>
+其中有 寄存器，用来存取数据
+不通过 eax 这样的名称来索引，而将其视作数组，通过数字来索引，可读写
+其实 寄存器和栈是一体的。从 base 开始从 0 取值。
+</p>
+
+<p>
+k 表 常量表 是独有的，其中存储了一些出现的常量，比如数字和字符串，通过数字来索引，只读
+其中的值是在语法分析过程中收集的数值，全部收集在一起，方便使用
+</p>
+
+
+<p>
+除此之外，还有 global 表和 upval 表，可读写
+</p>
+<ul class="org-ul">
+<li>gbl，索引为任意值</li>
+<li>upval，索引只是数字</li>
+</ul>
+
+<p>
+lua 的 opcode 正是根据上面的模型来设计的。
+</p>
+
+<p>
+至于具体的来源，作用，过程，实现，之后再详细解释。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgc24a0df" class="outline-2">
+<h2 id="orgc24a0df"><span class="section-number-2">5</span> meaning</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+opcode 有 38 种，用 enum 表示
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** grep "ORDER OP" if you change these enums</span>
+<span class="org-comment-delimiter">*/</span>
+
+<span class="org-keyword">typedef</span> <span class="org-keyword">enum</span> {
+<span class="org-comment-delimiter">/*</span><span class="org-comment">----------------------------------------------------------------------</span>
+<span class="org-comment">name            args    description</span>
+<span class="org-comment">------------------------------------------------------------------------</span><span class="org-comment-delimiter">*/</span>
+<span class="org-variable-name">OP_MOVE</span>,<span class="org-comment-delimiter">/*      </span><span class="org-comment">A B     R(A) := R(B)</span><span class="org-comment-delimiter">                                    */</span>
+<span class="org-variable-name">OP_LOADK</span>,<span class="org-comment-delimiter">/*     </span><span class="org-comment">A Bx    R(A) := Kst(Bx)</span><span class="org-comment-delimiter">                                 */</span>
+<span class="org-variable-name">OP_LOADBOOL</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A B C   R(A) := (Bool)B; if (C) pc++</span><span class="org-comment-delimiter">                    */</span>
+<span class="org-variable-name">OP_LOADNIL</span>,<span class="org-comment-delimiter">/*   </span><span class="org-comment">A B     R(A) := ... := R(B) := nil</span><span class="org-comment-delimiter">                      */</span>
+<span class="org-variable-name">OP_GETUPVAL</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A B     R(A) := UpValue[B]</span><span class="org-comment-delimiter">                              */</span>
+
+<span class="org-variable-name">OP_GETGLOBAL</span>,<span class="org-comment-delimiter">/* </span><span class="org-comment">A Bx    R(A) := Gbl[Kst(Bx)]</span><span class="org-comment-delimiter">                            */</span>
+<span class="org-variable-name">OP_GETTABLE</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A B C   R(A) := R(B)[RK(C)]</span><span class="org-comment-delimiter">                             */</span>
+
+<span class="org-variable-name">OP_SETGLOBAL</span>,<span class="org-comment-delimiter">/* </span><span class="org-comment">A Bx    Gbl[Kst(Bx)] := R(A)</span><span class="org-comment-delimiter">                            */</span>
+<span class="org-variable-name">OP_SETUPVAL</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A B     UpValue[B] := R(A)</span><span class="org-comment-delimiter">                              */</span>
+<span class="org-variable-name">OP_SETTABLE</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A B C   R(A)[RK(B)] := RK(C)</span><span class="org-comment-delimiter">                            */</span>
+
+<span class="org-variable-name">OP_NEWTABLE</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A B C   R(A) := {} (size = B,C)</span><span class="org-comment-delimiter">                         */</span>
+
+<span class="org-variable-name">OP_SELF</span>,<span class="org-comment-delimiter">/*      </span><span class="org-comment">A B C   R(A+1) := R(B); R(A) := R(B)[RK(C)]</span><span class="org-comment-delimiter">             */</span>
+
+<span class="org-variable-name">OP_ADD</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B C   R(A) := RK(B) + RK(C)</span><span class="org-comment-delimiter">                           */</span>
+<span class="org-variable-name">OP_SUB</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B C   R(A) := RK(B) - RK(C)</span><span class="org-comment-delimiter">                           */</span>
+<span class="org-variable-name">OP_MUL</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B C   R(A) := RK(B) * RK(C)</span><span class="org-comment-delimiter">                           */</span>
+<span class="org-variable-name">OP_DIV</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B C   R(A) := RK(B) / RK(C)</span><span class="org-comment-delimiter">                           */</span>
+<span class="org-variable-name">OP_MOD</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B C   R(A) := RK(B) % RK(C)</span><span class="org-comment-delimiter">                           */</span>
+<span class="org-variable-name">OP_POW</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B C   R(A) := RK(B) ^ RK(C)</span><span class="org-comment-delimiter">                           */</span>
+<span class="org-variable-name">OP_UNM</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B     R(A) := -R(B)</span><span class="org-comment-delimiter">                                   */</span>
+<span class="org-variable-name">OP_NOT</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B     R(A) := not R(B)</span><span class="org-comment-delimiter">                                */</span>
+<span class="org-variable-name">OP_LEN</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">A B     R(A) := length of R(B)</span><span class="org-comment-delimiter">                          */</span>
+
+<span class="org-variable-name">OP_CONCAT</span>,<span class="org-comment-delimiter">/*    </span><span class="org-comment">A B C   R(A) := R(B).. ... ..R(C)</span><span class="org-comment-delimiter">                       */</span>
+
+<span class="org-variable-name">OP_JMP</span>,<span class="org-comment-delimiter">/*       </span><span class="org-comment">sBx     pc+=sBx</span><span class="org-comment-delimiter">                                 */</span>
+
+<span class="org-variable-name">OP_EQ</span>,<span class="org-comment-delimiter">/*        </span><span class="org-comment">A B C   if ((RK(B) == RK(C)) ~= A) then pc++</span><span class="org-comment-delimiter">            */</span>
+<span class="org-variable-name">OP_LT</span>,<span class="org-comment-delimiter">/*        </span><span class="org-comment">A B C   if ((RK(B) &lt;  RK(C)) ~= A) then pc++</span><span class="org-comment-delimiter">            */</span>
+<span class="org-variable-name">OP_LE</span>,<span class="org-comment-delimiter">/*        </span><span class="org-comment">A B C   if ((RK(B) &lt;= RK(C)) ~= A) then pc++</span><span class="org-comment-delimiter">            */</span>
+
+<span class="org-variable-name">OP_TEST</span>,<span class="org-comment-delimiter">/*      </span><span class="org-comment">A C     if not (R(A) &lt;=&gt; C) then pc++</span><span class="org-comment-delimiter">                   */</span> 
+<span class="org-variable-name">OP_TESTSET</span>,<span class="org-comment-delimiter">/*   </span><span class="org-comment">A B C   if (R(B) &lt;=&gt; C) then R(A) := R(B) else pc++</span><span class="org-comment-delimiter">     */</span> 
+
+<span class="org-variable-name">OP_CALL</span>,<span class="org-comment-delimiter">/*      </span><span class="org-comment">A B C   R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1))</span><span class="org-comment-delimiter"> */</span>
+<span class="org-variable-name">OP_TAILCALL</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A B C   return R(A)(R(A+1), ... ,R(A+B-1))</span><span class="org-comment-delimiter">              */</span>
+<span class="org-variable-name">OP_RETURN</span>,<span class="org-comment-delimiter">/*    </span><span class="org-comment">A B     return R(A), ... ,R(A+B-2)      (see note)</span><span class="org-comment-delimiter">      */</span>
+
+<span class="org-variable-name">OP_FORLOOP</span>,<span class="org-comment-delimiter">/*   </span><span class="org-comment">A sBx   R(A)+=R(A+2);</span>
+<span class="org-comment">                        if R(A) &lt;?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }</span><span class="org-comment-delimiter">*/</span>
+<span class="org-variable-name">OP_FORPREP</span>,<span class="org-comment-delimiter">/*   </span><span class="org-comment">A sBx   R(A)-=R(A+2); pc+=sBx</span><span class="org-comment-delimiter">                           */</span>
+
+<span class="org-variable-name">OP_TFORLOOP</span>,<span class="org-comment-delimiter">/*  </span><span class="org-comment">A C     R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2)); </span>
+<span class="org-comment">                        if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++</span><span class="org-comment-delimiter">   */</span> 
+<span class="org-variable-name">OP_SETLIST</span>,<span class="org-comment-delimiter">/*   </span><span class="org-comment">A B C   R(A)[(C-1)*FPF+i] := R(A+i), 1 &lt;= i &lt;= B</span><span class="org-comment-delimiter">        */</span>
+
+<span class="org-variable-name">OP_CLOSE</span>,<span class="org-comment-delimiter">/*     </span><span class="org-comment">A       close all variables in the stack up to (&gt;=) R(A)</span><span class="org-comment-delimiter">*/</span>
+<span class="org-variable-name">OP_CLOSURE</span>,<span class="org-comment-delimiter">/*   </span><span class="org-comment">A Bx    R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))</span><span class="org-comment-delimiter">  */</span>
+
+<span class="org-variable-name">OP_VARARG</span><span class="org-comment-delimiter">/*     </span><span class="org-comment">A B     R(A), R(A+1), ..., R(A+B-1) = vararg</span><span class="org-comment-delimiter">            */</span>
+} <span class="org-type">OpCode</span>;
+
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">NUM_OPCODES</span>     (cast(<span class="org-type">int</span>, OP_VARARG) + 1)
+</pre>
+</div>
+
+<p>
+相对应的名称
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/* </span><span class="org-comment">ORDER OP</span><span class="org-comment-delimiter"> */</span>
+
+<span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-keyword">const</span> <span class="org-variable-name">luaP_opnames</span>[NUM_OPCODES+1] = {
+  <span class="org-string">"MOVE"</span>,
+  <span class="org-string">"LOADK"</span>,
+  <span class="org-string">"LOADBOOL"</span>,
+  <span class="org-string">"LOADNIL"</span>,
+  <span class="org-string">"GETUPVAL"</span>,
+  <span class="org-string">"GETGLOBAL"</span>,
+  <span class="org-string">"GETTABLE"</span>,
+  <span class="org-string">"SETGLOBAL"</span>,
+  <span class="org-string">"SETUPVAL"</span>,
+  <span class="org-string">"SETTABLE"</span>,
+  <span class="org-string">"NEWTABLE"</span>,
+  <span class="org-string">"SELF"</span>,
+  <span class="org-string">"ADD"</span>,
+  <span class="org-string">"SUB"</span>,
+  <span class="org-string">"MUL"</span>,
+  <span class="org-string">"DIV"</span>,
+  <span class="org-string">"MOD"</span>,
+  <span class="org-string">"POW"</span>,
+  <span class="org-string">"UNM"</span>,
+  <span class="org-string">"NOT"</span>,
+  <span class="org-string">"LEN"</span>,
+  <span class="org-string">"CONCAT"</span>,
+  <span class="org-string">"JMP"</span>,
+  <span class="org-string">"EQ"</span>,
+  <span class="org-string">"LT"</span>,
+  <span class="org-string">"LE"</span>,
+  <span class="org-string">"TEST"</span>,
+  <span class="org-string">"TESTSET"</span>,
+  <span class="org-string">"CALL"</span>,
+  <span class="org-string">"TAILCALL"</span>,
+  <span class="org-string">"RETURN"</span>,
+  <span class="org-string">"FORLOOP"</span>,
+  <span class="org-string">"FORPREP"</span>,
+  <span class="org-string">"TFORLOOP"</span>,
+  <span class="org-string">"SETLIST"</span>,
+  <span class="org-string">"CLOSE"</span>,
+  <span class="org-string">"CLOSURE"</span>,
+  <span class="org-string">"VARARG"</span>,
+  <span class="org-constant">NULL</span>
+};
+</pre>
+</div>
+
+<p>
+其中每个类型之后，都附加了相应的参数类型和功能描述。
+其中用到了一些缩写，就是上面描述的 model 部分。
+</p>
+
+<pre class="example" id="orgdcd776f">
+R(A) 表示 索引为 数字 A 的寄存器，根据左值和右值的不同，认为是位置/值
+Kst(Bx) 表示 索引为 数字 Bx，从 k 表中取值（因为只读）
+RK(B) 表示 根据 B 值的不同，索引 寄存器或者 K 表，用于只读
+
+Gbl 全局表
+upval up 表
+</pre>
+
+<p>
+RK 的理解，就要再来看 A B C 三个参数，分别为 8 9 9 长度。
+</p>
+
+<p>
+在整体设计中，A 不用于 RK，B C 是有可能的。
+</p>
+
+<p>
+所以将高位 9 0/1 用于辨别当前代表的是 R 还是 K。
+</p>
+
+<pre class="example" id="org4aca835">
+0xxxxxxxx R
+
+1xxxxxxxx K
+</pre>
+
+<p>
+所以除去高位之后，B C 的实际长度也就是 8 bit 长度。
+</p>
+
+<p>
+这也就是 ISK 的含义
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Macros to operate RK indices</span>
+<span class="org-comment-delimiter">*/</span>
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">this bit 1 means constant (0 means register)</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">BITRK</span>           (1 &lt;&lt; (SIZE_B - 1))
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">test whether value is a constant</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-function-name">ISK</span>(<span class="org-variable-name">x</span>)          ((x) &amp; BITRK)
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">gets the index of the constant</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-function-name">INDEXK</span>(<span class="org-variable-name">r</span>)       ((<span class="org-type">int</span>)(r) &amp; ~BITRK)
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">MAXINDEXRK</span>      (BITRK - 1)
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">code a constant index as a RK value</span><span class="org-comment-delimiter"> */</span>
+<span class="org-preprocessor">#define</span> <span class="org-function-name">RKASK</span>(<span class="org-variable-name">x</span>)        ((x) | BITRK)
+</pre>
+</div>
+</div>
+</div>
+
+
+
+<div id="outline-container-org8ceb1e6" class="outline-2">
+<h2 id="org8ceb1e6"><span class="section-number-2">6</span> model</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+sktid is tvalue!
+</p>
+</div>
+
+
+<div id="outline-container-orgd175b64" class="outline-3">
+<h3 id="orgd175b64"><span class="section-number-3">6.1</span> move</h3>
+</div>
+</div>
+
+
+<div id="outline-container-orgf7c483b" class="outline-2">
+<h2 id="orgf7c483b"><span class="section-number-2">7</span> practice</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+关于 opcode 的 macro 操作
+</p>
+
+<p>
+未介绍的 opcode
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+
+<p>Updated: 2021-01-06 三 16:13</p>
+<p>Created: 2021-01-06 三 16:12</p>
+<p>Author: DreamAndDead</p>
+<p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+</div>
+</body>
+</html>
