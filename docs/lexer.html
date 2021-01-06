@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-05 二 17:04 -->
+<!-- 2021-01-06 三 16:08 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>lexer</title>
@@ -219,16 +219,27 @@
 <body>
 <div id="content">
 <h1 class="title">lexer</h1>
+<p>
+之前的章节，关注的是内部的一些实现，为后续打基础。
+</p>
 
-<div id="outline-container-org703955a" class="outline-2">
-<h2 id="org703955a"><span class="section-number-2">1</span> compile process</h2>
+<p>
+后续的章节关注 lua 是如何从文本代码到最终实际运行起来的。
+</p>
+
+<p>
+本章关注 lua 中的词法分析部分，即 lexer，这通常是编译过程的第一步。
+</p>
+
+<div id="outline-container-orgbaeb304" class="outline-2">
+<h2 id="orgbaeb304"><span class="section-number-2">1</span> lexer</h2>
 <div class="outline-text-2" id="text-1">
 <p>
 传统的编译过程大家都不陌生。
 </p>
 
 
-<div id="orgac28b6e" class="figure">
+<div id="orge3d3b1e" class="figure">
 <p><img src="compiler-trandition.png" alt="compiler-trandition.png">
 </p>
 </div>
@@ -242,7 +253,7 @@ lua 是解释型语言，但同样存在从源码到字节码的编译过程，�
 </p>
 
 
-<div id="org65ef423" class="figure">
+<div id="orgddc26f1" class="figure">
 <p><img src="compiler-lua-detail-process.png" alt="compiler-lua-detail-process.png">
 </p>
 </div>
@@ -252,15 +263,770 @@ AST 使用虚线表示，是因为内部没有显式的 AST 结构。
 </p>
 
 <p>
-也就是说，lexer 完成了从 code 到 token 的过程，
-parser 独自一人完成了从 token 到 opcode 的过程。
+综合来看，lexer 完成了从 code 到 token 的过程，
+parser 孤身一人完成了从 token 到 opcode 的过程。
+</p>
+
+
+
+<div id="org482f33d" class="figure">
+<p><img src="lexer-feature.png" alt="lexer-feature.png">
+</p>
+</div>
+
+
+<p>
+单纯从从文件角度看，lua 代码只是文本文件，由字符组成。
+文本形式的编程语言由机器理解并执行，需要经过一系列组件的处理过程。
+不同组件有明确的分工，不同的组件有不同的输入和输出，组成上下游关系。
+</p>
+
+<p>
+lexer 通常是第一个组件，将源代码转换为 token，将字符流转化为 token 流，作为后续 parser 的输入。
+</p>
+
+
+<div id="orgf2a491f" class="figure">
+<p><img src="lexer-stream.png" alt="lexer-stream.png">
 </p>
 </div>
 </div>
 </div>
+
+<div id="outline-container-org583db55" class="outline-2">
+<h2 id="org583db55"><span class="section-number-2">2</span> Token</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+简单的说，token 就是多个字符组成的有序序列。
+</p>
+
+<p>
+lua 内部用 struct 表示 token，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>llex.h</label><pre class="src src-c"><span class="linenr">43: </span><span class="org-keyword">typedef</span> <span class="org-keyword">union</span> {
+<span class="linenr">44: </span>  <span class="org-type">lua_Number</span> <span class="org-variable-name">r</span>;
+<span class="linenr">45: </span>  <span class="org-type">TString</span> *<span class="org-variable-name">ts</span>;
+<span class="linenr">46: </span>} <span class="org-type">SemInfo</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">semantics information</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">47: </span>
+<span class="linenr">48: </span>
+<span class="linenr">49: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Token</span> {
+<span class="linenr">50: </span>  <span class="org-type">int</span> <span class="org-variable-name">token</span>;
+<span class="linenr">51: </span>  <span class="org-type">SemInfo</span> <span class="org-variable-name">seminfo</span>;
+<span class="linenr">52: </span>} <span class="org-type">Token</span>;
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgf09c785" class="outline-3">
+<h3 id="orgf09c785"><span class="section-number-3">2.1</span> int token</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+token 定义为 int，表示 Token 的类型，所有类型定义在 enum 结构中。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>llex.h</label><pre class="src src-c"><span class="linenr">14: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">FIRST_RESERVED</span>  257
+<span class="linenr">15: </span>
+<span class="linenr">16: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">maximum length of a reserved word</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">17: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">TOKEN_LEN</span>       (<span class="org-keyword">sizeof</span>(<span class="org-string">"function"</span>)/<span class="org-keyword">sizeof</span>(<span class="org-type">char</span>))
+<span class="linenr">18: </span>
+<span class="linenr">19: </span>
+<span class="linenr">20: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">21: </span><span class="org-comment">* WARNING: if you change the order of this enumeration,</span>
+<span class="linenr">22: </span><span class="org-comment">* grep "ORDER RESERVED"</span>
+<span class="linenr">23: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">24: </span><span class="org-keyword">enum</span> <span class="org-type">RESERVED</span> {
+<span class="linenr">25: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">terminal symbols denoted by reserved words</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">26: </span>  <span class="org-variable-name">TK_AND</span> = FIRST_RESERVED, <span class="org-variable-name">TK_BREAK</span>,
+<span class="linenr">27: </span>  <span class="org-variable-name">TK_DO</span>, <span class="org-variable-name">TK_ELSE</span>, <span class="org-variable-name">TK_ELSEIF</span>, <span class="org-variable-name">TK_END</span>, <span class="org-variable-name">TK_FALSE</span>, <span class="org-variable-name">TK_FOR</span>, <span class="org-variable-name">TK_FUNCTION</span>,
+<span class="linenr">28: </span>  <span class="org-variable-name">TK_IF</span>, <span class="org-variable-name">TK_IN</span>, <span class="org-variable-name">TK_LOCAL</span>, <span class="org-variable-name">TK_NIL</span>, <span class="org-variable-name">TK_NOT</span>, <span class="org-variable-name">TK_OR</span>, <span class="org-variable-name">TK_REPEAT</span>,
+<span class="linenr">29: </span>  <span class="org-variable-name">TK_RETURN</span>, <span class="org-variable-name">TK_THEN</span>, <span class="org-variable-name">TK_TRUE</span>, <span class="org-variable-name">TK_UNTIL</span>, <span class="org-variable-name">TK_WHILE</span>,
+<span class="linenr">30: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">other terminal symbols</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">31: </span>  <span class="org-variable-name">TK_CONCAT</span>, <span class="org-variable-name">TK_DOTS</span>, <span class="org-variable-name">TK_EQ</span>, <span class="org-variable-name">TK_GE</span>, <span class="org-variable-name">TK_LE</span>, <span class="org-variable-name">TK_NE</span>, <span class="org-variable-name">TK_NUMBER</span>,
+<span class="linenr">32: </span>  <span class="org-variable-name">TK_NAME</span>, <span class="org-variable-name">TK_STRING</span>, <span class="org-variable-name">TK_EOS</span>
+<span class="linenr">33: </span>};
+</pre>
+</div>
+
+<p>
+每个 token 类型都有对应的文本表示，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>llex.c</label><pre class="src src-c"><span class="linenr">36: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">ORDER RESERVED</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">37: </span><span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-keyword">const</span> <span class="org-variable-name">luaX_tokens</span> [] = {
+<span class="linenr">38: </span>    <span class="org-string">"and"</span>, <span class="org-string">"break"</span>, <span class="org-string">"do"</span>, <span class="org-string">"else"</span>, <span class="org-string">"elseif"</span>,
+<span class="linenr">39: </span>    <span class="org-string">"end"</span>, <span class="org-string">"false"</span>, <span class="org-string">"for"</span>, <span class="org-string">"function"</span>, <span class="org-string">"if"</span>,
+<span class="linenr">40: </span>    <span class="org-string">"in"</span>, <span class="org-string">"local"</span>, <span class="org-string">"nil"</span>, <span class="org-string">"not"</span>, <span class="org-string">"or"</span>, <span class="org-string">"repeat"</span>,
+<span class="linenr">41: </span>    <span class="org-string">"return"</span>, <span class="org-string">"then"</span>, <span class="org-string">"true"</span>, <span class="org-string">"until"</span>, <span class="org-string">"while"</span>,
+<span class="linenr">42: </span>    <span class="org-string">".."</span>, <span class="org-string">"..."</span>, <span class="org-string">"=="</span>, <span class="org-string">"&gt;="</span>, <span class="org-string">"&lt;="</span>, <span class="org-string">"~="</span>,
+<span class="linenr">43: </span>    <span class="org-string">"&lt;number&gt;"</span>, <span class="org-string">"&lt;name&gt;"</span>, <span class="org-string">"&lt;string&gt;"</span>, <span class="org-string">"&lt;eof&gt;"</span>,
+<span class="linenr">44: </span>    <span class="org-constant">NULL</span>
+<span class="linenr">45: </span>};
+</pre>
+</div>
+
+<ul class="org-ul">
+<li><code>and</code> 到 <code>while</code> 之间是所有关键字</li>
+<li><code>..</code> 到 <code>~=</code> 之间是二元运算符</li>
+<li><code>&lt;number&gt;</code> 表示数字字面量</li>
+<li><code>&lt;name&gt;</code> 表示变量名称</li>
+<li><code>&lt;string&gt;</code> 表示字符串字面量</li>
+<li><code>&lt;eof&gt;</code> 表示文件结束符</li>
+</ul>
+
+<p>
+在上面所有类型中，看不到单字符 token 的影子，如 <code>( , . ; [</code> 。
+这是因为单字符用单字节 ascii 码表示（0 - 255），可以直接用自身来表示，记录在 int token 中。
+这也是多字符 token 从 <code>FIRST_RESERVED 257</code> 开始的原因，巧妙的将两者分开。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org4c1edf2" class="outline-3">
+<h3 id="org4c1edf2"><span class="section-number-3">2.2</span> Seminfo</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+Seminfo 用于存储 token 类型对应的内容。
+</p>
+
+<p>
+对于单字符，关键字和二元运算符，不需要记录额外内容，因为类型的文本表示是唯一的。
+<code>&lt;number&gt; &lt;name&gt; &lt;string&gt;</code> 则不同，相应类型下存在无数可能的内容，这就是 seminfo 的作用。
+</p>
+
+<ul class="org-ul">
+<li><code>lua_Number r</code> 用来记录 <code>&lt;number&gt;</code> 相应的内容</li>
+<li><code>TString *ts</code> 用来记录 <code>&lt;name&gt;</code> 变量的名称， <code>&lt;string&gt;</code> 字符串内容</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org9a36323" class="outline-2">
+<h2 id="org9a36323"><span class="section-number-2">3</span> LexState</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+lex 是一个过程，过程中需要记录当下所处的状态，比如文件读取的位置，匹配的结果等，
+这个关键的数据结构就是 LexState。
+</p>
+
+<p>
+整个 lex 过程围绕 LexState 展开，这样说毫不为过，清楚其有非常大的助益。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>llex.h</label><pre class="src src-C"><span class="linenr">55: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">LexState</span> {
+<span class="linenr">56: </span>  <span class="org-type">int</span> <span class="org-variable-name">current</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current character (charint)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">57: </span>  <span class="org-type">int</span> <span class="org-variable-name">linenumber</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">input line counter</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">58: </span>  <span class="org-type">int</span> <span class="org-variable-name">lastline</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">line of last token `consumed'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">59: </span>  <span class="org-type">Token</span> <span class="org-variable-name">t</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current token</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">60: </span>  <span class="org-type">Token</span> <span class="org-variable-name">lookahead</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">look ahead token</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">61: </span>  <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> *<span class="org-variable-name">fs</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">`FuncState' is private to the parser</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">62: </span>  <span class="org-keyword">struct</span> <span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>;
+<span class="linenr">63: </span>  <span class="org-type">ZIO</span> *<span class="org-variable-name">z</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">input stream</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">64: </span>  <span class="org-type">Mbuffer</span> *<span class="org-variable-name">buff</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">buffer for tokens</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">65: </span>  <span class="org-type">TString</span> *<span class="org-variable-name">source</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current source name</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">66: </span>  <span class="org-type">char</span> <span class="org-variable-name">decpoint</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">locale decimal point</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">67: </span>} <span class="org-type">LexState</span>;
+</pre>
+</div>
+
+<p>
+将其中所有字段分为 3 部分
+</p>
+
+<p>
+lex 过程的重要部分
+</p>
+<ul class="org-ul">
+<li><code>ZIO *z</code> ，源代码文件流</li>
+<li><code>Mbuffer *buff</code> ，lex 匹配过程中的 buffer</li>
+<li><code>int current</code> ，当前 token 之后紧跟的字符</li>
+<li><code>Token t</code> ，当前 token</li>
+<li><code>Token lookahead</code> ，前瞻的下一个 token</li>
+</ul>
+
+<p>
+在 parser 章节再讨论
+</p>
+<ul class="org-ul">
+<li><code>struct FuncState *fs</code></li>
+<li><code>struct lua_State *L</code></li>
+</ul>
+
+<p>
+非重点，暂不讨论
+</p>
+<ul class="org-ul">
+<li><code>int linenumber</code> ，当前 current 所处行号</li>
+<li><code>int lastline</code> ，上一个 token 所处行号</li>
+<li><code>TString *source</code> ，源代码的名称</li>
+<li><code>char decpoint</code> ，和数字的 l10n 相关</li>
+</ul>
+
+
+<div id="org55ce888" class="figure">
+<p><img src="lexer-lexstate-inside.png" alt="lexer-lexstate-inside.png">
+</p>
+</div>
+
+<p>
+内部数据间的协同，在 method 小节继续讲述。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgbec66f7" class="outline-2">
+<h2 id="orgbec66f7"><span class="section-number-2">4</span> method</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-org7bf7d14" class="outline-3">
+<h3 id="org7bf7d14"><span class="section-number-3">4.1</span> <code>luaX_init</code></h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+前面在 string 章节，关于其中 reserved 字段的作用没有讲述，刚好在 lexer 章节补上。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>llex.h</label><pre class="src src-c"><span class="linenr">35: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">number of reserved words</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">36: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">NUM_RESERVED</span>    (cast(<span class="org-type">int</span>, TK_WHILE-FIRST_RESERVED+1))
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>llex.c</label><pre class="src src-c"><span class="linenr">64: </span><span class="org-type">void</span> <span class="org-function-name">luaX_init</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">65: </span>  <span class="org-type">int</span> <span class="org-variable-name">i</span>;
+<span class="linenr">66: </span>  <span class="org-keyword">for</span> (i=0; i&lt;NUM_RESERVED; i++) {
+<span class="linenr">67: </span>    <span class="org-type">TString</span> *<span class="org-variable-name">ts</span> = luaS_new(L, luaX_tokens[i]);
+<span class="linenr">68: </span>    luaS_fix(ts);  <span class="org-comment-delimiter">/* </span><span class="org-comment">reserved words are never collected</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">69: </span>    lua_assert(strlen(luaX_tokens[i])+1 &lt;= TOKEN_LEN);
+<span class="linenr">70: </span>    ts-&gt;tsv.reserved = cast_byte(i+1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">reserved word</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">71: </span>  }
+<span class="linenr">72: </span>}
+</pre>
+</div>
+
+<p>
+之前提到，string 在 lua 内部只保存一份，是不可修改的。
+</p>
+
+<p>
+<code>luaX_init</code> 将所有关键字（如 <code>local function end</code> 等）预先分配，存储入全局表。
+特别的，在其 reserved 字段上记录其在 <code>enum RESERVED</code> 中的序号，从 1 开始。
+</p>
+
+<p>
+这样带来的效果是，所有 reserved != 0 的 string 都是关键字，且可以由 reserved 来判断出关键字的 token 类型。
+</p>
+
+<p>
+这一点间接方便了 <code>luaX_next</code> 中，关键字类型 token 的判断过程。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgaffecbd" class="outline-3">
+<h3 id="orgaffecbd"><span class="section-number-3">4.2</span> <code>llex</code></h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+本质上来看，lexer 就是遵循些许模式，从字符流的头部开始匹配，找到并返回相匹配的 token。
+</p>
+
+<p>
+不同 token 的模式通常用 regex 来描述，将所有的模式转化为代码的形式，就是 lex 过程。
+</p>
+
+<p>
+一般而言，这是一个相对枯燥又考验耐心的工作，好在有 lexer generator 这样的工具，如 flex，
+它可以直接将 regex 规则转化为 lex 代码。
+</p>
+
+<p>
+一般而言，一个语言的诞生初期，都会使用 lexer generator，方便快速迭代，
+到了后期语言本身相对稳定的时候，为了提升效率，都会将 lex 过程重写，python ruby lua 都是如此。
+</p>
+
+<p>
+这也意味着，阅读 lua 中 lex 过程的代码不如同义的 flex 代码<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>轻松。
+</p>
+
+<p>
+lex 过程看似随意，底层其实有充足的数学理论支撑， <code>regex NFA DFA</code> 的同义转化，最终用代码方式呈现。
+这一点远有更专业的书来讲解，具体细节就不再赘述。
+</p>
+
+<p>
+lexer 内部的核心方法就是 llex。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>llex.c</label><pre class="src src-c"><span class="linenr">334: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">llex</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>, <span class="org-type">SemInfo</span> *<span class="org-variable-name">seminfo</span>) {
+<span class="linenr">335: </span>  luaZ_resetbuffer(ls-&gt;buff);
+<span class="linenr">336: </span>  <span class="org-keyword">for</span> (;;) {
+<span class="linenr">337: </span>    <span class="org-keyword">switch</span> (ls-&gt;current) {
+<span class="linenr">338: </span>      <span class="org-keyword">case</span> <span class="org-string">'\n'</span>:
+<span class="linenr">339: </span>      <span class="org-keyword">case</span> <span class="org-string">'\r'</span>: {
+<span class="linenr">340: </span>        inclinenumber(ls);
+<span class="linenr">341: </span>        <span class="org-keyword">continue</span>;
+<span class="linenr">342: </span>      }
+<span class="linenr">343: </span>      <span class="org-keyword">case</span> <span class="org-string">'-'</span>: {
+<span class="linenr">344: </span>        next(ls);
+<span class="linenr">345: </span>        <span class="org-keyword">if</span> (ls-&gt;current != <span class="org-string">'-'</span>) <span class="org-keyword">return</span> <span class="org-string">'-'</span>;
+<span class="linenr">346: </span>        <span class="org-comment-delimiter">/* </span><span class="org-comment">else is a comment</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">347: </span>        next(ls);
+<span class="linenr">348: </span>        <span class="org-keyword">if</span> (ls-&gt;current == <span class="org-string">'['</span>) {
+<span class="linenr">349: </span>          <span class="org-type">int</span> <span class="org-variable-name">sep</span> = skip_sep(ls);
+<span class="linenr">350: </span>          luaZ_resetbuffer(ls-&gt;buff);  <span class="org-comment-delimiter">/* </span><span class="org-comment">`skip_sep' may dirty the buffer</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">351: </span>          <span class="org-keyword">if</span> (sep &gt;= 0) {
+<span class="linenr">352: </span>            read_long_string(ls, <span class="org-constant">NULL</span>, sep);  <span class="org-comment-delimiter">/* </span><span class="org-comment">long comment</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">353: </span>            luaZ_resetbuffer(ls-&gt;buff);
+<span class="linenr">354: </span>            <span class="org-keyword">continue</span>;
+<span class="linenr">355: </span>          }
+<span class="linenr">356: </span>        }
+<span class="linenr">357: </span>        <span class="org-comment-delimiter">/* </span><span class="org-comment">else short comment</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">358: </span>        <span class="org-keyword">while</span> (<span class="org-negation-char">!</span>currIsNewline(ls) &amp;&amp; ls-&gt;current != EOZ)
+<span class="linenr">359: </span>          next(ls);
+<span class="linenr">360: </span>        <span class="org-keyword">continue</span>;
+<span class="linenr">361: </span>      }
+<span class="linenr">362: </span>      <span class="org-keyword">case</span> <span class="org-string">'['</span>: {
+<span class="linenr">363: </span>        <span class="org-type">int</span> <span class="org-variable-name">sep</span> = skip_sep(ls);
+<span class="linenr">364: </span>        <span class="org-keyword">if</span> (sep &gt;= 0) {
+<span class="linenr">365: </span>          read_long_string(ls, seminfo, sep);
+<span class="linenr">366: </span>          <span class="org-keyword">return</span> TK_STRING;
+<span class="linenr">367: </span>        }
+<span class="linenr">368: </span>        <span class="org-keyword">else</span> <span class="org-keyword">if</span> (sep == -1) <span class="org-keyword">return</span> <span class="org-string">'['</span>;
+<span class="linenr">369: </span>        <span class="org-keyword">else</span> luaX_lexerror(ls, <span class="org-string">"invalid long string delimiter"</span>, TK_STRING);
+<span class="linenr">370: </span>      }
+<span class="linenr">371: </span>      <span class="org-keyword">case</span> <span class="org-string">'='</span>: {
+<span class="linenr">372: </span>        next(ls);
+<span class="linenr">373: </span>        <span class="org-keyword">if</span> (ls-&gt;current != <span class="org-string">'='</span>) <span class="org-keyword">return</span> <span class="org-string">'='</span>;
+<span class="linenr">374: </span>        <span class="org-keyword">else</span> { next(ls); <span class="org-keyword">return</span> TK_EQ; }
+<span class="linenr">375: </span>      }
+<span class="linenr">376: </span>      <span class="org-keyword">case</span> <span class="org-string">'&lt;'</span>: {
+<span class="linenr">377: </span>        next(ls);
+<span class="linenr">378: </span>        <span class="org-keyword">if</span> (ls-&gt;current != <span class="org-string">'='</span>) <span class="org-keyword">return</span> <span class="org-string">'&lt;'</span>;
+<span class="linenr">379: </span>        <span class="org-keyword">else</span> { next(ls); <span class="org-keyword">return</span> TK_LE; }
+<span class="linenr">380: </span>      }
+<span class="linenr">381: </span>      <span class="org-keyword">case</span> <span class="org-string">'&gt;'</span>: {
+<span class="linenr">382: </span>        next(ls);
+<span class="linenr">383: </span>        <span class="org-keyword">if</span> (ls-&gt;current != <span class="org-string">'='</span>) <span class="org-keyword">return</span> <span class="org-string">'&gt;'</span>;
+<span class="linenr">384: </span>        <span class="org-keyword">else</span> { next(ls); <span class="org-keyword">return</span> TK_GE; }
+<span class="linenr">385: </span>      }
+<span class="linenr">386: </span>      <span class="org-keyword">case</span> <span class="org-string">'~'</span>: {
+<span class="linenr">387: </span>        next(ls);
+<span class="linenr">388: </span>        <span class="org-keyword">if</span> (ls-&gt;current != <span class="org-string">'='</span>) <span class="org-keyword">return</span> <span class="org-string">'~'</span>;
+<span class="linenr">389: </span>        <span class="org-keyword">else</span> { next(ls); <span class="org-keyword">return</span> TK_NE; }
+<span class="linenr">390: </span>      }
+<span class="linenr">391: </span>      <span class="org-keyword">case</span> <span class="org-string">'"'</span>:
+<span class="linenr">392: </span>      <span class="org-keyword">case</span> <span class="org-string">'\''</span>: {
+<span class="linenr">393: </span>        read_string(ls, ls-&gt;current, seminfo);
+<span class="linenr">394: </span>        <span class="org-keyword">return</span> TK_STRING;
+<span class="linenr">395: </span>      }
+<span class="linenr">396: </span>      <span class="org-keyword">case</span> <span class="org-string">'.'</span>: {
+<span class="linenr">397: </span>        save_and_next(ls);
+<span class="linenr">398: </span>        <span class="org-keyword">if</span> (check_next(ls, <span class="org-string">"."</span>)) {
+<span class="linenr">399: </span>          <span class="org-keyword">if</span> (check_next(ls, <span class="org-string">"."</span>))
+<span class="linenr">400: </span>            <span class="org-keyword">return</span> TK_DOTS;   <span class="org-comment-delimiter">/* </span><span class="org-comment">...</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">401: </span>          <span class="org-keyword">else</span> <span class="org-keyword">return</span> TK_CONCAT;   <span class="org-comment-delimiter">/* </span><span class="org-comment">..</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">402: </span>        }
+<span class="linenr">403: </span>        <span class="org-keyword">else</span> <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>isdigit(ls-&gt;current)) <span class="org-keyword">return</span> <span class="org-string">'.'</span>;
+<span class="linenr">404: </span>        <span class="org-keyword">else</span> {
+<span class="linenr">405: </span>          read_numeral(ls, seminfo);
+<span class="linenr">406: </span>          <span class="org-keyword">return</span> TK_NUMBER;
+<span class="linenr">407: </span>        }
+<span class="linenr">408: </span>      }
+<span class="linenr">409: </span>      <span class="org-keyword">case</span> EOZ: {
+<span class="linenr">410: </span>        <span class="org-keyword">return</span> TK_EOS;
+<span class="linenr">411: </span>      }
+<span class="linenr">412: </span>      <span class="org-keyword">default</span>: {
+<span class="linenr">413: </span>        <span class="org-keyword">if</span> (isspace(ls-&gt;current)) {
+<span class="linenr">414: </span>          lua_assert(<span class="org-negation-char">!</span>currIsNewline(ls));
+<span class="linenr">415: </span>          next(ls);
+<span class="linenr">416: </span>          <span class="org-keyword">continue</span>;
+<span class="linenr">417: </span>        }
+<span class="linenr">418: </span>        <span class="org-keyword">else</span> <span class="org-keyword">if</span> (isdigit(ls-&gt;current)) {
+<span class="linenr">419: </span>          read_numeral(ls, seminfo);
+<span class="linenr">420: </span>          <span class="org-keyword">return</span> TK_NUMBER;
+<span class="linenr">421: </span>        }
+<span class="linenr">422: </span>        <span class="org-keyword">else</span> <span class="org-keyword">if</span> (isalpha(ls-&gt;current) || ls-&gt;current == <span class="org-string">'_'</span>) {
+<span class="linenr">423: </span>          <span class="org-comment-delimiter">/* </span><span class="org-comment">identifier or reserved word</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">424: </span>          <span class="org-type">TString</span> *<span class="org-variable-name">ts</span>;
+<span class="linenr">425: </span>          <span class="org-keyword">do</span> {
+<span class="linenr">426: </span>            save_and_next(ls);
+<span class="linenr">427: </span>          } <span class="org-keyword">while</span> (isalnum(ls-&gt;current) || ls-&gt;current == <span class="org-string">'_'</span>);
+<span class="linenr">428: </span>          ts = luaX_newstring(ls, luaZ_buffer(ls-&gt;buff),
+<span class="linenr">429: </span>                                  luaZ_bufflen(ls-&gt;buff));
+<span class="linenr">430: </span>          <span class="org-keyword">if</span> (ts-&gt;tsv.reserved &gt; 0)  <span class="org-comment-delimiter">/* </span><span class="org-comment">reserved word?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">431: </span>            <span class="org-keyword">return</span> ts-&gt;tsv.reserved - 1 + FIRST_RESERVED;
+<span class="linenr">432: </span>          <span class="org-keyword">else</span> {
+<span class="linenr">433: </span>            seminfo-&gt;ts = ts;
+<span class="linenr">434: </span>            <span class="org-keyword">return</span> TK_NAME;
+<span class="linenr">435: </span>          }
+<span class="linenr">436: </span>        }
+<span class="linenr">437: </span>        <span class="org-keyword">else</span> {
+<span class="linenr">438: </span>          <span class="org-type">int</span> <span class="org-variable-name">c</span> = ls-&gt;current;
+<span class="linenr">439: </span>          next(ls);
+<span class="linenr">440: </span>          <span class="org-keyword">return</span> c;  <span class="org-comment-delimiter">/* </span><span class="org-comment">single-char tokens (+ - / ...)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">441: </span>        }
+<span class="linenr">442: </span>      }
+<span class="linenr">443: </span>    }
+<span class="linenr">444: </span>  }
+<span class="linenr">445: </span>}
+</pre>
+</div>
+
+<p>
+它的功能非常纯粹，从字符流的开始，进行模式匹配，找到相应的 token，并返回相应的类型和内容。
+</p>
+
+
+<div id="org8e45aba" class="figure">
+<p><img src="lexer-matching-process-0.png" alt="lexer-matching-process-0.png">
+</p>
+</div>
+
+
+<div id="org0fc33a3" class="figure">
+<p><img src="lexer-matching-process-1.png" alt="lexer-matching-process-1.png">
+</p>
+</div>
+
+
+<div id="orgedc1a86" class="figure">
+<p><img src="lexer-matching-process-2.png" alt="lexer-matching-process-2.png">
+</p>
+</div>
+
+<p>
+llex 的具体过程不再赘述，读者可以打开调试器，用一些代码示例来针对性的阅读。
+</p>
+
+<p>
+这里只略微提几个值得关注的点。
+</p>
+</div>
+
+<div id="outline-container-orgeb7d916" class="outline-4">
+<h4 id="orgeb7d916"><span class="section-number-4">4.2.1</span> keyword</h4>
+<div class="outline-text-4" id="text-4-2-1">
+<p>
+关键字的匹配过程，和 <code>&lt;name&gt;</code> 的匹配过程统一在一起。
+</p>
+
+<p>
+不过是在最终得到匹配结果时，通过 reserved 字段来判断，是否是关键字。
+之所以可以做到这一点是因为，所有 string 在全局表中都是唯一的，
+而且 <code>luaX_init</code> 已经提前设置了所有的关键字。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>llex.c</label><pre class="src src-c"><span class="linenr">422: </span><span class="org-keyword">else</span> <span class="org-keyword">if</span> (isalpha(ls-&gt;current) || ls-&gt;current == <span class="org-string">'_'</span>) {
+<span class="linenr">423: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">identifier or reserved word</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">424: </span>  <span class="org-type">TString</span> *<span class="org-variable-name">ts</span>;
+<span class="linenr">425: </span>  <span class="org-keyword">do</span> {
+<span class="linenr">426: </span>    save_and_next(ls);
+<span class="linenr">427: </span>  } <span class="org-keyword">while</span> (isalnum(ls-&gt;current) || ls-&gt;current == <span class="org-string">'_'</span>);
+<span class="linenr">428: </span>  ts = luaX_newstring(ls, luaZ_buffer(ls-&gt;buff),
+<span class="linenr">429: </span>                          luaZ_bufflen(ls-&gt;buff));
+<span class="linenr">430: </span>  <span class="org-keyword">if</span> (ts-&gt;tsv.reserved &gt; 0)  <span class="org-comment-delimiter">/* </span><span class="org-comment">reserved word?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">431: </span>    <span class="org-keyword">return</span> ts-&gt;tsv.reserved - 1 + FIRST_RESERVED;
+<span class="linenr">432: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">433: </span>    seminfo-&gt;ts = ts;
+<span class="linenr">434: </span>    <span class="org-keyword">return</span> TK_NAME;
+<span class="linenr">435: </span>  }
+<span class="linenr">436: </span>}
+</pre>
+</div>
+
+<p>
+这个巧妙的过程，意味着关键字的优先级高于标识符。
+</p>
+
+<p>
+定义与关键字同名的变量是不可能的，因为它会被辨别为是关键字，引发语法错误。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-keyword">end</span> = 1
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org8987c54" class="outline-4">
+<h4 id="org8987c54"><span class="section-number-4">4.2.2</span> number</h4>
+<div class="outline-text-4" id="text-4-2-2">
+<p>
+理想情况下，token 类型的识别在前，类型确定后，再来提取相应的内容。
+</p>
+
+<p>
+但是对于 <code>&lt;number&gt;</code> 并不是这样来处理的。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span>llex.c</label><pre class="src src-c"><span class="linenr">193: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">LUA_NUMBER</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">194: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">read_numeral</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>, <span class="org-type">SemInfo</span> *<span class="org-variable-name">seminfo</span>) {
+<span class="linenr">195: </span>  lua_assert(isdigit(ls-&gt;current));
+<span class="linenr">196: </span>  <span class="org-keyword">do</span> {
+<span class="linenr">197: </span>    save_and_next(ls);
+<span class="linenr">198: </span>  } <span class="org-keyword">while</span> (isdigit(ls-&gt;current) || ls-&gt;current == <span class="org-string">'.'</span>);
+<span class="linenr">199: </span>  <span class="org-keyword">if</span> (check_next(ls, <span class="org-string">"Ee"</span>))  <span class="org-comment-delimiter">/* </span><span class="org-comment">`E'?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">200: </span>    check_next(ls, <span class="org-string">"+-"</span>);  <span class="org-comment-delimiter">/* </span><span class="org-comment">optional exponent sign</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">201: </span>  <span class="org-keyword">while</span> (isalnum(ls-&gt;current) || ls-&gt;current == <span class="org-string">'_'</span>)
+<span class="linenr">202: </span>    save_and_next(ls);
+<span class="linenr">203: </span>  save(ls, <span class="org-string">'\0'</span>);
+<span class="linenr">204: </span>  buffreplace(ls, <span class="org-string">'.'</span>, ls-&gt;decpoint);  <span class="org-comment-delimiter">/* </span><span class="org-comment">follow locale for decimal point</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">205: </span>  <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>luaO_str2d(luaZ_buffer(ls-&gt;buff), &amp;seminfo-&gt;r))  <span class="org-comment-delimiter">/* </span><span class="org-comment">format error?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">206: </span>    trydecpoint(ls, seminfo); <span class="org-comment-delimiter">/* </span><span class="org-comment">try to update decimal point separator</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">207: </span>}
+</pre>
+</div>
+
+<p>
+如果用 regex 来表示这个过程，则是 <code>[\.[:digit:]]+[Ee[+-]?]?[[:alnum:]_]*</code> ，
+这个模式并不能完全匹配数字。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">i</span> = .3.3.3
+</pre>
+</div>
+
+<p>
+<code>.3.3.3</code> 可以匹配相应模式，但是并不是数字。
+</p>
+
+<p>
+庆幸的是 lua 依旧发现这个错误，
+</p>
+
+<pre class="example" id="orgd8986c1">
+malformed number near '.3.3.3'
+</pre>
+
+<p>
+lua 内部使用 <code>&lt;stdlib.h&gt;</code> 中的 strtod 来尝试进行 string 到 number 的转换。
+如果发生错误，则说明不是数字。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span>luaconf.h</label><pre class="src src-c"><span class="linenr">525: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">lua_str2number</span>(<span class="org-variable-name">s</span>,<span class="org-variable-name">p</span>)     strtod((s), (p))
+</pre>
+</div>
+
+<p>
+看起来这并不合常规，因为 lua 只是粗略匹配了一段“像是 number”的内容，通过 strtod 来做最终判断，
+感觉有些取巧。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org0d23003" class="outline-4">
+<h4 id="org0d23003"><span class="section-number-4">4.2.3</span> long string</h4>
+<div class="outline-text-4" id="text-4-2-3">
+<p>
+lua 中可以用 <code>[[]]</code> 来表示长字符串，但是存在一种变体，比较少见，
+形式如 <code>[===[ ]===]</code> 也是长字符串， <code>=</code> 的数量要完全相同。
+</p>
+
+<p>
+长字符串的规则，加上 <code>--</code> 就可以扩充到长注释。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">long_str</span> = <span class="org-string">[[</span>
+<span class="org-string">this is a long string.</span>
+<span class="org-string">]]</span>
+
+<span class="org-keyword">local</span> <span class="org-variable-name">another_str</span> = <span class="org-string">[===[</span>
+<span class="org-string">another long string.</span>
+<span class="org-string">]===]</span>
+
+<span class="org-comment-delimiter">--</span><span class="org-comment">[[</span>
+<span class="org-comment">comment this line</span>
+<span class="org-comment">]]</span>
+
+<span class="org-comment-delimiter">--</span><span class="org-comment">[====[</span>
+<span class="org-comment">comment this line</span>
+<span class="org-comment">]====]</span>
+</pre>
+</div>
+
+<p>
+这一点在阅读代码时要注意。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgc10f7d8" class="outline-4">
+<h4 id="orgc10f7d8"><span class="section-number-4">4.2.4</span> builtin</h4>
+<div class="outline-text-4" id="text-4-2-4">
+<p>
+<code>next, require</code> 等不是关键字，而是运行环境中提供的函数，它们的功能是在 VM 中实现的。
+</p>
+
+<p>
+这一点在后续 api 章节会讲到。
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3d1124a" class="outline-3">
+<h3 id="org3d1124a"><span class="section-number-3">4.3</span> <code>luaX_lookahead</code></h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+在语法分析的过程中，存在少数情况，需要下一个 token 来去除多个模式间的歧义。
+</p>
+
+<p>
+<code>luaX_lookahead</code> 就是在这个时候使用，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 11: </span>llex.c</label><pre class="src src-c"><span class="linenr">459: </span><span class="org-type">void</span> <span class="org-function-name">luaX_lookahead</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>) {
+<span class="linenr">460: </span>  lua_assert(ls-&gt;lookahead.token == TK_EOS);
+<span class="linenr">461: </span>  ls-&gt;lookahead.token = llex(ls, &amp;ls-&gt;lookahead.seminfo);
+<span class="linenr">462: </span>}
+</pre>
+</div>
+
+<p>
+过程很简单，使用 <code>llex</code> 方法，将 token 存储在 LexState.lookahead 中。
+</p>
+
+
+<div id="org7303011" class="figure">
+<p><img src="lexer-lookahead.png" alt="lexer-lookahead.png">
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgd2074a8" class="outline-3">
+<h3 id="orgd2074a8"><span class="section-number-3">4.4</span> <code>luaX_next</code></h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+<code>luaX_next</code> 和 <code>luaX_lookahead</code> 相同，不过是将 token 存储在 LexState.t 中。
+</p>
+
+<p>
+如果 lookahead 中存在 token，则直接拿过来使用，并重置 lookahead。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 12: </span>llex.c</label><pre class="src src-c"><span class="linenr">448: </span><span class="org-type">void</span> <span class="org-function-name">luaX_next</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>) {
+<span class="linenr">449: </span>  ls-&gt;lastline = ls-&gt;linenumber;
+<span class="linenr">450: </span>  <span class="org-keyword">if</span> (ls-&gt;lookahead.token != TK_EOS) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">is there a look-ahead token?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">451: </span>    ls-&gt;t = ls-&gt;lookahead;  <span class="org-comment-delimiter">/* </span><span class="org-comment">use this one</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">452: </span>    ls-&gt;lookahead.token = TK_EOS;  <span class="org-comment-delimiter">/* </span><span class="org-comment">and discharge it</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">453: </span>  }
+<span class="linenr">454: </span>  <span class="org-keyword">else</span>
+<span class="linenr">455: </span>    ls-&gt;t.token = llex(ls, &amp;ls-&gt;t.seminfo);  <span class="org-comment-delimiter">/* </span><span class="org-comment">read next token</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">456: </span>}
+</pre>
+</div>
+
+
+<div id="org812da8e" class="figure">
+<p><img src="lexer-next.png" alt="lexer-next.png">
+</p>
+</div>
+
+
+<div id="orgcdc5e95" class="figure">
+<p><img src="lexer-next-next.png" alt="lexer-next-next.png">
+</p>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org13e866a" class="outline-2">
+<h2 id="org13e866a"><span class="section-number-2">5</span> a little lexer</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+根据对 lex 模块的理解，可以做一个简单的 lexer 分析器。
+</p>
+
+<p>
+它不是一个独立的程序，而是一段 gdb 脚本，gdb 可以在 lua 在运行时进行 inspect。
+</p>
+
+<p>
+在 <code>luaX_next</code> 方法加上断点，每次触发的时候，就输出相应的 token，就可以实现一个简单的 lexer 工具。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash">$ make -s lex <span class="org-variable-name">source</span>=./test/co.lua
+</pre>
+</div>
+
+<p>
+这种做法有些许弱点，如果中途出现语法错误，过程就会中断，所以它只能分析语法分析正确的代码。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgd2556d2" class="outline-2">
+<h2 id="orgd2556d2"><span class="section-number-2">6</span> practice</h2>
+<div class="outline-text-2" id="text-6">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">lzio.h</td>
+<td class="org-left">zio 模块中实现了 zio 和 mbuffer 结构，对字符流和 buffer 进行了封装，感兴趣的读者可仔细阅读</td>
+</tr>
+
+<tr>
+<td class="org-left">lzio.c</td>
+<td class="org-left">同上</td>
+</tr>
+
+<tr>
+<td class="org-left">llex.h</td>
+<td class="org-left">仔细阅读</td>
+</tr>
+
+<tr>
+<td class="org-left">llex.c</td>
+<td class="org-left">浏览阅读，配合调试器会更轻松</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://lua-users.org/lists/lua-l/2005-12/msg00091.html">http://lua-users.org/lists/lua-l/2005-12/msg00091.html</a>
+</p></div></div>
+
+
+</div>
+</div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-05 二 17:04</p>
+<p>Updated: 2021-01-06 三 16:08</p>
 <p>Created: 2021-01-05 二 16:40</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

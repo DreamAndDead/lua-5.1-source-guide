@@ -3,7 +3,13 @@
 #+TITLE: lexer
 #+DATE: <2021-01-05 二 16:40>
 
-* compile process
+之前的章节，关注的是内部的一些实现，为后续打基础。
+
+后续的章节关注 lua 是如何从文本代码到最终实际运行起来的。
+
+本章关注 lua 中的词法分析部分，即 lexer，这通常是编译过程的第一步。
+
+* lexer
 
 传统的编译过程大家都不陌生。
 
@@ -65,112 +71,588 @@ digraph {
 
 AST 使用虚线表示，是因为内部没有显式的 AST 结构。
 
-也就是说，lexer 完成了从 code 到 token 的过程，
-parser 独自一人完成了从 token 到 opcode 的过程。
+综合来看，lexer 完成了从 code 到 token 的过程，
+parser 孤身一人完成了从 token 到 opcode 的过程。
 
-* DRAFT lexer
-  :LOGBOOK:
-  - Note taken on [2020-12-04 五 08:46] \\
-    compiler section describe lex part in whole chain.
-  :END:
 
-编程语言从文件角度来看，只是单纯的文本文件，由字符组成。
+#+caption: what lexer do
+#+begin_src dot :file lexer-feature.png
+digraph {
+	rankdir = TB;
+	node[shape=box];
 
-至于作为编程语言来由机器理解并执行，需要经过一系列的过程。
+	subgraph cluster_0 {
+	lua[label="Lua Code"];
+	tk[label="Token"];
+	label="lexer";
+	style=filled;
+	color=lightblue;
+}
+
+	ast[label="AST", style="dotted"];
+	vm[label="VM"];
+	{
+		rank=same;
+		op[label="Opcode"];
+		bf[label="Binary File"];
+	}
+
+	lua -> tk[label="lex"];
+	tk -> ast[label="parse"];
+	ast -> op[label="generate"];
+	op -> vm[label="executed"];
+	op -> bf[label="dump"];
+	bf -> op[label="undump"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:lexer-feature.png]]
+
+
+单纯从从文件角度看，lua 代码只是文本文件，由字符组成。
+文本形式的编程语言由机器理解并执行，需要经过一系列组件的处理过程。
 不同组件有明确的分工，不同的组件有不同的输入和输出，组成上下游关系。
 
-词法分析 lex 就是第一步。
+lexer 通常是第一个组件，将源代码转换为 token，将字符流转化为 token 流，作为后续 parser 的输入。
 
 #+CAPTION: char stream to token stream
+#+begin_src dot :file lexer-stream.png
+digraph {
+	node[shape=box];
 
-lexer 将源代码转换为 token，将字符流转化为 token 流，作为 parser 的输入。
+	c[label="char stream"];
+	t[label="token stream"];
+	l[label="lexer", shape=oval];
 
-* DRAFT token
+	c -> l -> t;
+}
+#+end_src
 
-简单的说，token 就是多个有序字符组成的序列。
+#+RESULTS:
+[[file:lexer-stream.png]]
 
-lexer 按照一定的规则，在字符流中寻找并将匹配为 token。
+* Token
 
-lua 中定义了如下 token
+简单的说，token 就是多个字符组成的有序序列。
 
-#+INCLUDE: ../lua-5.1.5/src/llex.h src c :lines "14-34"
+lua 内部用 struct 表示 token，
 
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c :lines "36-46"
+#+caption: llex.h
+#+INCLUDE: ../lua-5.1.5/src/llex.h src c -n 43 :lines "43-53"
 
-#+INCLUDE: ../lua-5.1.5/src/llex.h src c :lines "43-53"
+** int token
+   
+token 定义为 int，表示 Token 的类型，所有类型定义在 enum 结构中。
 
-所有匹配的 token 都用 Token 来表示，其中
-- token，即上面的 enum 值，表示 token 的类型
-  - 单字符 char token，比如 =( , . ; [= 之类，这也是 FIRST_RESERVED 从 257 开始的原因
-- Seminfo，用于存储 =<number> <name> <string>= 的实际内容
-  - r =number= 数字值
-  - ts =name= 字面字符串， =string= 的字符串内容
+#+caption: llex.h
+#+INCLUDE: ../lua-5.1.5/src/llex.h src c -n 14 :lines "14-34"
 
-#+CAPTION: some example
+每个 token 类型都有对应的文本表示，
 
-* DRAFT process
+#+caption: llex.c
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 36 :lines "36-46"
 
-#+CAPTION: 匹配过程，with eg code example
+- =and= 到 =while= 之间是所有关键字
+- =..= 到 =~== 之间是二元运算符
+- =<number>= 表示数字字面量
+- =<name>= 表示变量名称
+- =<string>= 表示字符串字面量
+- =<eof>= 表示文件结束符
 
-转化的过程，简单描述，就是从输入流的头部开始匹配，返回匹配的 token
+在上面所有类型中，看不到单字符 token 的影子，如 =( , . ; [= 。
+这是因为单字符用单字节 ascii 码表示（0 - 255），可以直接用自身来表示，记录在 int token 中。
+这也是多字符 token 从 =FIRST_RESERVED 257= 开始的原因，巧妙的将两者分开。
 
-一般而言，这是一个相对枯燥又考验耐心的工作。
-通常用 regex 来描述定义的 token，再将其转化为代码的形式。
+** Seminfo
 
-一般一个语言的开发初期，都会使用 lexer generator 比如 flex 这样的工具，
-自动将 regex 生成相应匹配的代码，方便快速迭代，sketch，进行语言的开发。
+Seminfo 用于存储 token 类型对应的内容。
 
-但到了后期发展相对成熟的时候，为了效率，就会将这部分代码重写，py ry 如此，lua 也是如此。
+对于单字符，关键字和二元运算符，不需要记录额外内容，因为类型的文本表示是唯一的。
+=<number> <name> <string>= 则不同，相应类型下存在无数可能的内容，这就是 seminfo 的作用。
 
-看似简单，实际有底层严谨的数学支撑，regex NFA DFA 再到代码呈现。
+- =lua_Number r= 用来记录 =<number>= 相应的内容
+- =TString *ts= 用来记录 =<name>= 变量的名称， =<string>= 字符串内容
 
-这一段是相对符合程序员直觉的，有更多专业的书讲解的更清楚，具体关于模式匹配的内容就不再赘述。
+* LexState
 
-TODO ref materials
+lex 是一个过程，过程中需要记录当下所处的状态，比如文件读取的位置，匹配的结果等，
+这个关键的数据结构就是 LexState。
 
-至于如何匹配，都在 llex 中实现
+整个 lex 过程围绕 LexState 展开，这样说毫不为过，清楚其有非常大的助益。
 
-提到几个值得关注的点，
+#+caption: llex.h
+#+INCLUDE: ../lua-5.1.5/src/llex.h src C -n 55 :lines "55-68"
 
-- 只有 name 匹配过程，而没有关键字的匹配过程
-  如果 name 和关键字相同，就认为是关键字，这也是为什么 name 决不能是关键字的原因
-  直接导致语法错误
+将其中所有字段分为 3 部分
+
+lex 过程的重要部分
+- =ZIO *z= ，源代码文件流
+- =Mbuffer *buff= ，lex 匹配过程中的 buffer
+- =int current= ，当前 token 之后紧跟的字符
+- =Token t= ，当前 token
+- =Token lookahead= ，前瞻的下一个 token
+
+在 parser 章节再讨论
+- =struct FuncState *fs=
+- =struct lua_State *L=
+
+非重点，暂不讨论
+- =int linenumber= ，当前 current 所处行号
+- =int lastline= ，上一个 token 所处行号
+- =TString *source= ，源代码的名称
+- =char decpoint= ，和数字的 l10n 相关
+
+#+CAPTION: lex state inside picture
+#+begin_src dot :file lexer-lexstate-inside.png
+digraph {
+	rankdir = LR;
+
+	subgraph cluster_0 {
+		node[shape=box];
+
+		t[label="argc", xlabel="t"];
+		lookahead[label="EOS", xlabel="lookahead"];
+
+		{rank=same; t; lookahead;}
+
+		peripheries = 0;
+		}
+
+	subgraph cluster_1 {
+		node[shape=box];
+		
+		zio[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">f</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">u</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">c</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">t</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">i</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">o</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="coral" width="10" height="10">f</td>
+		  <td border="1" bgcolor="pink" width="10" height="10">(</td>
+		  <td border="1" bgcolor="gold" width="10" height="10">a</td>
+		  <td border="1" bgcolor="gold" width="10" height="10">r</td>
+		  <td border="1" bgcolor="gold" width="10" height="10">g</td>
+		  <td border="1" bgcolor="gold" width="10" height="10">c</td>
+		  <td port="c" border="1" bgcolor="white" width="10" height="10">,</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">v</td>
+		  <td border="1" bgcolor="white" width="10" height="10">)</td>
+		</tr>
+	      </table>
+		    >, xlabel="zio"];
+
+		buff[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>c
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		</tr>
+	      </table>
+		    >, xlabel="buff"];
+
+		current[shape=plain];
+
+		{rank=same; zio; current}
+
+		zio -> buff;
+		current -> zio:c;
+
+		peripheries = 0;
+		
+		}
+
+	buff -> t;
+	}
+#+end_src
+
+#+RESULTS:
+[[file:lexer-lexstate-inside.png]]
+
+内部数据间的协同，在 method 小节继续讲述。
+
+* method
+** =luaX_init=
+
+前面在 string 章节，关于其中 reserved 字段的作用没有讲述，刚好在 lexer 章节补上。
+
+#+caption: llex.h
+#+INCLUDE: ../lua-5.1.5/src/llex.h src c -n 35 :lines "35-37"
+
+#+caption: llex.c
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 64 :lines "64-73"
+
+之前提到，string 在 lua 内部只保存一份，是不可修改的。
+
+=luaX_init= 将所有关键字（如 =local function end= 等）预先分配，存储入全局表。
+特别的，在其 reserved 字段上记录其在 =enum RESERVED= 中的序号，从 1 开始。
+
+这样带来的效果是，所有 reserved != 0 的 string 都是关键字，且可以由 reserved 来判断出关键字的 token 类型。
+
+这一点间接方便了 =luaX_next= 中，关键字类型 token 的判断过程。
+
+** =llex=
+
+本质上来看，lexer 就是遵循些许模式，从字符流的头部开始匹配，找到并返回相匹配的 token。
+
+不同 token 的模式通常用 regex 来描述，将所有的模式转化为代码的形式，就是 lex 过程。
+
+一般而言，这是一个相对枯燥又考验耐心的工作，好在有 lexer generator 这样的工具，如 flex，
+它可以直接将 regex 规则转化为 lex 代码。
+
+一般而言，一个语言的诞生初期，都会使用 lexer generator，方便快速迭代，
+到了后期语言本身相对稳定的时候，为了提升效率，都会将 lex 过程重写，python ruby lua 都是如此。
+
+这也意味着，阅读 lua 中 lex 过程的代码不如同义的 flex 代码[fn:1]轻松。
+
+lex 过程看似随意，底层其实有充足的数学理论支撑， =regex NFA DFA= 的同义转化，最终用代码方式呈现。
+这一点远有更专业的书来讲解，具体细节就不再赘述。
+
+lexer 内部的核心方法就是 llex。
+
+#+caption: llex.c
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 334 :lines "334-446"
+
+它的功能非常纯粹，从字符流的开始，进行模式匹配，找到相应的 token，并返回相应的类型和内容。
+
+#+CAPTION: matching process
+#+begin_src dot :file lexer-matching-process-0.png
+digraph {
+	rankdir = LR;
+
+	subgraph cluster_0 {
+		node[shape=box];
+
+		t[label="", xlabel="t"];
+		lookahead[label="EOS", xlabel="lookahead"];
+
+		{rank=same; t; lookahead;}
+
+		peripheries = 0;
+		}
+
+	subgraph cluster_1 {
+		node[shape=box];
+		
+		zio[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="f" border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10">u</td>
+		  <td border="1" bgcolor="white" width="10" height="10">n</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">t</td>
+		  <td port="i" border="1" bgcolor="white" width="10" height="10">i</td>
+		  <td border="1" bgcolor="white" width="10" height="10">o</td>
+		  <td border="1" bgcolor="white" width="10" height="10">n</td>
+		  <td port="e" border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10">(</td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">,</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">v</td>
+		  <td border="1" bgcolor="white" width="10" height="10">)</td>
+		</tr>
+	      </table>
+		    >, xlabel="zio"];
+
+		buff[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>c
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		</tr>
+	      </table>
+		    >, xlabel="buff"];
+
+		current[shape=plain];
+
+		{rank=same; zio; current}
+
+		peripheries = 0;
+		
+		}
+
+		zio -> buff;
+		buff -> t;
+		current -> zio:f;
+	}
+#+end_src
+
+#+RESULTS:
+[[file:lexer-matching-process-0.png]]
+
+#+begin_src dot :file lexer-matching-process-1.png
+digraph {
+	rankdir = LR;
+
+	subgraph cluster_0 {
+		node[shape=box];
+
+		t[label="", xlabel="t"];
+		lookahead[label="EOS", xlabel="lookahead"];
+
+		{rank=same; t; lookahead;}
+
+		peripheries = 0;
+		}
+
+	subgraph cluster_1 {
+		node[shape=box];
+		
+		zio[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="f" border="1" bgcolor="cyan3" width="10" height="10">f</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">u</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">c</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">t</td>
+		  <td port="i" border="1" bgcolor="white" width="10" height="10">i</td>
+		  <td border="1" bgcolor="white" width="10" height="10">o</td>
+		  <td border="1" bgcolor="white" width="10" height="10">n</td>
+		  <td port="e" border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10">(</td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">,</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">v</td>
+		  <td border="1" bgcolor="white" width="10" height="10">)</td>
+		</tr>
+	      </table>
+		    >, xlabel="zio"];
+
+		buff[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>c
+		  <td border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10">u</td>
+		  <td border="1" bgcolor="white" width="10" height="10">n</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">t</td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		</tr>
+	      </table>
+		    >, xlabel="buff"];
+
+		current[shape=plain];
+
+		{rank=same; zio; current}
+
+		peripheries = 0;
+		
+		}
+
+		zio -> buff;
+		buff -> t;
+		current -> zio:i;
+	}
+#+end_src
+
+#+RESULTS:
+[[file:lexer-matching-process-1.png]]
+
+#+begin_src dot :file lexer-matching-process-2.png
+digraph {
+	rankdir = LR;
+
+	subgraph cluster_0 {
+		node[shape=box];
+
+		t[label="function", xlabel="t"];
+		lookahead[label="EOS", xlabel="lookahead"];
+
+		{rank=same; t; lookahead;}
+
+		peripheries = 0;
+		}
+
+	subgraph cluster_1 {
+		node[shape=box];
+		
+		zio[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="f" border="1" bgcolor="cyan3" width="10" height="10">f</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">u</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">c</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">t</td>
+		  <td port="i" border="1" bgcolor="cyan3" width="10" height="10">i</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">o</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td port="e" border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10">(</td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">,</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">v</td>
+		  <td border="1" bgcolor="white" width="10" height="10">)</td>
+		</tr>
+	      </table>
+		    >, xlabel="zio"];
+
+		buff[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>c
+		  <td border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10">u</td>
+		  <td border="1" bgcolor="white" width="10" height="10">n</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">t</td>
+		  <td border="1" bgcolor="white" width="10" height="10">i</td>
+		  <td border="1" bgcolor="white" width="10" height="10">o</td>
+		  <td border="1" bgcolor="white" width="10" height="10">n</td>
+		</tr>
+	      </table>
+		    >, xlabel="buff"];
+
+		current[shape=plain];
+
+		{rank=same; zio; current}
+
+		peripheries = 0;
+		
+		}
+
+		zio -> buff;
+		buff -> t;
+		current -> zio:e;
+	}
+#+end_src
+
+#+RESULTS:
+[[file:lexer-matching-process-2.png]]
+
+llex 的具体过程不再赘述，读者可以打开调试器，用一些代码示例来针对性的阅读。
+
+这里只略微提几个值得关注的点。
+
+*** keyword
+
+关键字的匹配过程，和 =<name>= 的匹配过程统一在一起。
+
+不过是在最终得到匹配结果时，通过 reserved 字段来判断，是否是关键字。
+之所以可以做到这一点是因为，所有 string 在全局表中都是唯一的，
+而且 =luaX_init= 已经提前设置了所有的关键字。
+
+#+caption: llex.c
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 422 :lines "422-437"
+
+这个巧妙的过程，意味着关键字的优先级高于标识符。
+
+定义与关键字同名的变量是不可能的，因为它会被辨别为是关键字，引发语法错误。
 
 #+begin_src lua
 local end = 1
 #+end_src
 
+*** number
+    :LOGBOOK:
+    - Note taken on [2021-01-06 三 15:04] \\
+      lua 中的 lex 过程在检测数字时，没有判断数字的 + - 值
+      而是将 + - 作为运算符对待，来应对
+      
+      #+begin_src lua
+      a = 1 --------- 1
+      a = 1 +++++++++ 1  -- 这种方式是错误的，因为 + 是完全的二元运算，而 - 可能表示负数的一元运算
+      #+end_src
+      
+      的情况
+      
+      在下面的规则可以发现
+      
+      ```
+      subexpr -> (simpleexp | unop subexpr) { binop subexpr }
+      ```
+    :END:
 
-实际实现中，并非所有都是借助 regex 的过程来实现的
+理想情况下，token 类型的识别在前，类型确定后，再来提取相应的内容。
 
-对数字的检测，正则检测并不完整
+但是对于 =<number>= 并不是这样来处理的。
 
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c :lines "193-208"
+#+caption: llex.c
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 193 :lines "193-208"
 
-比如匹配数字的 read numeral 方法，从 llex 到这里
+如果用 regex 来表示这个过程，则是 =[\.[:digit:]]+[Ee[+-]?]?[[:alnum:]_]*= ，
+这个模式并不能完全匹配数字。
 
-TODO 如果直接从 regex 的角度来看，模式是 =(.\d | \d)(. | \d)*[Ee[+-]]=??
+#+begin_src lua
+local i = .3.3.3
+#+end_src
 
-明显这不是正确的数字匹配模式， =10.3.3.3= 就可以匹配，但是并不是数字。
-关于这一步，lua 使用了 c lib 中的 strtod 来尝试进行转换，如果发生错误，则不是数字
+=.3.3.3= 可以匹配相应模式，但是并不是数字。
 
-有些取巧的做法
+庆幸的是 lua 依旧发现这个错误，
 
+#+begin_example
+malformed number near '.3.3.3'
+#+end_example
 
+lua 内部使用 =<stdlib.h>= 中的 strtod 来尝试进行 string 到 number 的转换。
+如果发生错误，则说明不是数字。
 
-lua 中有一种长字符串表示，但是同样存在一种变体， ~=~ 的数量要完全相同，才是正确的匹配
-长字符串的规则，同样可以扩充到长注释。
+#+caption: luaconf.h
+#+INCLUDE: ../lua-5.1.5/src/luaconf.h src c -n 525 :lines "525-526"
 
-这一点在阅读代码时要注意。
+看起来这并不合常规，因为 lua 只是粗略匹配了一段“像是 number”的内容，通过 strtod 来做最终判断，
+感觉有些取巧。
+
+*** long string
+
+lua 中可以用 =[[]]= 来表示长字符串，但是存在一种变体，比较少见，
+形式如 ~[===[ ]===]~ 也是长字符串， ~=~ 的数量要完全相同。
+
+长字符串的规则，加上 =--= 就可以扩充到长注释。
 
 #+begin_src lua
 local long_str = [[
 this is a long string.
 ]]
 
-local another_str = [==[
+local another_str = [===[
 another long string.
-]==]
+]===]
 
 --[[
 comment this line
@@ -181,139 +663,295 @@ comment this line
 ]====]
 #+end_src
 
+这一点在阅读代码时要注意。
 
+*** builtin
 
-lua 中的 lex 过程在检测数字时，没有判断数字的 + - 值
-而是将 + - 作为运算符对待，来应对
+=next, require= 等不是关键字，而是运行环境中提供的函数，它们的功能是在 VM 中实现的。
 
-```lua
-a = 1 --------- 1
-a = 1 +++++++++ 1  -- 这种方式是错误的，因为 + 是完全的二元运算，而 - 可能表示负数的一元运算
-```
+这一点在后续 api 章节会讲到。
 
-的情况
+** =luaX_lookahead=
 
-在下面的规则可以发现
+在语法分析的过程中，存在少数情况，需要下一个 token 来去除多个模式间的歧义。
 
-```
-subexpr -> (simpleexp | unop subexpr) { binop subexpr }
-```
+=luaX_lookahead= 就是在这个时候使用，
 
+#+caption: llex.c
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 459 :lines "459-463"
 
-require 不是关键字，而是 function name，而它的功能是在 vm 中实现的
-环境中提供了 require 方法
+过程很简单，使用 =llex= 方法，将 token 存储在 LexState.lookahead 中。
 
+#+begin_src dot :file lexer-lookahead.png
+digraph {
+	rankdir = LR;
 
+	subgraph cluster_0 {
+		node[shape=box];
 
-* DRAFT inside
+		t[label="function", xlabel="t"];
+		lookahead[label="f", xlabel="lookahead"];
 
-** lexstate
-   :LOGBOOK:
-   - Note taken on [2020-12-04 五 11:13] \\
-   ls 和 fs 及 f 的全局安排，图解
-   :END:
+		{rank=same; t; lookahead;}
 
-在 lex 的过程中，需要有相应的数据来记录匹配的过程和结果，这个数据结构就是 lexstate
+		peripheries = 0;
+		}
 
-这个结构在整个 front 过程是会经常出现，核心结构之一，所以清楚其概念是非常大的收益
+	subgraph cluster_1 {
+		node[shape=box];
+		
+		zio[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="f" border="1" bgcolor="cyan3" width="10" height="10">f</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">u</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">c</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">t</td>
+		  <td port="i" border="1" bgcolor="cyan3" width="10" height="10">i</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">o</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="pink" width="10" height="10">f</td>
+		  <td port="e" border="1" bgcolor="white" width="10" height="10">(</td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">,</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">v</td>
+		  <td border="1" bgcolor="white" width="10" height="10">)</td>
+		</tr>
+	      </table>
+		    >, xlabel="zio"];
 
-#+INCLUDE: ../lua-5.1.5/src/llex.h src c :lines "55-68"
+		buff[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>c
+		  <td border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		</tr>
+	      </table>
+		    >, xlabel="buff"];
 
-- current 当前 token 之后紧跟的字符
-- linenumber 行号
-- lastline 上一个 token 的行号
-- t 当前 token
-- lookahead 前瞻的 token
-- fs pointer
-- L pointer
-- z input stream pointer
-- buff pointer
-- source name
-- decpoint locale decimal point
+		current[shape=plain];
 
-#+CAPTION: lex state inside picture, with line number
+		{rank=same; zio; current}
 
-核心数据形式定义了，lex 的其余部分就是对数据的操作
+		peripheries = 0;
+		
+		}
 
-zio -> buffer -> token -->> lookahead
+		zio -> buff;
+		buff -> lookahead;
+		current -> zio:e;
+	}
+#+end_src
 
-它和 nil 一样，是一个 singleton 结构，只出现在 front 阶段，做好本职工作
-
-** =luaX_init=
-
-先提一下 init 过程，和之前 tstring 连接起来
-
-前面提到，其中有 reserved 字段，就在 lex 这里发挥作用。
-
-init 过程，对所有 token 类型新建了 tstring（存在于全局表），
-gc fix
-并将 reverved 设置为从 1 开始的偏移量，标识类型，再后面的
-name -> keyword 过程中发挥作用。
-
-从这里也看出，ts 不只用于对外，也在内部运作中产生重要作用
+#+RESULTS:
+[[file:lexer-lookahead.png]]
 
 ** =luaX_next=
 
-使用 llex 过程，得到 token 内容，并返回 token 类型
+=luaX_next= 和 =luaX_lookahead= 相同，不过是将 token 存储在 LexState.t 中。
 
-#+CAPTION: zio -> mbuffer -> token picture
+如果 lookahead 中存在 token，则直接拿过来使用，并重置 lookahead。
 
-语法分析中，有时候需要进行前瞻 lookahead，来进行下一步的运作
+#+caption: llex.c
+#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 448 :lines "448-457"
 
-lookahead 同样使用 llex，不过存储在 lookahead 中而不是 t
+#+begin_src dot :file lexer-next.png
+digraph {
+	rankdir = LR;
 
-在 next 中可以发现，如果存在 lookahead，则顺利交接
+	subgraph cluster_0 {
+		node[shape=box];
 
+		t[label="f", xlabel="t"];
+		lookahead[label="EOS", xlabel="lookahead"];
 
-同时也要注意，lookahead 内部的实现，说明无法进行连续的 lookahead 调用，这样会在 next 中丢失
+		{rank=same; t; lookahead;}
 
+		peripheries = 0;
+		}
 
-* DRAFT lexer program
+	subgraph cluster_1 {
+		node[shape=box];
+		
+		zio[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="f" border="1" bgcolor="cyan3" width="10" height="10">f</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">u</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">c</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">t</td>
+		  <td port="i" border="1" bgcolor="cyan3" width="10" height="10">i</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">o</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="pink" width="10" height="10">f</td>
+		  <td port="e" border="1" bgcolor="white" width="10" height="10">(</td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">,</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">v</td>
+		  <td border="1" bgcolor="white" width="10" height="10">)</td>
+		</tr>
+	      </table>
+		    >, xlabel="zio"];
 
-根据对 lex 模块的理解，可以利用其中的方法，做一个简单的 lexer 分析器。
+		buff[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>c
+		  <td border="1" bgcolor="white" width="10" height="10">f</td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		</tr>
+	      </table>
+		    >, xlabel="buff"];
 
-首先，它不是一个独立的程序，而是一段 gdb 脚本，可以在 lua 的运行时，进行 inspect。
-我们在 next 方法加上断点，每次触发的时候，就输出相应的 token
+		current[shape=plain];
 
-就可以完美的分析出词法过程。
+		{rank=same; zio; current}
 
-默认编译 lua 有
-- lua 解释器
-- luac 编译器
+		peripheries = 0;
+		
+		}
 
-这里并不需要相应代码的执行结果，所以使用 luac 就足够
-
-#+begin_src bash
-make -s lex
+		zio -> buff;
+		buff -> lookahead[style=invis];
+		lookahead -> t;
+		current -> zio:e;
+	}
 #+end_src
 
+#+RESULTS:
+[[file:lexer-next.png]]
 
-这种做法也有弱点，因为其包含了整个编译过程，所以是无法正常分析语法错误的代码的
-只能分析正常使用的代码。
+#+begin_src dot :file lexer-next-next.png
+digraph {
+	rankdir = LR;
 
-TODO 或许可以自己主动调用 next，这样就可以避免上面的约束？
+	subgraph cluster_0 {
+		node[shape=box];
 
+		t[label="(", xlabel="t"];
+		lookahead[label="EOS", xlabel="lookahead"];
 
-* DRAFT practice
+		{rank=same; t; lookahead;}
 
-llex.h.c rest
+		peripheries = 0;
+		}
 
-对 io 部分的抽象，建议阅读 zio.h.c
+	subgraph cluster_1 {
+		node[shape=box];
+		
+		zio[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="f" border="1" bgcolor="cyan3" width="10" height="10">f</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">u</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">c</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">t</td>
+		  <td port="i" border="1" bgcolor="cyan3" width="10" height="10">i</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">o</td>
+		  <td border="1" bgcolor="cyan3" width="10" height="10">n</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="pink" width="10" height="10">f</td>
+		  <td border="1" bgcolor="gold" width="10" height="10">(</td>
+		  <td port="e" border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">c</td>
+		  <td border="1" bgcolor="white" width="10" height="10">,</td>
+		  <td border="1" bgcolor="white" width="10" height="10"> </td>
+		  <td border="1" bgcolor="white" width="10" height="10">a</td>
+		  <td border="1" bgcolor="white" width="10" height="10">r</td>
+		  <td border="1" bgcolor="white" width="10" height="10">g</td>
+		  <td border="1" bgcolor="white" width="10" height="10">v</td>
+		  <td border="1" bgcolor="white" width="10" height="10">)</td>
+		</tr>
+	      </table>
+		    >, xlabel="zio"];
 
-- zio input stream
-- mbuffer mini buffer
+		buff[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>c
+		  <td border="1" bgcolor="white" width="10" height="10">(</td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		  <td border="1" bgcolor="white" width="10" height="10"></td>
+		</tr>
+	      </table>
+		    >, xlabel="buff"];
 
+		current[shape=plain];
 
-** more theory
+		{rank=same; zio; current}
 
-with materials
+		peripheries = 0;
+		
+		}
 
-regex
-DFA
-NFA
+		zio -> buff;
+		buff -> t;
+		current -> zio:e;
+	}
+#+end_src
 
-flex 原理
+#+RESULTS:
+[[file:lexer-next-next.png]]
 
-将 regex 表示为代码逻辑
+* a little lexer
 
+根据对 lex 模块的理解，可以做一个简单的 lexer 分析器。
 
+它不是一个独立的程序，而是一段 gdb 脚本，gdb 可以在 lua 在运行时进行 inspect。
+
+在 =luaX_next= 方法加上断点，每次触发的时候，就输出相应的 token，就可以实现一个简单的 lexer 工具。
+
+#+begin_src bash
+$ make -s lex source=./test/co.lua
+#+end_src
+
+这种做法有些许弱点，如果中途出现语法错误，过程就会中断，所以它只能分析语法分析正确的代码。
+
+* practice
+
+| 文件   | 建议                                                                                       |
+|--------+--------------------------------------------------------------------------------------------|
+| lzio.h | zio 模块中实现了 zio 和 mbuffer 结构，对字符流和 buffer 进行了封装，感兴趣的读者可仔细阅读 |
+| lzio.c | 同上                                                                                       |
+| llex.h | 仔细阅读                                                                                   |
+| llex.c | 浏览阅读，配合调试器会更轻松                                                               |
+
+* Footnotes
+
+[fn:1]: http://lua-users.org/lists/lua-l/2005-12/msg00091.html
