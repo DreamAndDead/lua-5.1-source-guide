@@ -3,192 +3,869 @@
 #+TITLE: opcode
 #+DATE: <2021-01-06 三 16:12>
 
-opcode 字节码，是编译阶段的最终结果，至此，front phase 的任务才算完成。
+按顺序，本章应该讲解 parser 相关的内容。
 
-类比为 c 编译为机器码二进制可执行文件的过程。
+之前提到，parser 模块将语法分析与代码生成揉合在一起，为了更容易理解 parser 的功能，
+先对最终生成的代码 opcode 做一些了解，到时就可以带着目的去阅读。
 
-剩下的就是 vm 运行 opcode 的过程。
+opcode 字节码，是编译阶段的最终结果。
+类比来看，C 编译为机器码，由机器执行；lua 编译为 opcode 由 vm 执行。
 
-* opcode
-  
-opcode 是定长的，4 bytes 32 bits，所以 Instruction 用 unsigned int 就足以表示
+可以说，opcode 是上层 lua 代码与 vm 的中间层，是语义的约定。
+本章关注 opcode 的表示方式及含义。
 
-#+INCLUDE: ../lua-5.1.5/src/llimits.h src c :lines "84-89"
+* format
 
-一条 opcode 分为 指令类型 和 指令参数 两大部分。
+所有 opcode 都是定长的，4 bytes 32 bits，单个指令用 unsigned int 表示。
 
-指令类型有 38 种，根据参数的安排方式，分为 3 种模式
+#+caption: llimits.h
+#+INCLUDE: ../lua-5.1.5/src/llimits.h src C -n 84 :lines "84-89"
 
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "31-32"
+指令内部可分为类型和参数两部分，根据参数的安排方式，所有指令可分为 3 类操作模式。
 
-- iABC，a b c 3 个参数
-- iABx，a bx 两个参数
-- iAsBx，a sbx 两个参数
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 31 :lines "31-32"
 
-A B C Bx 都是无符号数，只有 sBx 是有符号数
+- iABC，接受 A B C 三个参数
+- iABx，接受 A Bx 两个参数
+- iAsBx，接受 A sBx 两个参数
 
-#+CAPTION: opcode mem graph, pos and size, left to right, low to high
+A B C Bx 是无符号数，而 sBx 是有符号数（s 即 signed）。
 
-指令类型加上参数在 32 字节的空间中进行如下的划分
-- 指令类型始终是 6 字节，在最低位
-- A C B 为 8 9 9 字节，从低位到高位
-- Bx 将 B C 空间进行合并，这也是为什么顺序会有差异
-- sBx 和 Bx 的空间是相同的，不过代表了有符号数
+#+caption: opcode format
+#+begin_src dot :file opcode-format.png
+digraph {
+	format[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="white">iABC</td>
+		  <td border="1" colspan="9" bgcolor="white">B:9</td>
+		  <td border="1" colspan="9" bgcolor="white">C:9</td>
+		  <td border="1" colspan="8" bgcolor="white">A:8</td>
+		  <td border="1" colspan="6" bgcolor="white">Op:6</td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">iABx</td>
+		  <td border="1" colspan="18" bgcolor="white">Bx:18</td>
+		  <td border="1" colspan="8" bgcolor="white">A:8</td>
+		  <td border="1" colspan="6" bgcolor="white">Op:6</td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">iAsBx</td>
+		  <td border="1" colspan="18" bgcolor="white">sBx:18</td>
+		  <td border="1" colspan="8" bgcolor="white">A:8</td>
+		  <td border="1" colspan="6" bgcolor="white">Op:6</td>
+		</tr>
+	        <tr border="1">
+		  <td border="1" bgcolor="white"></td>
+		  <td border="1" bgcolor="white">31</td>
+		  <td border="1" bgcolor="white">30</td>
+		  <td border="1" bgcolor="white">29</td>
+		  <td border="1" bgcolor="white">28</td>
+		  <td border="1" bgcolor="white">27</td>
+		  <td border="1" bgcolor="white">26</td>
+		  <td border="1" bgcolor="white">25</td>
+		  <td border="1" bgcolor="white">24</td>
+		  <td border="1" bgcolor="white">23</td>
+		  <td border="1" bgcolor="white">22</td>
+		  <td border="1" bgcolor="white">21</td>
+		  <td border="1" bgcolor="white">20</td>
+		  <td border="1" bgcolor="white">19</td>
+		  <td border="1" bgcolor="white">18</td>
+		  <td border="1" bgcolor="white">17</td>
+		  <td border="1" bgcolor="white">16</td>
+		  <td border="1" bgcolor="white">15</td>
+		  <td border="1" bgcolor="white">14</td>
+		  <td border="1" bgcolor="white">13</td>
+		  <td border="1" bgcolor="white">12</td>
+		  <td border="1" bgcolor="white">11</td>
+		  <td border="1" bgcolor="white">10</td>
+		  <td border="1" bgcolor="white">9</td>
+		  <td border="1" bgcolor="white">8</td>
+		  <td border="1" bgcolor="white">7</td>
+		  <td border="1" bgcolor="white">6</td>
+		  <td border="1" bgcolor="white">5</td>
+		  <td border="1" bgcolor="white">4</td>
+		  <td border="1" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">0</td>
+		</tr>
+	      </table>
+	       >, shape=none]
+}
+#+end_src
 
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "34-49"
+#+RESULTS:
+[[file:opcode-format.png]]
+
+三种类型的指令在 32 bits 的空间中进行如下的划分
+- Op 表示指令类型，占据 6 bits，在最低位
+- A C B 分别占据 8 9 9 bits，从低位到高位排列
+- Bx 占据 B C 两者的空间
+- sBx 和 Bx 占据的空间相同，不过解析为有符号数
+
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src C -n 34 :lines "34-49"
 
 * param
 
-指令类型占据 6 字节，理论上，全部利用，可以有 64 种指令
-现在只利用了其中的 38 个位置，还有很大的扩展空间
+A C B 的长度分别是 8 9 9 bits，都解析为无符号数。
+Bx 占据 18 位，解析为无符号数。
+sBx 和 Bx 占据同一空间，但是解析为有符号数。
 
+不同参数表示不同的范围。
 
-A B C 分别是 8 9 9 空间，且都是无符号数，理论上，3 个参数各自的范围为
+| param | len(bits) | range                   |
+|-------+-----------+-------------------------|
+| A     |         8 | 0 -> 2^8 - 1            |
+| C     |         9 | 0 -> 2^9 - 1            |
+| B     |         9 | 0 -> 2^9 - 1            |
+| Bx    |        18 | 0 -> 2^18 - 1           |
+| sBx   |        18 | -(2^17 - 1) -> 2^17 - 1 |
 
-0 -> 2^8 2^9 2^9 - 1
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 65 :lines "65-68"
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 57 :lines "57-59"
 
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "65-68"
+lua 并不用反码补码的逻辑来理解 sBx，而只是将同样字节表示的 Bx 减去 offset 得到 sBx。
 
-Bx 占据 18 位，理论上大小为 0 ->
+#+caption: Bx offset sBx
+#+begin_src dot :file opcode-Bx-sBx.png
+digraph {
+	map[shape=record, label="
+	   { bits | 0000 0..0 0000 | 0000 0..0 0001 | ............. | 0111 1..1 1111 | ............. | 1111 1..1 1110 | 1111 1..1 1111 } |
+	   { Bx   | 0         | 1         | ............. | offset    | ............. | 2 * offset| MAXARG_Bx } |
+	   { offset = MAXARG_sBx = 0111 1..1 1111 } |
+	   { sBx  | -offset   | -offset+1 | ............. | 0         | ............. | offset    | xxxxxxxx }
+	   "];
+}
+#+end_src
 
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "57-59"
+#+RESULTS:
+[[file:opcode-Bx-sBx.png]]
 
-sBx 和 Bx 占据同一空间，但是要解释为无符号数
+offset 就是 sBx 的最大值，所以 =1111 1..1 1111= 对于 sBx 是没有意义的。
 
-lua 不是通过将高位理解为符号位这种传统方式，而只是将 Bx - offset = sBx
-建立了两者的对应关系，这个 offset 值，就是 sBx 的最大值
+* kind
 
-从位的角度来看，相同的位，解析为两者是不同的含义
+指令类型共有 38 种，用 enum OpCode 标识，
 
-#+begin_example
-offset    011111111
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 146 :lines "146-212"
 
-Bx        0                 011111111             1111111110     1111111111
-
-sBx       -max              0                     max            -
-#+end_example
-
-* meta
-   :LOGBOOK:
-   - Note taken on [2020-12-07 一 11:55] \\
-   至于如此安排的原因，之后再补充
-   :END:
-
-除了定义指令的类型，也对指令整体描述进行了记录。
-
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "59-102"
-
-顺序和 op 类型的顺序是相同的。
-
-其中 opmode 使用一个 byte 8 bits 来记录 opcode 的相关信息
-- T 是否是 test 指令
-- A 是否修改了 R(A)
-- B C ，B C 参数的使用方式
-  - 未使用
-  - 使用
-  - 是 R 或者 jump offset
-  - 是常量 或者 RK
-- mode，iABC 等 3 种的哪一种
-
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "236-251"
-
-
-所以下面的几个 macro 意义也就非常清晰
-- getOpMode
-- getBMode
-- getCMode
-- testAMode R(A) 是否修改
-- testTMode 是否为 test 指令
-
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
+注释描述了相应类型的指令所接受的参数和功能。
 
 * model
-  :LOGBOOK:
-  - Note taken on [2020-12-07 一 11:36] \\
-  gbl table 和 env 和关系？
-  :END:
 
-opcode 本身只是 01 编码而已，至于其代表什么样的含义，是 vm 来定义的。
+想要了解指令具体的功能，就需要提前对 vm 的执行模型有一些了解。
 
-编译器只是将有相同的语义的源代码转换成 vm 认识的相同语义的 opcode。
+#+caption: vm model
+#+begin_src dot :file opcode-model.png
+digraph {
+	code[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">pc 1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-具体理解 opcode 就要对 vm 的运作模型有一些简单的了解。
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-粗略而言，和机器运作是类似的
+	k[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-指令逐个运行，pc 表明当前执行指令的位置
+	gbl[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="white">                 </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-其中有 寄存器，用来存取数据
-不通过 eax 这样的名称来索引，而将其视作数组，通过数字来索引，可读写
-其实 寄存器和栈是一体的。从 base 开始从 0 取值。
+	upval[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-k 表 常量表 是独有的，其中存储了一些出现的常量，比如数字和字符串，通过数字来索引，只读
-其中的值是在语法分析过程中收集的数值，全部收集在一起，方便使用
+	subgraph cluster_0 {
+		code;
+		label="Code";
+	}
+	subgraph cluster_1 {
+		stack;
+		label="Stack";
+	}
+	subgraph cluster_2 {
+		k;
+		label="Kst";
+	}
+	subgraph cluster_3 {
+		gbl;
+		label="Gbl";
+	}
+	subgraph cluster_4 {
+		upval;
+		label="UpValue";
+	}
 
+	
+}
+#+end_src
 
-除此之外，还有 global 表和 upval 表，可读写
-- gbl，索引为任意值
-- upval，索引只是数字
+#+RESULTS:
+[[file:opcode-model.png]]
 
-#+CAPTION: simple vm model with pc, k, glb, upval etc.
+vm 为编程语言提供了更大的灵活性，原因就在于这个虚拟的机器内部可以自由构造，而不用面对一成不变的 x86 架构。
 
-lua 的 opcode 正是根据上面的模型来设计的。
+不管 vm 如何设计，目的都是执行 opcode，实现其描述的语义。
+lua 实现的 vm 主要由图中的几个部分构成。
 
-至于具体的来源，作用，过程，实现，之后再详细解释。
+** Code & pc
 
+vm 在执行时，必须要有执行的蓝图，即输入的字节码。
+
+Code 就表示 vm 要执行的字节码，在内部以指令数组的形式来存储。
+
+pc 的概念都不陌生，用于索引当前正在执行的指令。
+
+** Stack
+
+Stack 时刻记录着 vm 执行指令时的状态。
+
+lua 中的 vm 比较特殊，存在寄存器的概念，但是将寄存器的存储区域放在栈中（准确地说是栈底）。
+
+** Kst
+
+这是一个辅助结构，用于记录 lua 代码中出现的常量，在指令中通过 kst 中的索引来使用这些常量。
+
+** Gbl
+
+Gbl 是全局表，以 table 结构来实现，对应 lua 语言中“全局”的概念，比如全局变量，就存储在这里。
+
+** UpValue
+
+记录闭包引用的上值，之后再详细解释。
+   
 * meaning
 
-opcode 有 38 种，用 enum 表示
+对应 vm 模型的粗略了解，下面来看指令后的功能描述表达了什么含义。
 
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "146-212"
+=R(A)= 表示索引为 A 的寄存器，因为寄存器存储在栈中，所以 =R(A)= 直接索引栈中的空间。
 
-相对应的名称
+寄存器是可读写的，如果出现在赋值左边，表示寄存器的位置；出现在赋值右边，表示使用相应位置的值。
 
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.c src c :lines "14-57"
+#+begin_src dot :file opcode-model-r.png
+digraph {
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">      R(1)       </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">      R(0)       </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-其中每个类型之后，都附加了相应的参数类型和功能描述。
-其中用到了一些缩写，就是上面描述的 model 部分。
+	subgraph cluster_1 {
+		stack;
+		label="Stack";
+	}
+}
+#+end_src
 
-#+begin_example
-R(A) 表示 索引为 数字 A 的寄存器，根据左值和右值的不同，认为是位置/值
-Kst(Bx) 表示 索引为 数字 Bx，从 k 表中取值（因为只读）
-RK(B) 表示 根据 B 值的不同，索引 寄存器或者 K 表，用于只读
+#+RESULTS:
+[[file:opcode-model-r.png]]
 
-Gbl 全局表
-upval up 表
-#+end_example
+=Kst(Bx)= 表示索引为 Bx 的常量，从 kst 表中取值。
 
-RK 的理解，就要再来看 A B C 三个参数，分别为 8 9 9 长度。
+常量表在执行时是只读的。
 
-在整体设计中，A 不用于 RK，B C 是有可能的。
+#+begin_src dot :file opcode-model-kst.png
+digraph {
+	k[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">      Kst(1)     </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">      Kst(0)     </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-所以将高位 9 0/1 用于辨别当前代表的是 R 还是 K。
+	subgraph cluster_2 {
+		k;
+		label="Kst";
+	}
+}
+#+end_src
 
-#+begin_example
-0xxxxxxxx R
+#+RESULTS:
+[[file:opcode-model-kst.png]]
 
-1xxxxxxxx K
-#+end_example
+=RK(B)= 根据 B 的大小，用于索引寄存器/常量，只用于只读。
 
-所以除去高位之后，B C 的实际长度也就是 8 bit 长度。
+#+begin_src dot :file opcode-model-rk.png
+digraph {
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">      RK(1)      </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">      RK(0)      </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-这也就是 ISK 的含义
+	k[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">     RK(257)   </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">     RK(256)   </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "114-131"
+	subgraph cluster_1 {
+		stack;
+		label="Stack";
+	}
+	subgraph cluster_2 {
+		k;
+		label="Kst";
+	}
+}
+#+end_src
+
+#+RESULTS:
+[[file:opcode-model-rk.png]]
+
+这里和之前参数空间的长度安排巧妙地联系在一起。
+
+A B C 三个参数，长度分别为 8 9 9 bits。
+在 opcode 的整体设计中，没有 RK(A)，只有 RK(B) RK(C)。
+
+所以使用 B C 中比 A 多出的 1 个高位 bit，用于辨别 RK 表示的是 R 还是 K。
+
+| R/K |      bits | range      |
+|-----+-----------+------------|
+| R   | 0........ | 0 -> 255   |
+| K   | 1........ | 256 -> 511 |
+
+这样，相应的宏也就不难理解。
+
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 114 :lines "114-131"
+
+=Gbl= 是全局表，Stack 和 Kst 都以数组来实现，所以只需要整数索引，而 Gbl 是真正的表，
+用 table 来实现，这意味着索引可以是除 nil 外的任意值。
+所以在索引使用 Gbl 时，通常使用间接的方式。
+
+#+begin_src dot :file opcode-model-gbl.png
+digraph {
+	k[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td port="k" border="1" bgcolor="white">      Kst(0)      </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	gbl[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="white">                 </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td port="k" border="1" bgcolor="white">  Kst(0)  </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	subgraph cluster_2 {
+		k;
+		label="Kst";
+	}
+	subgraph cluster_3 {
+		gbl;
+		label="Gbl";
+	}
+
+	k:k -> gbl:k;
+}
+#+end_src
+
+#+RESULTS:
+[[file:opcode-model-gbl.png]]
 
 
+=UpValue= 表和 Kst 类似，以数组表示，用整数索引，但是可读写。
 
-* model
+#+begin_src dot :file opcode-model-upval.png
+digraph {
+	upval[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">    UpValue(1)   </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">    UpValue(0)   </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-sktid is tvalue!
+	subgraph cluster_4 {
+		upval;
+		label="UpValue";
+	}
 
+	
+}
+#+end_src
+
+#+RESULTS:
+[[file:opcode-model-upval.png]]
+
+有了上面符号的理解，读者应该能读懂大部分指令所表达的功能。
+
+本质上，vm 的运行过程就是不断的执行指令，操作不同区域的数据的过程。
+
+下面列几个简单示例。
 
 ** move
 
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 154 :lines "154-155"
+
+move 很容易理解，直接进行寄存器间的赋值。
+
+#+begin_src dot :file opcode-model-move.png
+digraph {
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">      "a"       </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">      10       </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	subgraph cluster_1 {
+		stack;
+		label="Stack";
+	}
+	stack2[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td port="b" border="1" bgcolor="white">      "a"       </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td port="a" border="1" bgcolor="white">      "a"       </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	subgraph cluster_2 {
+		stack2;
+		label="Stack";
+	}
+
+	stack2:b:e -> stack2:a:e;
+	
+	label="move 0 1";
+}
+#+end_src
+
+#+RESULTS:
+[[file:opcode-model-move.png]]
+
+** getglobal
+
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 160 :lines "160-161"
+
+Gbl 因为不使用整数索引，所以在引用其中元素时，需要 Kst 作间接的引用。
+
+#+begin_src dot :file opcode-model-getglobal.png
+digraph {
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">            </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td port="a" border="1" bgcolor="white">               </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	subgraph cluster_1 {
+		stack;
+		label="Stack";
+	}
+	
+	k[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td port="k" border="1" bgcolor="white">    "a"    </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	gbl[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="white">                 </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td port="k" border="1" bgcolor="white">    "a"    </td>
+		  <td port="v" border="1" bgcolor="white">      10       </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	subgraph cluster_2 {
+		k;
+		label="Kst";
+	}
+	subgraph cluster_3 {
+		gbl;
+		label="Gbl";
+	}
+
+	k:k -> gbl:k;
+	gbl:v -> stack:a:e;
+
+	label="getglobal 0 1";
+}
+#+end_src
+
+#+RESULTS:
+[[file:opcode-model-getglobal.png]]
+
+** add
+
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 171 :lines "171-172"
+
+add 是二元运算，其中使用 RK 来引用。
+
+#+begin_src dot :file opcode-model-add.png
+digraph {
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td port="b" border="1" bgcolor="white">     10     </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td port="a" border="1" bgcolor="white">     30     </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	k[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">      </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td port="c" border="1" bgcolor="white">   20    </td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	subgraph cluster_1 {
+		stack;
+		label="Stack";
+	}
+	subgraph cluster_2 {
+		k;
+		label="Kst";
+	}
+
+	sum[label="30",shape=box];
+
+	stack:b -> sum;
+	k:c -> sum;
+
+	sum -> stack:a;
+
+	label="add 0 1 256";
+}
+#+end_src
+
+#+RESULTS:
+[[file:opcode-model-add.png]]
+
+** more
+
+ChunkSpy 的作者对于 opcode 有更深刻的理解，在其发布 ChunkSpy 程序的时候，也附带了描述 opcode 的文档[fn:1]，
+推荐读者详细阅读。
+
+* meta
+
+opcode 模块除了定义指令的类型和格式，同时也记录了指令的其它信息，用于辅助代码生成。
+
+#+caption: lopcodes.c
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.c src C -n 59 :lines "59-102"
+
+这些信息用 1 byte 8 bits 来记录，其中
+- T，表示指令是否有 test 操作
+- A，表示是否修改了 R(A)
+- mode，表示指令属于 iABC/iABx/iAsBx 的哪一种
+- B C，表示 B C 参数的使用方式
+  - OpArgN，未使用
+  - OpArgU，使用
+  - OpArgR，作为寄存器索引/跳转偏移量
+  - OpArgK，作为常量索引/RK索引
+
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c 236 :lines "236-251"
+
+相应地，相关的宏就不难理解。
+
+#+caption: lopcodes.h
+#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
 
 * practice
 
-关于 opcode 的 macro 操作
+| 文件       | 建议     |
+|------------+----------|
+| lopcodes.h | 仔细阅读 |
+| lopcodes.c | 仔细阅读 |
 
-未介绍的 opcode
+* Footnotes
 
+[fn:1]: [[file:a no frills introduction to lua 5.1 vm instructions.pdf]]

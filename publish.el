@@ -26,7 +26,7 @@
          :recursive t
 	 )
 	("assets"
-         :base-extension "css\\|png\\|jpg\\|ico"
+         :base-extension "css\\|png\\|jpg\\|ico\\|pdf"
          :base-directory "book/"
          :publishing-directory "docs/"
          :publishing-function org-publish-attachment

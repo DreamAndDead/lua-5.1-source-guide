@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2021-01-07 四 15:47 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>parser</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="DreamAndDead">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="htmlize.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">parser</h1>
+<p>
+前面提到，lua 为了效率，将 token -&gt; bytecode 压缩到了一个过程中
+没有 ast ir 等中间产物，直接从 token 到 opcode。
+</p>
+
+<p>
+相对应的，这部分代码就相对难以理解。
+</p>
+
+<p>
+虽然代码实现没有明显的划分，在理解上，先找出不同步骤的影子，最后再联系在一起。
+</p>
+
+<p>
+过程综合在一起，但是从语法分析作为入口开始分析的。
+语法制导翻译的过程。
+</p>
+
+<p>
+本章
+</p>
+<ul class="org-ul">
+<li>语法分析过程</li>
+<li>debug 方法</li>
+</ul>
+
+
+<p>
+同时使用流式的处理方式，如果使用多趟式的处理过程，则需要一次完整的遍历
+token 数组，交给 parser
+</p>
+
+<p>
+lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
+核心使用的便是 lexstate
+</p>
+
+<p>
+lua 中的 parse 过程使用 lazy 加载 token 的方式
+按需加载 token
+</p>
+
+
+<p>
+相应代码不是那么容易阅读
+需要一些编译原理的了解
+</p>
+
+
+
+<div id="outline-container-org6f15ff9" class="outline-2">
+<h2 id="org6f15ff9"><span class="section-number-2">1</span> lang of lang</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+官方文档使用上下文无关文法来描述 lua 语言。
+</p>
+
+<p>
+<a href="http://www.lua.org/manual/5.1/manual.html#8">http://www.lua.org/manual/5.1/manual.html#8</a>
+</p>
+
+<p>
+根据实际代码中的相关注释，代码的实现过程，做了一些修改，整理 EBNF 如下。
+</p>
+
+<pre class="example" id="orge159207">
+{ a } 表示 a*，0 个或多个
+[ a ] 表示 a?，0 个或一个
+( a ) 表示组
+  |   表示或
+
+终结符：大写单词，`单字符' 是 lex 阶段生成的 token
+非终结符：小写单词，以 chunk 为入口
+</pre>
+
+
+<div class="org-src-container">
+<pre class="src src-bnf">chunk        <span class="org-constant">::=</span> { stat [ `<span class="org-comment">;' ] }</span>
+
+stat         <span class="org-constant">::=</span> ifstat <span class="org-warning">|</span> whilestat <span class="org-warning">|</span> dostat <span class="org-warning">|</span> forstat <span class="org-warning">|</span> repeatstat <span class="org-warning">|</span>
+                   funcstat <span class="org-warning">|</span> localstat <span class="org-warning">|</span> retstat <span class="org-warning">|</span> breakstat <span class="org-warning">|</span> exprstat
+
+ifstat       <span class="org-constant">::=</span> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+cond         <span class="org-constant">::=</span> expr
+block        <span class="org-constant">::=</span> chunk
+
+whilestat    <span class="org-constant">::=</span> WHILE cond DO block END
+
+dostat       <span class="org-constant">::=</span> DO block END
+
+forstat      <span class="org-constant">::=</span> FOR (fornum <span class="org-warning">|</span> forlist) END
+fornum       <span class="org-constant">::=</span> NAME = expr `,' expr [`,' expr] forbody
+forlist      <span class="org-constant">::=</span> NAME {`,' NAME} IN explist forbody
+forbody      <span class="org-constant">::=</span> DO block
+
+repeatstat   <span class="org-constant">::=</span> REPEAT block UNTIL cond
+
+funcstat     <span class="org-constant">::=</span> FUNCTION funcname body
+funcname     <span class="org-constant">::=</span> NAME {`.' NAME} [`:' NAME]
+body         <span class="org-constant">::=</span> `(' parlist `)' chunk END
+parlist      <span class="org-constant">::=</span> [ DOTS <span class="org-warning">|</span> NAME {`,' NAME} [`,' DOTS] ]
+
+localstat    <span class="org-constant">::=</span> LOCAL FUNCTION NAME body <span class="org-warning">|</span> LOCAL NAME {`,' NAME} [`=' explist]
+
+retstat      <span class="org-constant">::=</span> RETURN [explist]
+
+breakstat    <span class="org-constant">::=</span> BREAK
+
+exprstat     <span class="org-constant">::=</span> assignstat <span class="org-warning">|</span> funccallstat
+
+assignstat   <span class="org-constant">::=</span> (prefixexp <span class="org-warning">|</span> primaryexp (`.' NAME <span class="org-warning">|</span> `[' expr `]')) assignment
+assignment   <span class="org-constant">::=</span> `,' assignstat <span class="org-warning">|</span> `=' explist
+
+primaryexp   <span class="org-constant">::=</span> prefixexp {`.' NAME <span class="org-warning">|</span> `[' expr `]' <span class="org-warning">|</span> `:' NAME funcargs <span class="org-warning">|</span> funcargs}
+prefixexp    <span class="org-constant">::=</span> NAME <span class="org-warning">|</span> `(' expr `)'
+
+funccallstat <span class="org-constant">::=</span> prefixexp primaryexp (`:' NAME funcargs <span class="org-warning">|</span> funcargs)
+funcargs     <span class="org-constant">::=</span> `(' [ explist ] `)' <span class="org-warning">|</span> constructor <span class="org-warning">|</span> STRING
+
+explist      <span class="org-constant">::=</span> expr {`,' expr}
+expr         <span class="org-constant">::=</span> subexpr
+subexpr      <span class="org-constant">::=</span> (simpleexp <span class="org-warning">|</span> unop subexpr) {binop subexpr}
+
+simpleexp    <span class="org-constant">::=</span> NUMBER <span class="org-warning">|</span> STRING <span class="org-warning">|</span> NIL <span class="org-warning">|</span> TRUE <span class="org-warning">|</span> FALSE <span class="org-warning">|</span> DOTS <span class="org-warning">|</span>
+                 constructor <span class="org-warning">|</span> FUNCTION body <span class="org-warning">|</span> primaryexp
+
+binop        <span class="org-constant">::=</span> `+&#180; <span class="org-warning">|</span> `-&#180; <span class="org-warning">|</span> `*&#180; <span class="org-warning">|</span> `/&#180; <span class="org-warning">|</span> `^&#180; <span class="org-warning">|</span> `%&#180; <span class="org-warning">|</span> CONCAT <span class="org-warning">|</span> 
+                 `&lt;&#180; <span class="org-warning">|</span> LE <span class="org-warning">|</span> `&gt;&#180; <span class="org-warning">|</span> GE <span class="org-warning">|</span> EQ <span class="org-warning">|</span> NE <span class="org-warning">|</span> AND <span class="org-warning">|</span> OR
+unop         <span class="org-constant">::=</span> `-&#180; <span class="org-warning">|</span> NOT <span class="org-warning">|</span> `#&#180;
+
+constructor  <span class="org-constant">::=</span> `{' [fieldlist] `}'
+fieldlist    <span class="org-constant">::=</span> field {fieldsep field} [fieldsep]
+field        <span class="org-constant">::=</span> `[' expr `]' `=' expr <span class="org-warning">|</span> NAME `=' expr <span class="org-warning">|</span> expr
+fieldsep     <span class="org-constant">::=</span> `,' <span class="org-warning">|</span> `<span class="org-comment">;'</span>
+</pre>
+</div>
+
+<p>
+值得注意的是，和 lex 过程中的 RE 一样，没有正确表示 number ，而在 RE 之外进行了判断
+ENBF 语法也存在这样的问题。
+</p>
+
+<p>
+没有在语言描述层面对运算符优先级进行限定，而在 subexpr 过程中隐式实现。
+</p>
+
+<p>
+break 语句位置并不随意，只能在 loop block 中
+</p>
+</div>
+</div>
+
+<div id="outline-container-org6165016" class="outline-2">
+<h2 id="org6165016"><span class="section-number-2">2</span> 递归下降</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+语法分析层面，整体使用递归下降过程。
+</p>
+
+<p>
+每个非终结符都用一个同名函数来实现（有部分例外），
+在整体运行过程中，函数之间的流程，就像是隐式的 ast 的遍历过程。
+</p>
+
+<p>
+所有 opcode 的生成过程，就隐藏在这一个个函数中。
+</p>
+
+<p>
+整体来看，
+</p>
+<ul class="org-ul">
+<li>以 chunk 为入口</li>
+<li>分为多个 stat</li>
+<li>每个 stat 有独立的结构</li>
+<li>expr 是重要的组成部分</li>
+</ul>
+
+<p>
+像一棵树形结构，从上至下。
+</p>
+
+<p>
+分析过程，最好以 stat 为单位。
+</p>
+
+<p>
+每个 stat 进行独立的分析。
+</p>
+
+<p>
+最终再整合为宏观的理解。
+</p>
+</div>
+
+
+
+<div id="outline-container-org21ec97a" class="outline-3">
+<h3 id="org21ec97a"><span class="section-number-3">2.1</span> inspect with tool</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+luaY parser 是整体的入口
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c">
+</pre>
+</div>
+
+<p>
+其中从 chunk 入口，递归完成整体分析
+</p>
+
+<p>
+break at chunk
+</p>
+
+<p>
+观察源代码
+</p>
+
+<p>
+观察 token
+</p>
+
+<p>
+n/s 观察代码的走向，只关注语法分析的过程
+</p>
+
+<p>
+e.g. localstat
+</p>
+
+
+<p>
+print *ls py extension
+</p>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orgdf70c5f" class="outline-2">
+<h2 id="orgdf70c5f"><span class="section-number-2">3</span> practice</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+尝试随意的代码，在 chunk 处打上断点
+n/s 观察代码的走向
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+
+<p>Updated: 2021-01-07 四 15:47</p>
+<p>Created: 2021-01-07 四 15:46</p>
+<p>Author: DreamAndDead</p>
+<p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+</div>
+</body>
+</html>

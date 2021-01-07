@@ -1,6 +1,7 @@
 #+SETUPFILE: setup.org
 
-* DRAFT parser
+#+TITLE: parser
+#+DATE: <2021-01-07 四 15:46>
 
 前面提到，lua 为了效率，将 token -> bytecode 压缩到了一个过程中
 没有 ast ir 等中间产物，直接从 token 到 opcode。
@@ -35,11 +36,11 @@ lua 中的 parse 过程使用 lazy 加载 token 的方式
 
 
 
-** lang of lang
-   :LOGBOOK:
-   - Note taken on [2020-12-09 三 09:19] \\
-     chunk vs block?
-   :END:
+* lang of lang
+  :LOGBOOK:
+  - Note taken on [2020-12-09 三 09:19] \\
+  chunk vs block?
+  :END:
 
 
 官方文档使用上下文无关文法来描述 lua 语言。
@@ -126,7 +127,7 @@ ENBF 语法也存在这样的问题。
 
 break 语句位置并不随意，只能在 loop block 中
 
-** 递归下降
+* 递归下降
 
 语法分析层面，整体使用递归下降过程。
 
@@ -151,7 +152,7 @@ break 语句位置并不随意，只能在 loop block 中
 
 
 
-*** TODO inspect with tool
+** inspect with tool
 
 luaY parser 是整体的入口
 
@@ -173,7 +174,7 @@ luaY parser 是整体的入口
  print *ls py extension
 
 
-** practice
+* practice
 
 尝试随意的代码，在 chunk 处打上断点
 n/s 观察代码的走向
