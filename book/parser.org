@@ -34,14 +34,7 @@ lua 中的 parse 过程使用 lazy 加载 token 的方式
 相应代码不是那么容易阅读
 需要一些编译原理的了解
 
-
-
 * lang of lang
-  :LOGBOOK:
-  - Note taken on [2020-12-09 三 09:19] \\
-  chunk vs block?
-  :END:
-
 
 官方文档使用上下文无关文法来描述 lua 语言。
 
@@ -152,11 +145,12 @@ break 语句位置并不随意，只能在 loop block 中
 
 
 
-** inspect with tool
+* inspect with tool
 
 luaY parser 是整体的入口
 
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "383-399"
+#+caption: lparser.c
+#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 383 :lines "383-399"
 
 其中从 chunk 入口，递归完成整体分析
 
@@ -178,5 +172,4 @@ luaY parser 是整体的入口
 
 尝试随意的代码，在 chunk 处打上断点
 n/s 观察代码的走向
-
 

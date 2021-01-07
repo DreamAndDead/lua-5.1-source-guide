@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-07 四 15:47 -->
+<!-- 2021-01-07 四 15:57 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>parser</title>
@@ -267,8 +267,6 @@ lua 中的 parse 过程使用 lazy 加载 token 的方式
 需要一些编译原理的了解
 </p>
 
-
-
 <div id="outline-container-org6f15ff9" class="outline-2">
 <h2 id="org6f15ff9"><span class="section-number-2">1</span> lang of lang</h2>
 <div class="outline-text-2" id="text-1">
@@ -284,7 +282,7 @@ lua 中的 parse 过程使用 lazy 加载 token 的方式
 根据实际代码中的相关注释，代码的实现过程，做了一些修改，整理 EBNF 如下。
 </p>
 
-<pre class="example" id="orge159207">
+<pre class="example" id="org7e858f5">
 { a } 表示 a*，0 个或多个
 [ a ] 表示 a?，0 个或一个
 ( a ) 表示组
@@ -413,18 +411,34 @@ break 语句位置并不随意，只能在 loop block 中
 最终再整合为宏观的理解。
 </p>
 </div>
+</div>
 
 
 
-<div id="outline-container-org21ec97a" class="outline-3">
-<h3 id="org21ec97a"><span class="section-number-3">2.1</span> inspect with tool</h3>
-<div class="outline-text-3" id="text-2-1">
+<div id="outline-container-org21ec97a" class="outline-2">
+<h2 id="org21ec97a"><span class="section-number-2">3</span> inspect with tool</h2>
+<div class="outline-text-2" id="text-3">
 <p>
 luaY parser 是整体的入口
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>lparser.c</label><pre class="src src-c"><span class="linenr">383: </span><span class="org-type">Proto</span> *<span class="org-function-name">luaY_parser</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">ZIO</span> *<span class="org-variable-name">z</span>, <span class="org-type">Mbuffer</span> *<span class="org-variable-name">buff</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>) {
+<span class="linenr">384: </span>  <span class="org-keyword">struct</span> <span class="org-type">LexState</span> <span class="org-variable-name">lexstate</span>;
+<span class="linenr">385: </span>  <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> <span class="org-variable-name">funcstate</span>;
+<span class="linenr">386: </span>  lexstate.buff = buff;
+<span class="linenr">387: </span>  luaX_setinput(L, &amp;lexstate, z, luaS_new(L, name));
+<span class="linenr">388: </span>  open_func(&amp;lexstate, &amp;funcstate);
+<span class="linenr">389: </span>  funcstate.f-&gt;is_vararg = VARARG_ISVARARG;  <span class="org-comment-delimiter">/* </span><span class="org-comment">main func. is always vararg</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">390: </span>  luaX_next(&amp;lexstate);  <span class="org-comment-delimiter">/* </span><span class="org-comment">read first token</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">391: </span>  chunk(&amp;lexstate);
+<span class="linenr">392: </span>  check(&amp;lexstate, TK_EOS);
+<span class="linenr">393: </span>  close_func(&amp;lexstate);
+<span class="linenr">394: </span>  lua_assert(funcstate.prev == <span class="org-constant">NULL</span>);
+<span class="linenr">395: </span>  lua_assert(funcstate.f-&gt;nups == 0);
+<span class="linenr">396: </span>  lua_assert(lexstate.fs == <span class="org-constant">NULL</span>);
+<span class="linenr">397: </span>  <span class="org-keyword">return</span> funcstate.f;
+<span class="linenr">398: </span>}
 </pre>
 </div>
 
@@ -458,12 +472,11 @@ print *ls py extension
 </p>
 </div>
 </div>
-</div>
 
 
 <div id="outline-container-orgdf70c5f" class="outline-2">
-<h2 id="orgdf70c5f"><span class="section-number-2">3</span> practice</h2>
-<div class="outline-text-2" id="text-3">
+<h2 id="orgdf70c5f"><span class="section-number-2">4</span> practice</h2>
+<div class="outline-text-2" id="text-4">
 <p>
 尝试随意的代码，在 chunk 处打上断点
 n/s 观察代码的走向
@@ -473,7 +486,7 @@ n/s 观察代码的走向
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-07 四 15:47</p>
+<p>Updated: 2021-01-07 四 15:57</p>
 <p>Created: 2021-01-07 四 15:46</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

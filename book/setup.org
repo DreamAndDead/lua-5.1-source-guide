@@ -17,6 +17,7 @@
 #+LATEX_CLASS_OPTIONS: [a4paper]
 
 #+HTML_DOCTYPE: html5
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="htmlize.css">
+#+HTML_HEAD: <link id="theme" rel="stylesheet" type="text/css" href="htmlize.css">
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="style.css">
+#+HTML_HEAD: <script type="text/javascript" src="main.js"></script>
 
