@@ -3,55 +3,55 @@
 #+TITLE: parser
 #+DATE: <2021-01-07 四 15:46>
 
-前面提到，lua 为了效率，将 token -> bytecode 压缩到了一个过程中
-没有 ast ir 等中间产物，直接从 token 到 opcode。
+在 lexer 章节提到，lua 为了效率，将语法分析到代码生成的所有功能封装在 parser 模块中。
+在过程中，没有 AST IR 等中间产物，直接从 token 到 opcode，一步到位。
+相对的，这部分代码就相对难以理解。
 
-相对应的，这部分代码就相对难以理解。
+虽然在代码实现没有明显的步骤划分，但是对于读者，
+在理解代码过程中，还是先找出不同步骤的影子，最后再串联在一起。
 
-#+CAPTION: lex -> parse -> gen picture
+这个章节，就是尝试从代码中“分离”出语法分析的部分，先对模块做初步的理解。
 
+#+CAPTION: parser part
+#+begin_src dot :file parser-feature.png
+digraph {
+	rankdir = TB;
+	node[shape=box];
 
-虽然代码实现没有明显的划分，在理解上，先找出不同步骤的影子，最后再联系在一起。
+	lua[label="Lua Code"];
 
-过程综合在一起，但是从语法分析作为入口开始分析的。
-语法制导翻译的过程。
+	subgraph cluster_0 {
+	tk[label="Token"];
+	ast[label="AST", style="dotted"];
+	style=filled;
+	color=lightblue;
+}
 
-本章
-- 语法分析过程
-- debug 方法
+	vm[label="VM"];
+	{
+		rank=same;
+		op[label="Opcode"];
+		bf[label="Binary File"];
+	}
 
+	lua -> tk[label="lex"];
+	tk -> ast[label="parse"];
+	ast -> op[label="generate"];
+	op -> vm[label="executed"];
+	op -> bf[label="dump"];
+	bf -> op[label="undump"];
+}
+#+end_src
 
-同时使用流式的处理方式，如果使用多趟式的处理过程，则需要一次完整的遍历
-token 数组，交给 parser
+#+RESULTS:
+[[file:parser-feature.png]]
 
-lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
-核心使用的便是 lexstate
+* grammar
 
-lua 中的 parse 过程使用 lazy 加载 token 的方式
-按需加载 token
+模块以语法分析作为入口，整体是一个语法制导翻译的过程。
 
-
-相应代码不是那么容易阅读
-需要一些编译原理的了解
-
-* lang of lang
-
-官方文档使用上下文无关文法来描述 lua 语言。
-
-[[http://www.lua.org/manual/5.1/manual.html#8]]
-
-根据实际代码中的相关注释，代码的实现过程，做了一些修改，整理 EBNF 如下。
-
-#+begin_example
-{ a } 表示 a*，0 个或多个
-[ a ] 表示 a?，0 个或一个
-( a ) 表示组
-  |   表示或
-
-终结符：大写单词，`单字符' 是 lex 阶段生成的 token
-非终结符：小写单词，以 chunk 为入口
-#+end_example
-
+官方文档[fn:1]使用上下文无关文法来描述 lua 语法，但是省略了一些细节。
+笔者结合 parser 代码中的实现过程和相关注释，重新整理语法描述如下，使用 EBNF 描述。
 
 #+begin_src bnf
 chunk        ::= { stat [ `;' ] }
@@ -113,63 +113,113 @@ field        ::= `[' expr `]' `=' expr | NAME `=' expr | expr
 fieldsep     ::= `,' | `;'
 #+end_src
 
-值得注意的是，和 lex 过程中的 RE 一样，没有正确表示 number ，而在 RE 之外进行了判断
-ENBF 语法也存在这样的问题。
+- ={ a }= 表示 0 个或多个 a
+- =[ a ]= 表示 0 个或一个 a
+- =( a )= 表示组
+- =|=  表示或
+- 大写单词，`单字符' 表示终结符，和 lex 阶段生成的 token 一一对应
+- 小写单词 表示非终结符，整体以 chunk 为入口
 
-没有在语言描述层面对运算符优先级进行限定，而在 subexpr 过程中隐式实现。
+之前提到，在 lex 过程，lua 并没有完全使用 regex 对词法做完整的限制，存在些许不完美的实现。
+同样的“问题”在语法分析的 EBNF 描述中也存在。
 
-break 语句位置并不随意，只能在 loop block 中
+** binop
 
-* 递归下降
+在语法描述上，没有控制二元运算的优先级，而是将优先级在 subexpr 过程中用代码隐式实现。
 
-语法分析层面，整体使用递归下降过程。
+** break
 
-每个非终结符都用一个同名函数来实现（有部分例外），
-在整体运行过程中，函数之间的流程，就像是隐式的 ast 的遍历过程。
+break 语句位置并不是随意的，只能放置在 loop 块中，而语法描述并没有描述这种限制，
+同样的，lua 将此限制实现在代码层面。
 
-所有 opcode 的生成过程，就隐藏在这一个个函数中。
+** return
 
-整体来看，
-- 以 chunk 为入口
-- 分为多个 stat
-- 每个 stat 有独立的结构
-- expr 是重要的组成部分
+return 语句只能放置在块的最后一行，而语法描述没有表示出此种限制。
 
-像一棵树形结构，从上至下。
+* recursive descent
 
-分析过程，最好以 stat 为单位。
+parser 模块使用 LL(1) 递归下降法进行语法分析。
 
-每个 stat 进行独立的分析。
+递归下降法有一个明显的优点，通常在实现中，
+每个非终结符都对应一个同名函数来实现，如 =chunk() statement()= 等。
 
-最终再整合为宏观的理解。
+#+caption: lparser.c
+#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 1271 :lines "1271-1338"
 
+这些函数都有一个共性，全部都接收参数 =LexState *ls= ，从其得到 token。
+部分函数接收参数 =expdesc* v= ，表示当前过程之后，得到的表达式结果。
 
+=expdesc= 结构非常关键，在代码生成章节再详细描述。
 
-* inspect with tool
+#+caption: lparser.h
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c -n 15 :lines "15-46"
 
-luaY parser 是整体的入口
+如此对照 EBNF 的语法描述，就可以方便地对语法分析的过程有大体的了解。
+
+所有函数之间的调用过程，就像是隐式的 AST 的遍历过程。
+代码生成的实现过程就隐藏在这一个个函数中。
+
+#+begin_src dot :file parser-ast.png
+digraph {
+	node[shape=box];
+
+	chunk -> stat;
+	stat -> ifstat;
+	stat -> whilestat;
+	stat -> dostat;
+	
+	other[label=".....", shape=none];
+
+	stat -> other;
+
+	stat -> breakstat;
+	stat -> exprstat;
+
+	ifstat -> cond;
+	ifstat -> block;
+
+	cond -> expr;
+	expr -> subexpr;
+
+	chunk2[label="chunk"];
+	block -> chunk2;
+
+	other2[label=".....", shape=none];
+
+	ifstat -> other2;
+
+	cond2[label="cond"];
+	whilestat -> cond2;
+
+	block2[label="block"];
+	whilestat -> block2;
+}
+#+end_src
+
+#+RESULTS:
+[[file:parser-ast.png]]
+
+整体以 chunk 为入口，下分为多个 stat，每个 stat 有独立的结构，最终到基础的 expr 单元，
+像一棵树形结构，自顶向下。
+  
+* practice
+
+=luaY_parser= 是 parser 模块的入口，
 
 #+caption: lparser.c
 #+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 383 :lines "383-399"
 
-其中从 chunk 入口，递归完成整体分析
+Line 391 调用 chunk，开始递归向下的分析。
 
- break at chunk
+读者可以使用调试器，在 chunk 处加上断点，运行 lua 代码，
+使用 next/step 观察内部运行的走向，对照 EBNF 来理解语法分析的整体结构。
 
- 观察源代码
+#+begin_example
+$ make -s debug source=if.lua
+#+end_example
 
- 观察 token
+建议最开始以 stat 为单位，对每个 stat 进行独立的观察，最终再整合为宏观的理解。
 
- n/s 观察代码的走向，只关注语法分析的过程
+* Footnotes
 
- e.g. localstat
-
-
- print *ls py extension
-
-
-* practice
-
-尝试随意的代码，在 chunk 处打上断点
-n/s 观察代码的走向
-
+[fn:1]: [[http://www.lua.org/manual/5.1/manual.html#8]]

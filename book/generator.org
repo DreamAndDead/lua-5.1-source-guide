@@ -1,6 +1,18 @@
 #+SETUPFILE: setup.org
 
-* generate
+#+TITLE: generator
+#+DATE: <2021-01-08 五 11:34>
+
+同时使用流式的处理方式，如果使用多趟式的处理过程，则需要一次完整的遍历
+token 数组，交给 parser
+
+lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
+核心使用的便是 lexstate
+
+lua 中的 parse 过程使用 lazy 加载 token 的方式
+按需加载 token
+
+
 
 parser 介绍了整体的语法分析过程
 
@@ -66,13 +78,13 @@ gen 的这一步，多关乎两者之间的连接过程
 以及 function proto 分析过程出现的栈过程
 
 
-** big picture
-   :LOGBOOK:
-   - Note taken on [2020-12-10 四 10:08] \\
-     why ~function~ concept is important in lua!
-   - Note taken on [2020-12-07 一 13:54] \\
-   lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
-   :END:
+* big picture
+  :LOGBOOK:
+  - Note taken on [2020-12-10 四 10:08] \\
+  why ~function~ concept is important in lua!
+  - Note taken on [2020-12-07 一 13:54] \\
+  lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
+  :END:
 
 #+CAPTION: luaY_parser function
 
@@ -192,188 +204,188 @@ f upvalues  f nups
 如果纯粹的分离开来，应该对一套 opcode 进行编程
 但是这里 opcode 的定义显然就是 vm 本身
 
-*** register
+** register
+   :LOGBOOK:
+   - Note taken on [2020-12-07 一 14:01] \\
+   如何调度寄存器？
+   :END:
+
+register is stack
+
+parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
+因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+
+move a b
+
+但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
+因为这是编译时，而不是运行时
+    
+** variable
+
+变量有 3 类，local upval global
+
+*** local
     :LOGBOOK:
-    - Note taken on [2020-12-07 一 14:01] \\
-    如何调度寄存器？
+    - Note taken on [2020-12-15 二 11:14] \\
+    变量逆序查找，比如出现 local 覆盖的情况
+    searchvar() lparser.c:207
     :END:
 
- register is stack
+local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
 
- parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
- 因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+作用域是有明显的栈特性的，新作用域入栈，离开作用域出栈
 
- move a b
+在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，local var dead，让出空间
 
- 但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
- 因为这是编译时，而不是运行时
-    
-*** variable
+这样栈中从 base 到 top，就始终记录着 active local 变量，作用范围由大到小。
 
- 变量有 3 类，local upval global
+#+CAPTION: 16 active local scope & fs->actvar nactvar
 
-**** local
-     :LOGBOOK:
-     - Note taken on [2020-12-15 二 11:14] \\
-       变量逆序查找，比如出现 local 覆盖的情况
-       searchvar() lparser.c:207
-     :END:
+利用这种特征，在 fs 中用 actvar 和 nactvar 始终记录着当前 active local var 的状态。
 
- local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
+#+CAPTION: 16 actvar & locvars
 
- 作用域是有明显的栈特性的，新作用域入栈，离开作用域出栈
+statement/scope.lua
 
- 在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，local var dead，让出空间
+b lparser.c:1306
 
- 这样栈中从 base 到 top，就始终记录着 active local 变量，作用范围由大到小。
+fs->nlocvars 的原因，不需要这个变量，nlocvars 只用来指向下一个可放置的位置
 
- #+CAPTION: 16 active local scope & fs->actvar nactvar
+local 只在使用时发生作用，而在使用时，已经被记录在 code 中了
 
- 利用这种特征，在 fs 中用 actvar 和 nactvar 始终记录着当前 active local var 的状态。
+*** upvalue
 
- #+CAPTION: 16 actvar & locvars
+在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
 
- statement/scope.lua
-
- b lparser.c:1306
-
- fs->nlocvars 的原因，不需要这个变量，nlocvars 只用来指向下一个可放置的位置
-
- local 只在使用时发生作用，而在使用时，已经被记录在 code 中了
-
-**** upvalue
-
- 在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
-
- 但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
- 所以其 upvalue 不一定出现在 stack frame 上
+但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
+所以其 upvalue 不一定出现在 stack frame 上
 
 
- #+begin_quote
- 对象是带函数的值
- 闭包是带值的函数
- #+end_quote
+#+begin_quote
+对象是带函数的值
+闭包是带值的函数
+#+end_quote
 
- #+begin_src lua :results output
- local function outer()
-    local a = 0
-
-    local function inner()
-       local b = 0
-
-       a = a + 1
-       return a
-    end
-
-    inner()
-
-    return inner
- end
-
- local f = outer()
-
- print(f())
- print(f())
- print(f())
-
- local g = outer()
-
- print(g())
- print(g())
- print(g())
- #+end_src
-
- #+RESULTS:
- : 2
- : 3
- : 4
- : 2
- : 3
- : 4
-
- function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转
-
- 这种情况下，和 local 作用域机制在一起，就会出现问题
-
- a 的作用域在 outer 内部，同时被 inner 引用并修改，最终 outer 返回 inner
-
- 调用 outer，赋值给 f
-
- 按照语义，f 应该是内部的 inner func，每次调用都得到 a 的自增值
-
- 调用 3 次，得到 1 2 3
-
- 问题在于，a 只作用在 outer 内部，而 f 在 outer 外部，已经离开了 a 的作用域，
- 在这种情况下如何保证语义的正确？
-
- 这便是闭包机制的由来，a 对于 inner 而言，不是 local，而是 upvalue 类型。
-
- 这也是 lua 中为何 func 不是 func 而是 closure 的原因，func 及 upvalue 组成了 closure，
- 所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于分配 upvalue 空间。
-
- #+CAPTION: 17 upvalue at runtime
-
- 再调用 outer，赋值给 g，调用 3 次，得到一样的结果，从中可以得到 upvalue 作用于 active 和
- dead 状态的区别。
-
-**** global
-
- 前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
-
- 其中隐含的一点，外层变量对于内层可见，假如强制设定外层对于内部不可见，便不会有 upvalue 的问题。
-
- 对于可见的情况，对于当前引用的变量，自然有一个查找的过程。
- 和嵌套相反，是层层向上寻找的过程。
-
- 变量
- 在本层可以找到的，为 local
- 在本层之外可以找到的，为 upvalue
- 所有层都无法找到的，为 global
-
- global 的概念解决了两个细节问题
- 为什么顶层的 function 是没有 upvalue 的？
- 因为在本层找不到的变量，向上已经没有层级，只能是 global
-
- setfenv 的概念
- 函数的运行环境，即是 global，在编译的 chunk 运行之前，设定 global 的值，
- 可以影响内部对 global 值的引用，从而实现不同的运行效果。
-
-
- 在实现中，global 是单独于基层的 closure 存在的，是运行状态的一部分
- 所以不存在作用域的问题，始终在顶层。
-
-
- #+begin_src lua :results output
- local function outer()
-   a = 10
+#+begin_src lua :results output
+local function outer()
+   local a = 0
 
    local function inner()
-     a = a + 1
-     return a
+      local b = 0
+
+      a = a + 1
+      return a
    end
 
+   inner()
+
    return inner
- end
+end
 
- local f = outer()
+local f = outer()
 
- print(f(), a)
- print(f(), a)
- print(f(), a)
- #+end_src
+print(f())
+print(f())
+print(f())
 
- #+RESULTS:
- : 11	11
- : 12	12
- : 13	13
+local g = outer()
 
- #+CAPTION: 18 global at runtime
+print(g())
+print(g())
+print(g())
+#+end_src
 
-*** TODO expdesc
-     :LOGBOOK:
-     - Note taken on [2020-12-07 一 17:34] \\
-     各个状态如何发生作用？
-     :END:
+#+RESULTS:
+: 2
+: 3
+: 4
+: 2
+: 3
+: 4
+
+function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转
+
+这种情况下，和 local 作用域机制在一起，就会出现问题
+
+a 的作用域在 outer 内部，同时被 inner 引用并修改，最终 outer 返回 inner
+
+调用 outer，赋值给 f
+
+按照语义，f 应该是内部的 inner func，每次调用都得到 a 的自增值
+
+调用 3 次，得到 1 2 3
+
+问题在于，a 只作用在 outer 内部，而 f 在 outer 外部，已经离开了 a 的作用域，
+在这种情况下如何保证语义的正确？
+
+这便是闭包机制的由来，a 对于 inner 而言，不是 local，而是 upvalue 类型。
+
+这也是 lua 中为何 func 不是 func 而是 closure 的原因，func 及 upvalue 组成了 closure，
+所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于分配 upvalue 空间。
+
+#+CAPTION: 17 upvalue at runtime
+
+再调用 outer，赋值给 g，调用 3 次，得到一样的结果，从中可以得到 upvalue 作用于 active 和
+dead 状态的区别。
+
+*** global
+
+前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
+
+其中隐含的一点，外层变量对于内层可见，假如强制设定外层对于内部不可见，便不会有 upvalue 的问题。
+
+对于可见的情况，对于当前引用的变量，自然有一个查找的过程。
+和嵌套相反，是层层向上寻找的过程。
+
+变量
+在本层可以找到的，为 local
+在本层之外可以找到的，为 upvalue
+所有层都无法找到的，为 global
+
+global 的概念解决了两个细节问题
+为什么顶层的 function 是没有 upvalue 的？
+因为在本层找不到的变量，向上已经没有层级，只能是 global
+
+setfenv 的概念
+函数的运行环境，即是 global，在编译的 chunk 运行之前，设定 global 的值，
+可以影响内部对 global 值的引用，从而实现不同的运行效果。
+
+
+在实现中，global 是单独于基层的 closure 存在的，是运行状态的一部分
+所以不存在作用域的问题，始终在顶层。
+
+
+#+begin_src lua :results output
+local function outer()
+  a = 10
+
+  local function inner()
+    a = a + 1
+    return a
+  end
+
+  return inner
+end
+
+local f = outer()
+
+print(f(), a)
+print(f(), a)
+print(f(), a)
+#+end_src
+
+#+RESULTS:
+: 11	11
+: 12	12
+: 13	13
+
+#+CAPTION: 18 global at runtime
+
+** TODO expdesc
+    :LOGBOOK:
+    - Note taken on [2020-12-07 一 17:34] \\
+    各个状态如何发生作用？
+    :END:
 
 递归下降
 语法制导
@@ -441,7 +453,7 @@ f upvalues  f nups
  | VCALL    | to VNONRELOC, store call code A value                |
  | VVARARG  | set B to 2? to VRELOCABLE                            |
 
-*** TODO how freereg & freeexp works
+** TODO how freereg & freeexp works
 
 #+CAPTION: page 19 & 20
 
@@ -456,7 +468,7 @@ freereg 的作用
 和 nactvar 的关系
 
 
-** tools
+* tools
 
 以实例为基础的探索
 基础方法
@@ -504,11 +516,11 @@ function 结束注释
 
 
 
-** statement
-   :LOGBOOK:
-   - Note taken on [2020-12-09 三 13:35] \\
-     先从 stat 开始分析，将得到的经验抽象为内容。
-   :END:
+* statement
+  :LOGBOOK:
+  - Note taken on [2020-12-09 三 13:35] \\
+  先从 stat 开始分析，将得到的经验抽象为内容。
+  :END:
 
 - 原子性
 - 依赖性
@@ -519,7 +531,7 @@ function 结束注释
 只讲解 atom ，组合交由读者探索
 
 
-*** function
+** function
 
 compile time
 
@@ -538,11 +550,11 @@ func 有同名和匿名两种
 
 body 过程不过是参数和 chunk 的递归过程
 
-**** upval
-     :LOGBOOK:
-     - Note taken on [2020-12-15 二 14:08] \\
-       需要更明显的图示
-     :END:
+*** upval
+    :LOGBOOK:
+    - Note taken on [2020-12-15 二 14:08] \\
+    需要更明显的图示
+    :END:
 
 和 closure 同一级的变量被引用，使用 move 指令
 >= 级的变量，使用 getupval 指令
@@ -573,11 +585,11 @@ singlevaraux
 新增 upval 并返回 upval 对应的索引
 
 
-**** vararg
-     :LOGBOOK:
-     - Note taken on [2020-12-15 二 13:38] \\
-       在 vm 运行时，再详细深入栈过程
-     :END:
+*** vararg
+    :LOGBOOK:
+    - Note taken on [2020-12-15 二 13:38] \\
+    在 vm 运行时，再详细深入栈过程
+    :END:
 
 lobject.h:256
 
@@ -631,7 +643,7 @@ chunk func 是 2
 - numparams，vararg 不算一个参数
 - is_vararg
 
-*** local assignment
+** local assignment
 
 #+begin_src bnf
 localstat ::= LOCAL NAME {`,' NAME} [`=' explist]
@@ -652,7 +664,7 @@ localstat 有两种情况，func 的情况之后到 function 部分再讨论。
 
 localstat vs localfunc
 
-**** no assignment
+*** no assignment
 
 #+begin_src lua
 local a, b, c
@@ -707,9 +719,9 @@ TODO 因为 luaK_nil 的优化过程，没有生成代码
 =adjustlocalvars= 调整 nactvar 的值，并设置相应的 startpc
 
 
-**** with assignment
+*** with assignment
 
-***** TODO multret
+**** TODO multret
 
 TODO 有 multret 的再讨论
 
@@ -719,7 +731,7 @@ TODO 有 multret 的再讨论
 local a, b, c = ..., ..., ...
 #+end_src
 
-***** normal
+**** normal
 
 没有赋值，等于 nexps = 0 的最小情况
 
@@ -789,7 +801,7 @@ TK_STRING 在之前已经变成 VK，加在 k 表中的索引，同样生成 loa
 在这个过程中，已经生成了 相关的 load 指令，到 freereg 的位置
 因为 exp 出现的顺序，和 var 出现的顺序对应，巧妙完成了赋值
 
-***** k table
+**** k table
 
 通过 numberK 和 stringK 方法
 
@@ -816,11 +828,11 @@ nil bool 在赋值时并没有使用 loadk，而使用 loadnil loadbool 指令
 - compare
 
 
-*** nonlocal assignment
+** nonlocal assignment
 
 exprstat -> assignment stat
 
-**** global
+*** global
 
 #+begin_src lua
 a, b, c = 10, 20, 30
@@ -879,7 +891,7 @@ exp2reg，存储到指定 reg
 
 
 
-**** upvalue
+*** upvalue
 
 #+begin_src lua
 local a = 10
@@ -891,7 +903,7 @@ end
 
 和 global 相似
 
-**** indexed
+*** indexed
 
 a.b   a['b']
 是相同语义
@@ -906,7 +918,7 @@ gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 
 
 如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
 
-*** do
+** do
 
 - block vs chunk
   - 整体文件按照 chunk 来解析，chunk 是入口
@@ -948,7 +960,7 @@ a 并不是 upval，可见 upval 只针对 function 而言
 
 loop 情况，到 while for 具体分析。
 
-*** if
+** if
 
 顺序解析的难题之一
 分支
@@ -975,7 +987,7 @@ dischargejpc
 
 luaK_jump 时，使用 jpc 重置的技巧，防止在生成 jump 时，触发 dischargejpc
 
-**** if
+*** if
 
 dischargejpc
 负责从当前 pc 解析 jump chain
@@ -987,19 +999,19 @@ dischargejpc
 
 #+CAPTION: 26 if chain
 
-**** if else
+*** if else
 
 #+CAPTION: 27 if else chain
 
-**** if elseif
+*** if elseif
 
 #+CAPTION: 28 if elseif chain
 
-**** if elseif else
+*** if elseif else
 
 #+CAPTION: 29 if elseif else chain
 
-*** while
+** while
 
 #+CAPTION: 30 while pattern
 
@@ -1015,11 +1027,11 @@ enterblock 自然生成 0 block
 
 相当于有双层 block
 
-**** break
+*** break
 
 #+CAPTION: 30 break in while
      
-*** repeat
+** repeat
 
 repeat    
 
@@ -1081,7 +1093,7 @@ end
 #+CAPTION: 31 repeat upval
 
 
-*** for
+** for
 
 for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
 依然是通过 jmp 来实现的。
@@ -1105,7 +1117,7 @@ end
 #+end_src
 
 
-**** fornum
+*** fornum
 
 隐式生成的变量，用 ( 来标识，是不会与正常 lua 代码中分析得到的 NAME 冲突的
 因为 lex 规则的限定
@@ -1118,7 +1130,7 @@ end
 
 #+CAPTION: 32 for and upval
 
-**** forlist
+*** forlist
 
 #+begin_src lua :results output
 local g, s = pairs({1,2,3})
@@ -1137,7 +1149,7 @@ end
 
 upvalue 同 fornum
 
-*** function call
+** function call
 
 function call
 
@@ -1152,7 +1164,7 @@ lparser.c:609
 
 并不复杂
 
-**** self
+*** self
 
 #+begin_src lua :results output
 local o = {}
@@ -1189,7 +1201,7 @@ lcode.c:503
 self 只是为 call 做准备，将对象提前放到相应位置
 
 
-*** ret
+** ret
 
 return 在 chunk 中发挥作用
 从当前 closure 中返回
@@ -1203,7 +1215,7 @@ opcode 容易理解
 retstat()
 lparser.c:1238
 
-**** tailcall
+*** tailcall
 
 #+begin_src lua
 -- tail call
@@ -1221,9 +1233,9 @@ lparser.c:1249
 tailcall 本身已经有了 return 的语义
 
 
-** practice
+* practice
 
-*** arithmetic
+** arithmetic
 
 - 优先级
 
@@ -1233,11 +1245,11 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 
 前者需要生成 jmp 指令，但是后者，直接是 loadk 0 0 ; 3
 
-*** logic
+** logic
 
 - and or
 
-*** constructor
+** constructor
 
 - setlist always consistent, diff with settable
 

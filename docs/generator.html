@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2021-01-08 五 12:05 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>generator</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="DreamAndDead">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link id="theme" rel="stylesheet" type="text/css" href="htmlize.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript" src="main.js"></script>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">generator</h1>
+<p>
+同时使用流式的处理方式，如果使用多趟式的处理过程，则需要一次完整的遍历
+token 数组，交给 parser
+</p>
+
+<p>
+lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
+核心使用的便是 lexstate
+</p>
+
+<p>
+lua 中的 parse 过程使用 lazy 加载 token 的方式
+按需加载 token
+</p>
+
+
+
+<p>
+parser 介绍了整体的语法分析过程
+</p>
+
+<p>
+gen 来详细深入，隐藏在语法分析过程之下的代码生成部分
+</p>
+
+<p>
+生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
+</p>
+
+
+<p>
+规则间的同义转换
+</p>
+
+<p>
+语法规则    vm opcode 规则
+</p>
+
+<p>
+生成过程，就是等义转换的过程
+</p>
+
+<p>
+隐藏在语法分析下的艺术
+</p>
+
+
+<p>
+语法制导翻译
+</p>
+
+<p>
+把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
+</p>
+
+
+<p>
+通用方式，是通过语法分析，得到 ast，进行属性计算
+很多情况下，翻译可以在扫描过程中完成
+</p>
+
+<p>
+L 属性翻译
+</p>
+
+
+<p>
+语法制导
+中间代码
+代码生成
+</p>
+
+<p>
+完全整合在一起
+</p>
+
+<p>
+能正确运行已经是奇迹
+</p>
+
+
+
+<p>
+gen 的这一步，多关乎两者之间的连接过程
+中间状态
+</p>
+
+<p>
+为了达到最终的结果，中间的阶段
+</p>
+
+
+
+<p>
+在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
+</p>
+
+
+
+<p>
+总体原则，
+</p>
+<ul class="org-ul">
+<li>语法制导</li>
+<li>后缀方法</li>
+<li>栈模拟运算</li>
+</ul>
+
+
+<p>
+关注 compile time
+</p>
+
+<p>
+因为分析从左向右，从前至后的，所以对于一些结构需要特别的方法来处理
+比如 if 分支的处理，回填 jmp 地址
+</p>
+
+<p>
+以及 function proto 分析过程出现的栈过程
+</p>
+
+
+<div id="outline-container-orge22678e" class="outline-2">
+<h2 id="orge22678e"><span class="section-number-2">1</span> big picture</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+概念 vs
+</p>
+<ul class="org-ul">
+<li>function，是 lua 中的概念，函数</li>
+<li>proto，是 function 分析之后的同语义结构</li>
+<li>closure，封装 proto，提供 upval 空间，用于 vm 运行时</li>
+</ul>
+
+<p>
+Proto 最终生成的 bytecode 与相关环境
+基本可以将 proto 等同于生成的可执行文件，交给 vm 就可以执行，不过其中有一些结构上的安排。
+</p>
+
+<p>
+一个 function 对应生成一个 proto，一个 lua 文件，可被认为是一个匿名函数
+故最终返回的是一个 proto。
+</p>
+
+<p>
+function 是基础类型，如果 lua 文件作为一级函数，则其中定义的函数为二级函数
+</p>
+
+<p>
+其中函数内部定义的函数为三级函数，可以不断向下延伸
+</p>
+
+<p>
+每一级函数，在 **p 中记录其包含的下一级函数，根据出现的顺序，用数组来记录。
+</p>
+
+
+<p>
+以 function 为单位，生成一块一块的 proto，组合在一起。
+</p>
+
+
+<p>
+前面提到过，在词法分析的过程中，有 lexstate 结构，它存储了一切词法分析过程中的状态
+在生成过程中，也存在如此结构，称为 funcstate，存储生成过程中涉及到的状态
+其中的 proto 就是生成的结果。
+</p>
+
+<p>
+总体过程如下。
+</p>
+
+<p>
+可以看出，ls 是单例，向 fs 输入 token，并在不同的 func 层次，对接不同的 fs 结构。
+</p>
+
+<p>
+每当生成一个新的 function，都会新建一个 fs，并指向父 fs，并对接 ls，生成自己的 f
+在结束之后，将 f 的结果并入父 fs 的 f 中。
+</p>
+
+
+<p>
+其实 fs 和 f 几乎是一个整体，总是同时行动。
+区别在于，proto 作为最终返回的结果，内容最小化，不多不少
+而作为中间过程中相关的 state，并不是 vm 需要关心的，所以就剔除到 fs 结构中了。
+</p>
+
+
+<p>
+ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用，生成返回 f 之后，就被丢弃。
+</p>
+
+
+
+
+
+
+
+
+<p>
+其中的 k 表，opcode，就是在 vm 模型讨论的，
+关于 upval 的信息，隐藏在了 code 中。
+</p>
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Function Prototypes</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Proto</span> {
+  CommonHeader;
+  <span class="org-type">TValue</span> *<span class="org-variable-name">k</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">constants used by the function</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">Instruction</span> *<span class="org-variable-name">code</span>;
+  <span class="org-keyword">struct</span> <span class="org-type">Proto</span> **<span class="org-variable-name">p</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">functions defined inside the function</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> *<span class="org-variable-name">lineinfo</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">map from opcodes to source lines</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">struct</span> <span class="org-type">LocVar</span> *<span class="org-variable-name">locvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">information about local variables</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">TString</span> **<span class="org-variable-name">upvalues</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">upvalue names</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">TString</span>  *<span class="org-variable-name">source</span>;
+  <span class="org-type">int</span> <span class="org-variable-name">sizeupvalues</span>;
+  <span class="org-type">int</span> <span class="org-variable-name">sizek</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `k'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">sizecode</span>;
+  <span class="org-type">int</span> <span class="org-variable-name">sizelineinfo</span>;
+  <span class="org-type">int</span> <span class="org-variable-name">sizep</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `p'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">sizelocvars</span>;
+  <span class="org-type">int</span> <span class="org-variable-name">linedefined</span>;
+  <span class="org-type">int</span> <span class="org-variable-name">lastlinedefined</span>;
+  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">nups</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of upvalues</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">numparams</span>;
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">is_vararg</span>;
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">maxstacksize</span>;
+} <span class="org-type">Proto</span>;
+</pre>
+</div>
+
+
+<ul class="org-ul">
+<li>func state</li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/* </span><span class="org-comment">state needed to generate code for a given function</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> {
+  <span class="org-type">Proto</span> *<span class="org-variable-name">f</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current function header</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">Table</span> *<span class="org-variable-name">h</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">table to find (and reuse) elements in `k'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> *<span class="org-variable-name">prev</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">enclosing function</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">struct</span> <span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">lexical state</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">struct</span> <span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">copy of the Lua state</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">struct</span> <span class="org-type">BlockCnt</span> *<span class="org-variable-name">bl</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">chain of current blocks</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">pc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">next position to code (equivalent to `ncode')</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">lasttarget</span>;   <span class="org-comment-delimiter">/* </span><span class="org-comment">`pc' of last `jump target'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">jpc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of pending jumps to `pc'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">freereg</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">first free register</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">nk</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `k'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">np</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `p'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">short</span> <span class="org-variable-name">nlocvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `locvars'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">nactvar</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of active local variables</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">upvaldesc</span> <span class="org-variable-name">upvalues</span>[LUAI_MAXUPVALUES];  <span class="org-comment-delimiter">/* </span><span class="org-comment">upvalues</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">actvar</span>[LUAI_MAXVARS];  <span class="org-comment-delimiter">/* </span><span class="org-comment">declared-variable stack</span><span class="org-comment-delimiter"> */</span>
+} <span class="org-type">FuncState</span>;
+</pre>
+</div>
+
+
+
+
+
+<p>
+为什么 local var 和 active local var 存储在两个部分？
+</p>
+
+<p>
+因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
+且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
+</p>
+
+<p>
+因为 active 状态只能在 parse 过程分辨。
+离开作用域自然不是 active 的。
+而是否 active 对于 bytecode 并不重要。
+active 状态用于辅助 funcstate 生成 bytecode。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+<p>
+fs-&gt;f-&gt;sizek 和 fs-&gt;nk 是有区别的
+nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
+如 length 和 capacity 的区别
+当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
+</p>
+
+<p>
+f k  fs nk
+f p  fs np
+f code  fs pc
+fs actvar  fs nactvar
+f locvars  fs nlocvars
+</p>
+
+<p>
+fs upvalues  f nups
+f upvalues  f nups
+</p>
+
+
+
+
+<p>
+代码的生成过程有一个隐式的假设，对 vm 的运作方式有明显的假定
+如果纯粹的分离开来，应该对一套 opcode 进行编程
+但是这里 opcode 的定义显然就是 vm 本身
+</p>
+</div>
+
+<div id="outline-container-org817cea7" class="outline-3">
+<h3 id="org817cea7"><span class="section-number-3">1.1</span> register</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+register is stack
+</p>
+
+<p>
+parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
+因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+</p>
+
+<p>
+move a b
+</p>
+
+<p>
+但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
+因为这是编译时，而不是运行时
+</p>
+</div>
+</div>
+
+<div id="outline-container-org3a7d0dc" class="outline-3">
+<h3 id="org3a7d0dc"><span class="section-number-3">1.2</span> variable</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+变量有 3 类，local upval global
+</p>
+</div>
+
+<div id="outline-container-orgd7c6f1a" class="outline-4">
+<h4 id="orgd7c6f1a"><span class="section-number-4">1.2.1</span> local</h4>
+<div class="outline-text-4" id="text-1-2-1">
+<p>
+local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
+</p>
+
+<p>
+作用域是有明显的栈特性的，新作用域入栈，离开作用域出栈
+</p>
+
+<p>
+在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，local var dead，让出空间
+</p>
+
+<p>
+这样栈中从 base 到 top，就始终记录着 active local 变量，作用范围由大到小。
+</p>
+
+<p>
+利用这种特征，在 fs 中用 actvar 和 nactvar 始终记录着当前 active local var 的状态。
+</p>
+
+<p>
+statement/scope.lua
+</p>
+
+<p>
+b lparser.c:1306
+</p>
+
+<p>
+fs-&gt;nlocvars 的原因，不需要这个变量，nlocvars 只用来指向下一个可放置的位置
+</p>
+
+<p>
+local 只在使用时发生作用，而在使用时，已经被记录在 code 中了
+</p>
+</div>
+</div>
+
+<div id="outline-container-org85d91f9" class="outline-4">
+<h4 id="org85d91f9"><span class="section-number-4">1.2.2</span> upvalue</h4>
+<div class="outline-text-4" id="text-1-2-2">
+<p>
+在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
+</p>
+
+<p>
+但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
+所以其 upvalue 不一定出现在 stack frame 上
+</p>
+
+
+<blockquote>
+<p>
+对象是带函数的值
+闭包是带值的函数
+</p>
+</blockquote>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">outer</span>()
+   <span class="org-keyword">local</span> <span class="org-variable-name">a</span> = 0
+
+   <span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">inner</span>()
+      <span class="org-keyword">local</span> <span class="org-variable-name">b</span> = 0
+
+      a = a + 1
+      <span class="org-keyword">return</span> a
+   <span class="org-keyword">end</span>
+
+   inner()
+
+   <span class="org-keyword">return</span> inner
+<span class="org-keyword">end</span>
+
+<span class="org-keyword">local</span> <span class="org-variable-name">f</span> = outer()
+
+<span class="org-builtin">print</span>(f())
+<span class="org-builtin">print</span>(f())
+<span class="org-builtin">print</span>(f())
+
+<span class="org-keyword">local</span> <span class="org-variable-name">g</span> = outer()
+
+<span class="org-builtin">print</span>(g())
+<span class="org-builtin">print</span>(g())
+<span class="org-builtin">print</span>(g())
+</pre>
+</div>
+
+<p>
+function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转
+</p>
+
+<p>
+这种情况下，和 local 作用域机制在一起，就会出现问题
+</p>
+
+<p>
+a 的作用域在 outer 内部，同时被 inner 引用并修改，最终 outer 返回 inner
+</p>
+
+<p>
+调用 outer，赋值给 f
+</p>
+
+<p>
+按照语义，f 应该是内部的 inner func，每次调用都得到 a 的自增值
+</p>
+
+<p>
+调用 3 次，得到 1 2 3
+</p>
+
+<p>
+问题在于，a 只作用在 outer 内部，而 f 在 outer 外部，已经离开了 a 的作用域，
+在这种情况下如何保证语义的正确？
+</p>
+
+<p>
+这便是闭包机制的由来，a 对于 inner 而言，不是 local，而是 upvalue 类型。
+</p>
+
+<p>
+这也是 lua 中为何 func 不是 func 而是 closure 的原因，func 及 upvalue 组成了 closure，
+所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于分配 upvalue 空间。
+</p>
+
+<p>
+再调用 outer，赋值给 g，调用 3 次，得到一样的结果，从中可以得到 upvalue 作用于 active 和
+dead 状态的区别。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org06deeb2" class="outline-4">
+<h4 id="org06deeb2"><span class="section-number-4">1.2.3</span> global</h4>
+<div class="outline-text-4" id="text-1-2-3">
+<p>
+前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
+</p>
+
+<p>
+其中隐含的一点，外层变量对于内层可见，假如强制设定外层对于内部不可见，便不会有 upvalue 的问题。
+</p>
+
+<p>
+对于可见的情况，对于当前引用的变量，自然有一个查找的过程。
+和嵌套相反，是层层向上寻找的过程。
+</p>
+
+<p>
+变量
+在本层可以找到的，为 local
+在本层之外可以找到的，为 upvalue
+所有层都无法找到的，为 global
+</p>
+
+<p>
+global 的概念解决了两个细节问题
+为什么顶层的 function 是没有 upvalue 的？
+因为在本层找不到的变量，向上已经没有层级，只能是 global
+</p>
+
+<p>
+setfenv 的概念
+函数的运行环境，即是 global，在编译的 chunk 运行之前，设定 global 的值，
+可以影响内部对 global 值的引用，从而实现不同的运行效果。
+</p>
+
+
+<p>
+在实现中，global 是单独于基层的 closure 存在的，是运行状态的一部分
+所以不存在作用域的问题，始终在顶层。
+</p>
+
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">outer</span>()
+  a = 10
+
+  <span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">inner</span>()
+    a = a + 1
+    <span class="org-keyword">return</span> a
+  <span class="org-keyword">end</span>
+
+  <span class="org-keyword">return</span> inner
+<span class="org-keyword">end</span>
+
+<span class="org-keyword">local</span> <span class="org-variable-name">f</span> = outer()
+
+<span class="org-builtin">print</span>(f(), a)
+<span class="org-builtin">print</span>(f(), a)
+<span class="org-builtin">print</span>(f(), a)
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orgbcb0380" class="outline-2">
+<h2 id="orgbcb0380"><span class="section-number-2">2</span> tools</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+以实例为基础的探索
+基础方法
+</p>
+
+<p>
+make spy
+</p>
+
+<p>
+make inspect
+</p>
+
+<p>
+chunkspy 中 .local .const 的概念对应
+</p>
+
+<pre class="example" id="org72323b3">
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+[1] return     0   1      
+; end of function
+</pre>
+
+<p>
+line 1
+level 1 指的是第一层级
+function [0] 表明是当前层级的第 1 个函数（以 0 开始索引）
+</p>
+
+<p>
+line 2
+0 个 upvalue
+0 个参数
+0b010 接收可变参数
+3 需要分配栈容量，2 是最小值，来源于在不断的运算过程中，栈增长减少，遇到的最大值
+</p>
+
+<p>
+line 3
+和 line 2 相同，2 是 3 的注释
+</p>
+
+<p>
+line 4 5 6
+.local f-&gt;locvars 内容
+</p>
+
+<p>
+line 7
+f-&gt;code 指令
+最终一行总是默认生成一条 return 指令
+这里只有一条 return，说明代码并没有生成代码
+</p>
+
+<p>
+line 8
+function 结束注释
+</p>
+</div>
+</div>
+
+
+
+<div id="outline-container-orge88350e" class="outline-2">
+<h2 id="orge88350e"><span class="section-number-2">3</span> statement</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li>原子性</li>
+<li>依赖性</li>
+<li>实例分析</li>
+<li>生成模式</li>
+</ul>
+
+<p>
+递归结合是无限的
+只讲解 atom ，组合交由读者探索
+</p>
+</div>
+
+
+<div id="outline-container-org9bb0e19" class="outline-3">
+<h3 id="org9bb0e19"><span class="section-number-3">3.1</span> function</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+compile time
+</p>
+
+<p>
+enf 结构
+</p>
+
+<p>
+body 方便定义匿名函数
+</p>
+
+<p>
+func 有同名和匿名两种
+从 ebnf 中可以看出，两者只差在 NAME
+几乎全部由 body 处理
+包含了参数，函数体等全部
+动态类型，名称与值的绑定，所以由 body 来处理全部
+</p>
+
+<p>
+body 过程不过是参数和 chunk 的递归过程
+</p>
+</div>
+
+<div id="outline-container-org783c94b" class="outline-4">
+<h4 id="org783c94b"><span class="section-number-4">3.1.1</span> upval</h4>
+<div class="outline-text-4" id="text-3-1-1">
+<p>
+和 closure 同一级的变量被引用，使用 move 指令
+&gt;= 级的变量，使用 getupval 指令
+</p>
+
+
+<p>
+move A B
+</p>
+
+<p>
+A 无用，B 指代 local 的 active 栈索引
+</p>
+
+<p>
+getupval A B
+</p>
+
+<p>
+A 无用，B 指代上层 closure 中 upval 表的序号
+</p>
+
+<p>
+getupval 一直向上链，总会找到 local 对应的位置
+</p>
+
+
+<p>
+Q: f 没有明显引用 a，但是但 a 却存在于 f 的 upval 数组中？
+</p>
+
+<p>
+A:
+</p>
+
+<p>
+singlevar
+singlevaraux
+</p>
+
+<p>
+从底层向上寻找，从 f 向上找到 a，调用 indexupvalue (lparser.c:183)
+作为 upval 使用，而非 local，在 index upval 的过程中，
+添加到 f 的 upval 表中
+</p>
+
+<p>
+新增 upval 并返回 upval 对应的索引
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org7601e9d" class="outline-4">
+<h4 id="org7601e9d"><span class="section-number-4">3.1.2</span> vararg</h4>
+<div class="outline-text-4" id="text-3-1-2">
+<p>
+lobject.h:256
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-right">
+
+<col  class="org-right">
+
+<col  class="org-right">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-right">4</th>
+<th scope="col" class="org-right">2</th>
+<th scope="col" class="org-right">1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-right">NEEDSARG</td>
+<td class="org-right">ISVARARG</td>
+<td class="org-right">HASARG</td>
+</tr>
+</tbody>
+</table>
+
+
+<p>
+在 lua5.0 中，没有 &#x2026; 的表达式，只能在参数定义时使用
+</p>
+
+<p>
+而在内部引用 vararg 时，通过变量 arg 来使用
+</p>
+
+<p>
+arg 是一个 table，内部以数组形式存储了 vararg
+</p>
+
+<p>
+arg.n 是数组的长度
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">function</span> <span class="org-function-name">foo</span>(<span class="org-variable-name">a</span>, <span class="org-variable-name">b</span>, ...)
+  <span class="org-keyword">local</span> <span class="org-variable-name">arg</span> = {...}
+  arg.n = <span class="org-builtin">select</span>(<span class="org-string">"#"</span>, ...)
+<span class="org-keyword">end</span>
+</pre>
+</div>
+
+
+<p>
+lua5.1 默认有对上面形式的兼容性
+</p>
+
+<p>
+NEEDSARG 表明是否在内部构造 arg 的值
+</p>
+
+<p>
+ldo.c:215
+</p>
+
+<p>
+lua5.1 判断，如果内部出现了 &#x2026; exp，就不使用 arg，
+NEEDSARG = 0
+</p>
+
+<p>
+lparser.c:756
+</p>
+
+<p>
+HASARG 用于在计算 nparam 时很方便，直接使用 &amp; 运算就可以
+</p>
+
+<p>
+lparser.c:571
+</p>
+
+<p>
+ISVARARG 和 HASARG 应该是相同的？
+chunk main func 只有 ISVARARG 标志
+</p>
+
+
+<p>
+无即是 0
+chunk func 是 2
+不引用 arg 是 3
+引用 arg 是 7
+</p>
+
+
+<p>
+存储在 proto
+</p>
+<ul class="org-ul">
+<li>numparams，vararg 不算一个参数</li>
+<li>is<sub>vararg</sub></li>
+</ul>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org4b53610" class="outline-3">
+<h3 id="org4b53610"><span class="section-number-3">3.2</span> local assignment</h3>
+<div class="outline-text-3" id="text-3-2">
+<div class="org-src-container">
+<pre class="src src-bnf">localstat <span class="org-constant">::=</span> LOCAL NAME {`,' NAME} [`=' explist]
+localstat <span class="org-constant">::=</span> LOCAL FUNCTION NAME body
+</pre>
+</div>
+
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">f</span>()
+<span class="org-keyword">end</span>
+
+<span class="org-keyword">local</span> <span class="org-function-name">f</span> = <span class="org-keyword">function</span> ()
+<span class="org-keyword">end</span>
+</pre>
+</div>
+
+<p>
+localstat 有两种情况，func 的情况之后到 function 部分再讨论。
+另一种情况是局部变量声明，分为是否赋值两种情况。
+</p>
+
+<p>
+localstat vs localfunc
+</p>
+</div>
+
+<div id="outline-container-org920841f" class="outline-4">
+<h4 id="org920841f"><span class="section-number-4">3.2.1</span> no assignment</h4>
+<div class="outline-text-4" id="text-3-2-1">
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span>, <span class="org-variable-name">b</span>, <span class="org-variable-name">c</span>
+</pre>
+</div>
+
+<pre class="example" id="org5d99c24">
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+[1] return     0   1      
+; end of function
+</pre>
+
+<p>
+考虑如上代码，声明局部变量 a。
+</p>
+
+<p>
+没有生成代码，毕竟没有任何运算或者操作
+</p>
+
+<p>
+所以只存储了 local 变量的信息
+</p>
+
+<p>
+lparser.c:143
+<code>registerlocalvar</code> 是操作 f-&gt;locvars 的过程
+</p>
+
+<p>
+lparser.c:163
+<code>new_localvar</code> 是操作 fs-&gt;actvar 的过程
+</p>
+
+<p>
+先注册，再存储相应的索引
+</p>
+
+
+<p>
+expdesc 为 VVOID，因为没有 exp，没有赋值
+e 记录的是最后一个 expr 的属性
+</p>
+
+
+
+<p>
+nvars = nexps
+</p>
+
+
+<p>
+<code>adjust_assign</code> 进行左右数量的调整
+</p>
+
+<p>
+多余空间置为 nil
+</p>
+
+<p>
+TODO 因为 luaK<sub>nil</sub> 的优化过程，没有生成代码
+</p>
+
+<p>
+调整了 freereg 的值，是进行中间运算的安排的
+</p>
+
+
+
+<p>
+<code>adjustlocalvars</code> 调整 nactvar 的值，并设置相应的 startpc
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org96bc860" class="outline-4">
+<h4 id="org96bc860"><span class="section-number-4">3.2.2</span> with assignment</h4>
+<div class="outline-text-4" id="text-3-2-2">
+</div>
+<ol class="org-ol">
+<li><a id="org95de82d"></a>normal<br>
+<div class="outline-text-5" id="text-3-2-2-1">
+<p>
+没有赋值，等于 nexps = 0 的最小情况
+</p>
+
+<p>
+var exp 的数量关系
+</p>
+
+<p>
+exp 多则舍弃
+var 多则置 nil
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span>, <span class="org-variable-name">b</span>, <span class="org-variable-name">c</span>, <span class="org-variable-name">d</span>, <span class="org-variable-name">e</span> = 10, <span class="org-string">"second"</span>, <span class="org-constant">nil</span>, <span class="org-constant">true</span>, <span class="org-constant">false</span>
+</pre>
+</div>
+
+<pre class="example" id="orgfdde0fa">
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
+.function  0 0 2 5
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+.local  "d"  ; 3
+.local  "e"  ; 4
+.const  10  ; 0
+.const  "second"  ; 1
+[1] loadk      0   0        ; 10
+[2] loadk      1   1        ; "second"
+[3] loadnil    2   2      
+[4] loadbool   3   1   0    ; true
+[5] loadbool   4   0   0    ; false
+[6] return     0   1      
+; end of function
+</pre>
+
+
+<p>
+下面来看赋值的情况，3 个变量均衡赋值。
+</p>
+
+<p>
+根据语法描述，左侧 var 结束之后，右侧部分都作为 explist 来解析，最终再完成赋值
+</p>
+
+<p>
+是典型的后缀形式的语法制导。
+</p>
+
+<p>
+这里先不重点讲 explist -&gt; expr 的解析过程，只用几个基本类型，在 lex 阶段就可以确定的。
+</p>
+
+<p>
+lparser.c:599
+</p>
+
+<p>
+可确定 expr 的描述 v
+</p>
+
+
+
+
+<p>
+使用 luaK<sub>exp2nextreg</sub>
+</p>
+
+<p>
+TODO freereg 的指导作用
+TODO 为何这样是正确的，什么时候进行回收？
+</p>
+
+<p>
+按照 freereg 所指的顺序，依次向上存储
+</p>
+
+<p>
+exp2reg freereg
+</p>
+
+<p>
+discharge2reg，将 exp 对应到 reg 即 local 中
+</p>
+
+<p>
+其中 VKNUM 直接存储入 k 表，生成 loadk 指令，使用 k 索引
+</p>
+
+<p>
+TK<sub>STRING</sub> 在之前已经变成 VK，加在 k 表中的索引，同样生成 loadk 指令
+</p>
+
+<p>
+解析之后，exp 类型变为 VNONRELOC，info 中存储结果所在的寄存器
+</p>
+
+
+<p>
+在这个过程中，已经生成了 相关的 load 指令，到 freereg 的位置
+因为 exp 出现的顺序，和 var 出现的顺序对应，巧妙完成了赋值
+</p>
+</div>
+</li>
+
+<li><a id="orgff510d9"></a>k table<br>
+<div class="outline-text-5" id="text-3-2-2-2">
+<p>
+通过 numberK 和 stringK 方法
+</p>
+
+<p>
+在 addk 过程，
+fs-&gt;h 是一个 table，用于对 f-&gt;k 进行反向索引
+先在 h 中查找，是否已经有相应索引，可以直接返回
+如果没有，则新增一项
+</p>
+
+<p>
+fs-&gt;nk++
+</p>
+
+
+<p>
+lcode.c:229-278
+</p>
+
+<p>
+k 表只存储如下几种常量
+</p>
+<ul class="org-ul">
+<li>nil</li>
+<li>bool</li>
+<li>number</li>
+<li>string</li>
+</ul>
+
+<p>
+nil bool 在赋值时并没有使用 loadk，而使用 loadnil loadbool 指令
+插入 k 表用在别的地方
+</p>
+<ul class="org-ul">
+<li>index</li>
+<li>binop</li>
+<li>compare</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+</div>
+
+
+<div id="outline-container-org5dc4044" class="outline-3">
+<h3 id="org5dc4044"><span class="section-number-3">3.3</span> nonlocal assignment</h3>
+<div class="outline-text-3" id="text-3-3">
+<p>
+exprstat -&gt; assignment stat
+</p>
+</div>
+
+<div id="outline-container-orgb65e8d7" class="outline-4">
+<h4 id="orgb65e8d7"><span class="section-number-4">3.3.1</span> global</h4>
+<div class="outline-text-4" id="text-3-3-1">
+<div class="org-src-container">
+<pre class="src src-lua">a, b, c = 10, 20, 30
+</pre>
+</div>
+
+<p>
+进入 primaryexp prefixexp 查找的时候，TK NAME 要进行 singlevar 查找
+</p>
+
+<p>
+赋值为 VGLOBAL，且 info 存储了名字对应的 k 表索引
+和 expkind 的注释不符合？
+</p>
+
+
+
+<p>
+进入 assignment，按照 ebnf ，本身是嵌套的
+进入之前，先将 v prev 设置为 NULL，后面全部链接起来
+</p>
+
+
+<p>
+LHS<sub>assign</sub> 结构，在 expdesc 的基础上，添加了 prev 指针
+</p>
+
+<p>
+在 多个 , 之间的 var 全部链接起来
+</p>
+
+<p>
+其中可赋值的类型为
+VLOCAL VUPVAL VGLOBAL VINDEXED
+由 primaryexp 决定
+</p>
+
+
+<p>
+赋值阶段，在每个递归层次，用 luaK<sub>storevar</sub> 来存储
+</p>
+
+
+
+<p>
+var ex
+</p>
+
+<p>
+先 discharge ex
+再生成 SETGLOBAL，使用 info 中存储的 k 索引
+gbl[kst[info]] = R(A)
+</p>
+
+
+
+
+<p>
+luaK<sub>exp2anyreg</sub>
+</p>
+
+<p>
+只需要解析到 reg 就可以，临时使用，赋值之后就废弃
+</p>
+
+
+<p>
+exp 可能是 var，也可能是 值
+但是通过 dis var 是保险的
+</p>
+
+<p>
+默认依然使用 exp2nextreg，只不过在之前，添加了解析 jump 的部分
+</p>
+
+<p>
+exp2nextreg，存储在 freereg 之后
+</p>
+
+<p>
+exp2reg，存储到指定 reg
+</p>
+
+<p>
+其中解析了 jump 相关的内容
+</p>
+
+<p>
+最终成为 VNONRELOC
+</p>
+</div>
+</div>
+
+
+
+<div id="outline-container-org99fbf73" class="outline-4">
+<h4 id="org99fbf73"><span class="section-number-4">3.3.2</span> upvalue</h4>
+<div class="outline-text-4" id="text-3-3-2">
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = 10
+
+<span class="org-keyword">function</span> <span class="org-function-name">f</span>()
+  a = 20
+<span class="org-keyword">end</span>
+</pre>
+</div>
+
+<p>
+和 global 相似
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgcc86fa7" class="outline-4">
+<h4 id="orgcc86fa7"><span class="section-number-4">3.3.3</span> indexed</h4>
+<div class="outline-text-4" id="text-3-3-3">
+<p>
+a.b   a['b']
+是相同语义
+</p>
+
+<p>
+a 必须是 table，语义才正确
+</p>
+
+
+<p>
+gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 constant，也可能是
+一个表，一个函数，等其它值，这种值只能由 寄存器 存储
+</p>
+
+<p>
+同时，加上了 k，也可以节省临时寄存器的使用
+</p>
+
+<p>
+如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org04a8aaa" class="outline-3">
+<h3 id="org04a8aaa"><span class="section-number-3">3.4</span> do</h3>
+<div class="outline-text-3" id="text-3-4">
+<ul class="org-ul">
+<li>block vs chunk
+<ul class="org-ul">
+<li>整体文件按照 chunk 来解析，chunk 是入口</li>
+<li>block ::= chunk，但具体使用方式要根据语句的类型来分析
+并非所有引用 chunk 的地方都会像 function 结构使用 chunk 会影响 fs 结构，
+更多依赖 chunk 递归处理语句的便利</li>
+</ul></li>
+<li>分类
+<ul class="org-ul">
+<li>loop 中</li>
+<li>非 loop 中</li>
+</ul></li>
+</ul>
+
+<p>
+blockCnt
+</p>
+<ul class="org-ul">
+<li>previous</li>
+<li>nactvar，进入 block 前 nactvar 的个数</li>
+<li>isbreakable，是否用在循环中，从 bnf 中可看到</li>
+<li>breaklist，chain of jump out of the loop，在 while 时深入</li>
+<li>upval，bool，当前作用域中是否有 local var 作为 upval，在 for 时深入</li>
+</ul>
+
+<p>
+明显的作用域分隔作用
+</p>
+
+<p>
+enterblock
+leaveblock
+</p>
+
+<p>
+在进入时，nactvar 记录 active local var 的数量，
+block 内新的 local var 会在离开时，全部释放
+符合作用域的原则
+内部使用，销毁，不污染外部
+</p>
+
+<p>
+作用域记录在 fs 中，最终要体现到 f 中
+最终在 do 之外，使用 b，会顺着 a 0 的顺序向后，b 1
+说明前面的所有变量已回收
+</p>
+
+<p>
+虽然有多个 block 相隔，但是在最内层进行变量查找的时候，上层的所有 act local var 都
+属于同一个 fs，查找 a 的时候，a 的类型为 local，直接进行了修改
+a 并不是 upval，可见 upval 只针对 function 而言
+</p>
+
+<p>
+非 loop 只有 nactvar 起作用
+</p>
+
+<p>
+loop 情况，到 while for 具体分析。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org7f03880" class="outline-3">
+<h3 id="org7f03880"><span class="section-number-3">3.5</span> if</h3>
+<div class="outline-text-3" id="text-3-5">
+<p>
+顺序解析的难题之一
+分支
+</p>
+
+<ul class="org-ul">
+<li>jump chain resolve</li>
+</ul>
+
+<p>
+concat
+</p>
+
+<p>
+patch
+</p>
+
+<p>
+patch to here, concat
+</p>
+
+<p>
+patch to list, discharge right now to target
+</p>
+
+<p>
+they are the same
+</p>
+
+<p>
+dischargejpc
+</p>
+
+
+
+
+<p>
+luaK<sub>jump</sub> 时，使用 jpc 重置的技巧，防止在生成 jump 时，触发 dischargejpc
+</p>
+</div>
+
+<div id="outline-container-org7e181fa" class="outline-4">
+<h4 id="org7e181fa"><span class="section-number-4">3.5.1</span> if</h4>
+<div class="outline-text-4" id="text-3-5-1">
+<p>
+dischargejpc
+负责从当前 pc 解析 jump chain
+</p>
+
+<p>
+隐藏在 luaK<sub>code</sub> 中
+</p>
+
+
+<p>
+问题添加 return 0 1 的原因
+</p>
+</div>
+</div>
+
+<div id="outline-container-org6dc2c8e" class="outline-4">
+<h4 id="org6dc2c8e"><span class="section-number-4">3.5.2</span> if else</h4>
+<div class="outline-text-4" id="text-3-5-2">
+</div>
+</div>
+
+<div id="outline-container-org722ad33" class="outline-4">
+<h4 id="org722ad33"><span class="section-number-4">3.5.3</span> if elseif</h4>
+<div class="outline-text-4" id="text-3-5-3">
+</div>
+</div>
+
+<div id="outline-container-org76aa6fa" class="outline-4">
+<h4 id="org76aa6fa"><span class="section-number-4">3.5.4</span> if elseif else</h4>
+<div class="outline-text-4" id="text-3-5-4">
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgd22754c" class="outline-3">
+<h3 id="orgd22754c"><span class="section-number-3">3.6</span> while</h3>
+<div class="outline-text-3" id="text-3-6">
+<p>
+block
+</p>
+
+<p>
+breakable  1
+这样其中才可以生成 break 语句
+</p>
+
+<p>
+breaklist
+用于记录 break 语句，chain 到 block 外的第一条语句
+</p>
+
+<p>
+enterblock 自然生成 0 block
+</p>
+
+<p>
+相当于有双层 block
+</p>
+</div>
+
+<div id="outline-container-org4e04970" class="outline-4">
+<h4 id="org4e04970"><span class="section-number-4">3.6.1</span> break</h4>
+<div class="outline-text-4" id="text-3-6-1">
+</div>
+</div>
+</div>
+
+<div id="outline-container-orga8fc6ee" class="outline-3">
+<h3 id="orga8fc6ee"><span class="section-number-3">3.7</span> repeat</h3>
+<div class="outline-text-3" id="text-3-7">
+<p>
+repeat    
+</p>
+
+<p>
+break 同 while 时的表现相同
+</p>
+
+
+<p>
+不过对于 upval，有自己的处理方式
+</p>
+
+
+<p>
+因为 while 在 cond 中不能定义新的 local var
+而 repeat 的 block 中可能先定义 local var
+再被其中的 func 引用，而 i 在不断变化，就需要及时 close
+</p>
+
+
+
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">t</span> = {}
+
+<span class="org-keyword">local</span> <span class="org-variable-name">c</span> = 0
+
+<span class="org-keyword">repeat</span>
+   c = c + 1
+
+   <span class="org-keyword">local</span> <span class="org-variable-name">i</span> = c
+
+   t[i] = <span class="org-keyword">function</span> ()
+      <span class="org-keyword">return</span> i
+   <span class="org-keyword">end</span>
+<span class="org-keyword">until</span> i &gt; 10
+
+<span class="org-keyword">for</span> <span class="org-variable-name">i</span>, <span class="org-variable-name">f</span> <span class="org-keyword">in</span> <span class="org-builtin">ipairs</span>(t) <span class="org-keyword">do</span>
+   <span class="org-builtin">print</span>(f())
+<span class="org-keyword">end</span>
+</pre>
+</div>
+
+<p>
+进行 upval 判断的原因
+</p>
+
+<p>
+每个 func 记录的都是 i，但是每次 loop 结束都进行了 close，
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-orgdd98c3b" class="outline-3">
+<h3 id="orgdd98c3b"><span class="section-number-3">3.8</span> for</h3>
+<div class="outline-text-3" id="text-3-8">
+<p>
+for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
+依然是通过 jmp 来实现的。
+</p>
+
+<p>
+分为两种
+</p>
+
+<p>
+数字迭代 fornum
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">for</span> <span class="org-variable-name">i</span> = 1, 10, 2 <span class="org-keyword">do</span>
+  <span class="org-builtin">print</span>(i)
+<span class="org-keyword">end</span>
+</pre>
+</div>
+
+<p>
+通用迭代 forlist
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">for</span> <span class="org-variable-name">k</span>, <span class="org-variable-name">v</span> <span class="org-keyword">in</span> <span class="org-builtin">pairs</span>(t) <span class="org-keyword">do</span>
+  <span class="org-builtin">print</span>(k, v)
+<span class="org-keyword">end</span>
+</pre>
+</div>
+</div>
+
+
+<div id="outline-container-org0202719" class="outline-4">
+<h4 id="org0202719"><span class="section-number-4">3.8.1</span> fornum</h4>
+<div class="outline-text-4" id="text-3-8-1">
+<p>
+隐式生成的变量，用 ( 来标识，是不会与正常 lua 代码中分析得到的 NAME 冲突的
+因为 lex 规则的限定
+</p>
+
+<pre class="example" id="org46afbca">
+.local  "(for generator)"  ; 0
+.local  "(for state)"  ; 1
+.local  "(for control)"  ; 2
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org333e2d9" class="outline-4">
+<h4 id="org333e2d9"><span class="section-number-4">3.8.2</span> forlist</h4>
+<div class="outline-text-4" id="text-3-8-2">
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">g</span>, <span class="org-variable-name">s</span> = <span class="org-builtin">pairs</span>({1,2,3})
+
+<span class="org-keyword">for</span> <span class="org-variable-name">k</span>, <span class="org-variable-name">v</span> <span class="org-keyword">in</span> g, s, <span class="org-constant">nil</span> <span class="org-keyword">do</span>
+  <span class="org-builtin">print</span>(k, v)
+<span class="org-keyword">end</span>
+</pre>
+</div>
+
+<p>
+upvalue 同 fornum
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org48de970" class="outline-3">
+<h3 id="org48de970"><span class="section-number-3">3.9</span> function call</h3>
+<div class="outline-text-3" id="text-3-9">
+<p>
+function call
+</p>
+
+<p>
+func 在栈的底部，参数向上累加
+</p>
+
+<p>
+调用结果，返回值，从栈的 func 处开始向上覆盖
+</p>
+
+<p>
+funcargs()
+lparser.c:609
+</p>
+
+<p>
+并不复杂
+</p>
+</div>
+
+<div id="outline-container-org5a6b901" class="outline-4">
+<h4 id="org5a6b901"><span class="section-number-4">3.9.1</span> self</h4>
+<div class="outline-text-4" id="text-3-9-1">
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">o</span> = {}
+
+<span class="org-keyword">function</span> <span class="org-function-name">o.f</span>(<span class="org-builtin">self</span>)
+  <span class="org-builtin">print</span>(<span class="org-builtin">self</span>)
+<span class="org-keyword">end</span>
+
+<span class="org-keyword">function</span> <span class="org-function-name">o:f</span>()
+  <span class="org-builtin">print</span>(<span class="org-builtin">self</span>)
+<span class="org-keyword">end</span>
+
+o.f(o)
+
+o:f()
+</pre>
+</div>
+
+<p>
+self 指令，只是一种优化方式
+</p>
+
+
+
+<p>
+luaK<sub>self</sub>()
+</p>
+
+<p>
+lcode.c:503
+</p>
+
+<p>
+结合 op self 的语义，并不复杂
+</p>
+
+<p>
+self 只是为 call 做准备，将对象提前放到相应位置
+</p>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org84d3938" class="outline-3">
+<h3 id="org84d3938"><span class="section-number-3">3.10</span> ret</h3>
+<div class="outline-text-3" id="text-3-10">
+<p>
+return 在 chunk 中发挥作用
+从当前 closure 中返回
+</p>
+
+<p>
+return 必须是 chunk 的最后一个语句
+</p>
+
+<p>
+按语句含义返回值，至于有多少值被利用，则根据 opcode 生成过程中决定的
+</p>
+
+<p>
+opcode 容易理解
+</p>
+
+<p>
+retstat()
+lparser.c:1238
+</p>
+</div>
+
+<div id="outline-container-org0510e67" class="outline-4">
+<h4 id="org0510e67"><span class="section-number-4">3.10.1</span> tailcall</h4>
+<div class="outline-text-4" id="text-3-10-1">
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-comment-delimiter">-- </span><span class="org-comment">tail call</span>
+<span class="org-keyword">return</span> f()
+<span class="org-comment-delimiter">-- </span><span class="org-comment">not tail call</span>
+<span class="org-keyword">return</span> a, b, f()
+</pre>
+</div>
+
+<p>
+ret 中只有单独的 function call
+</p>
+
+<p>
+进行栈优化
+</p>
+
+<p>
+lparser.c:1249
+</p>
+
+<p>
+tailcall 本身已经有了 return 的语义
+</p>
+</div>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orgb67fb9c" class="outline-2">
+<h2 id="orgb67fb9c"><span class="section-number-2">4</span> practice</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-org959b5ec" class="outline-3">
+<h3 id="org959b5ec"><span class="section-number-3">4.1</span> arithmetic</h3>
+<div class="outline-text-3" id="text-4-1">
+<ul class="org-ul">
+<li>优先级</li>
+</ul>
+
+<p>
+lua 在进行解析时，没有进行关系运算的实时解析，但是对 constant 算法运算有编译时执行
+</p>
+
+<p>
+如 `local a = 5 &gt; 2` 和 `local a = 1 + 2` 的区别
+</p>
+
+<p>
+前者需要生成 jmp 指令，但是后者，直接是 loadk 0 0 ; 3
+</p>
+</div>
+</div>
+
+<div id="outline-container-org5aa406e" class="outline-3">
+<h3 id="org5aa406e"><span class="section-number-3">4.2</span> logic</h3>
+<div class="outline-text-3" id="text-4-2">
+<ul class="org-ul">
+<li>and or</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org5da4352" class="outline-3">
+<h3 id="org5da4352"><span class="section-number-3">4.3</span> constructor</h3>
+<div class="outline-text-3" id="text-4-3">
+<ul class="org-ul">
+<li>setlist always consistent, diff with settable</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+
+<p>Updated: 2021-01-08 五 12:04</p>
+<p>Created: 2021-01-08 五 11:34</p>
+<p>Author: DreamAndDead</p>
+<p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+</div>
+</body>
+</html>

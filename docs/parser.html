@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-07 四 15:57 -->
+<!-- 2021-01-08 五 12:00 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>parser</title>
@@ -191,8 +191,9 @@
   .org-svg { width: 90%; }
   /*]]>*/-->
 </style>
-<link rel="stylesheet" type="text/css" href="htmlize.css">
+<link id="theme" rel="stylesheet" type="text/css" href="htmlize.css">
 <link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript" src="main.js"></script>
 <script type="text/javascript">
 // @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
 <!--/*--><![CDATA[/*><!--*/
@@ -220,78 +221,37 @@
 <div id="content">
 <h1 class="title">parser</h1>
 <p>
-前面提到，lua 为了效率，将 token -&gt; bytecode 压缩到了一个过程中
-没有 ast ir 等中间产物，直接从 token 到 opcode。
+在 lexer 章节提到，lua 为了效率，将语法分析到代码生成的所有功能封装在 parser 模块中。
+在过程中，没有 AST IR 等中间产物，直接从 token 到 opcode，一步到位。
+相对的，这部分代码就相对难以理解。
 </p>
 
 <p>
-相对应的，这部分代码就相对难以理解。
+虽然在代码实现没有明显的步骤划分，但是对于读者，
+在理解代码过程中，还是先找出不同步骤的影子，最后再串联在一起。
 </p>
 
 <p>
-虽然代码实现没有明显的划分，在理解上，先找出不同步骤的影子，最后再联系在一起。
-</p>
-
-<p>
-过程综合在一起，但是从语法分析作为入口开始分析的。
-语法制导翻译的过程。
-</p>
-
-<p>
-本章
-</p>
-<ul class="org-ul">
-<li>语法分析过程</li>
-<li>debug 方法</li>
-</ul>
-
-
-<p>
-同时使用流式的处理方式，如果使用多趟式的处理过程，则需要一次完整的遍历
-token 数组，交给 parser
-</p>
-
-<p>
-lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
-核心使用的便是 lexstate
-</p>
-
-<p>
-lua 中的 parse 过程使用 lazy 加载 token 的方式
-按需加载 token
+这个章节，就是尝试从代码中“分离”出语法分析的部分，先对模块做初步的理解。
 </p>
 
 
-<p>
-相应代码不是那么容易阅读
-需要一些编译原理的了解
+<div id="orgb3154bb" class="figure">
+<p><img src="parser-feature.png" alt="parser-feature.png">
 </p>
+</div>
 
-<div id="outline-container-org6f15ff9" class="outline-2">
-<h2 id="org6f15ff9"><span class="section-number-2">1</span> lang of lang</h2>
+<div id="outline-container-org4226b66" class="outline-2">
+<h2 id="org4226b66"><span class="section-number-2">1</span> grammar</h2>
 <div class="outline-text-2" id="text-1">
 <p>
-官方文档使用上下文无关文法来描述 lua 语言。
+模块以语法分析作为入口，整体是一个语法制导翻译的过程。
 </p>
 
 <p>
-<a href="http://www.lua.org/manual/5.1/manual.html#8">http://www.lua.org/manual/5.1/manual.html#8</a>
+官方文档<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>使用上下文无关文法来描述 lua 语法，但是省略了一些细节。
+笔者结合 parser 代码中的实现过程和相关注释，重新整理语法描述如下，使用 EBNF 描述。
 </p>
-
-<p>
-根据实际代码中的相关注释，代码的实现过程，做了一些修改，整理 EBNF 如下。
-</p>
-
-<pre class="example" id="org7e858f5">
-{ a } 表示 a*，0 个或多个
-[ a ] 表示 a?，0 个或一个
-( a ) 表示组
-  |   表示或
-
-终结符：大写单词，`单字符' 是 lex 阶段生成的 token
-非终结符：小写单词，以 chunk 为入口
-</pre>
-
 
 <div class="org-src-container">
 <pre class="src src-bnf">chunk        <span class="org-constant">::=</span> { stat [ `<span class="org-comment">;' ] }</span>
@@ -354,76 +314,208 @@ fieldsep     <span class="org-constant">::=</span> `,' <span class="org-warning"
 </pre>
 </div>
 
-<p>
-值得注意的是，和 lex 过程中的 RE 一样，没有正确表示 number ，而在 RE 之外进行了判断
-ENBF 语法也存在这样的问题。
-</p>
-
-<p>
-没有在语言描述层面对运算符优先级进行限定，而在 subexpr 过程中隐式实现。
-</p>
-
-<p>
-break 语句位置并不随意，只能在 loop block 中
-</p>
-</div>
-</div>
-
-<div id="outline-container-org6165016" class="outline-2">
-<h2 id="org6165016"><span class="section-number-2">2</span> 递归下降</h2>
-<div class="outline-text-2" id="text-2">
-<p>
-语法分析层面，整体使用递归下降过程。
-</p>
-
-<p>
-每个非终结符都用一个同名函数来实现（有部分例外），
-在整体运行过程中，函数之间的流程，就像是隐式的 ast 的遍历过程。
-</p>
-
-<p>
-所有 opcode 的生成过程，就隐藏在这一个个函数中。
-</p>
-
-<p>
-整体来看，
-</p>
 <ul class="org-ul">
-<li>以 chunk 为入口</li>
-<li>分为多个 stat</li>
-<li>每个 stat 有独立的结构</li>
-<li>expr 是重要的组成部分</li>
+<li><code>{ a }</code> 表示 0 个或多个 a</li>
+<li><code>[ a ]</code> 表示 0 个或一个 a</li>
+<li><code>( a )</code> 表示组</li>
+<li><code>|</code>  表示或</li>
+<li>大写单词，`单字符' 表示终结符，和 lex 阶段生成的 token 一一对应</li>
+<li>小写单词 表示非终结符，整体以 chunk 为入口</li>
 </ul>
 
 <p>
-像一棵树形结构，从上至下。
+之前提到，在 lex 过程，lua 并没有完全使用 regex 对词法做完整的限制，存在些许不完美的实现。
+同样的“问题”在语法分析的 EBNF 描述中也存在。
 </p>
+</div>
 
+<div id="outline-container-orga7727ea" class="outline-3">
+<h3 id="orga7727ea"><span class="section-number-3">1.1</span> binop</h3>
+<div class="outline-text-3" id="text-1-1">
 <p>
-分析过程，最好以 stat 为单位。
-</p>
-
-<p>
-每个 stat 进行独立的分析。
-</p>
-
-<p>
-最终再整合为宏观的理解。
+在语法描述上，没有控制二元运算的优先级，而是将优先级在 subexpr 过程中用代码隐式实现。
 </p>
 </div>
 </div>
 
-
-
-<div id="outline-container-org21ec97a" class="outline-2">
-<h2 id="org21ec97a"><span class="section-number-2">3</span> inspect with tool</h2>
-<div class="outline-text-2" id="text-3">
+<div id="outline-container-org6f09409" class="outline-3">
+<h3 id="org6f09409"><span class="section-number-3">1.2</span> break</h3>
+<div class="outline-text-3" id="text-1-2">
 <p>
-luaY parser 是整体的入口
+break 语句位置并不是随意的，只能放置在 loop 块中，而语法描述并没有描述这种限制，
+同样的，lua 将此限制实现在代码层面。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org6d3fc62" class="outline-3">
+<h3 id="org6d3fc62"><span class="section-number-3">1.3</span> return</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+return 语句只能放置在块的最后一行，而语法描述没有表示出此种限制。
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgfcab21c" class="outline-2">
+<h2 id="orgfcab21c"><span class="section-number-2">2</span> recursive descent</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+parser 模块使用 LL(1) 递归下降法进行语法分析。
+</p>
+
+<p>
+递归下降法有一个明显的优点，通常在实现中，
+每个非终结符都对应一个同名函数来实现，如 <code>chunk() statement()</code> 等。
 </p>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 1: </span>lparser.c</label><pre class="src src-c"><span class="linenr">383: </span><span class="org-type">Proto</span> *<span class="org-function-name">luaY_parser</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">ZIO</span> *<span class="org-variable-name">z</span>, <span class="org-type">Mbuffer</span> *<span class="org-variable-name">buff</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>) {
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>lparser.c</label><pre class="src src-c"><span class="linenr">1271: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">statement</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>) {
+<span class="linenr">1272: </span>  <span class="org-type">int</span> <span class="org-variable-name">line</span> = ls-&gt;linenumber;  <span class="org-comment-delimiter">/* </span><span class="org-comment">may be needed for error messages</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1273: </span>  <span class="org-keyword">switch</span> (ls-&gt;t.token) {
+<span class="linenr">1274: </span>    <span class="org-keyword">case</span> TK_IF: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; ifstat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1275: </span>      ifstat(ls, line);
+<span class="linenr">1276: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">1277: </span>    }
+<span class="linenr">1278: </span>    <span class="org-keyword">case</span> TK_WHILE: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; whilestat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1279: </span>      whilestat(ls, line);
+<span class="linenr">1280: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">1281: </span>    }
+<span class="linenr">1282: </span>    <span class="org-keyword">case</span> TK_DO: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; DO block END</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1283: </span>      luaX_next(ls);  <span class="org-comment-delimiter">/* </span><span class="org-comment">skip DO</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1284: </span>      block(ls);
+<span class="linenr">1285: </span>      check_match(ls, TK_END, TK_DO, line);
+<span class="linenr">1286: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">1287: </span>    }
+<span class="linenr">1288: </span>    <span class="org-keyword">case</span> TK_FOR: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; forstat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1289: </span>      forstat(ls, line);
+<span class="linenr">1290: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">1291: </span>    }
+<span class="linenr">1292: </span>    <span class="org-keyword">case</span> TK_REPEAT: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; repeatstat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1293: </span>      repeatstat(ls, line);
+<span class="linenr">1294: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">1295: </span>    }
+<span class="linenr">1296: </span>    <span class="org-keyword">case</span> TK_FUNCTION: {
+<span class="linenr">1297: </span>      funcstat(ls, line);  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; funcstat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1298: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">1299: </span>    }
+<span class="linenr">1300: </span>    <span class="org-keyword">case</span> TK_LOCAL: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; localstat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1301: </span>      luaX_next(ls);  <span class="org-comment-delimiter">/* </span><span class="org-comment">skip LOCAL</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1302: </span>      <span class="org-keyword">if</span> (testnext(ls, TK_FUNCTION))  <span class="org-comment-delimiter">/* </span><span class="org-comment">local function?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1303: </span>        localfunc(ls);
+<span class="linenr">1304: </span>      <span class="org-keyword">else</span>
+<span class="linenr">1305: </span>        localstat(ls);
+<span class="linenr">1306: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">1307: </span>    }
+<span class="linenr">1308: </span>    <span class="org-keyword">case</span> TK_RETURN: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; retstat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1309: </span>      retstat(ls);
+<span class="linenr">1310: </span>      <span class="org-keyword">return</span> 1;  <span class="org-comment-delimiter">/* </span><span class="org-comment">must be last statement</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1311: </span>    }
+<span class="linenr">1312: </span>    <span class="org-keyword">case</span> TK_BREAK: {  <span class="org-comment-delimiter">/* </span><span class="org-comment">stat -&gt; breakstat</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1313: </span>      luaX_next(ls);  <span class="org-comment-delimiter">/* </span><span class="org-comment">skip BREAK</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1314: </span>      breakstat(ls);
+<span class="linenr">1315: </span>      <span class="org-keyword">return</span> 1;  <span class="org-comment-delimiter">/* </span><span class="org-comment">must be last statement</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1316: </span>    }
+<span class="linenr">1317: </span>    <span class="org-keyword">default</span>: {
+<span class="linenr">1318: </span>      exprstat(ls);
+<span class="linenr">1319: </span>      <span class="org-keyword">return</span> 0;  <span class="org-comment-delimiter">/* </span><span class="org-comment">to avoid warnings</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1320: </span>    }
+<span class="linenr">1321: </span>  }
+<span class="linenr">1322: </span>}
+<span class="linenr">1323: </span>
+<span class="linenr">1324: </span>
+<span class="linenr">1325: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">chunk</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>) {
+<span class="linenr">1326: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">chunk -&gt; { stat [`;'] }</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1327: </span>  <span class="org-type">int</span> <span class="org-variable-name">islast</span> = 0;
+<span class="linenr">1328: </span>  enterlevel(ls);
+<span class="linenr">1329: </span>  <span class="org-keyword">while</span> (<span class="org-negation-char">!</span>islast &amp;&amp; <span class="org-negation-char">!</span>block_follow(ls-&gt;t.token)) {
+<span class="linenr">1330: </span>    islast = statement(ls);
+<span class="linenr">1331: </span>    testnext(ls, <span class="org-string">';'</span>);
+<span class="linenr">1332: </span>    lua_assert(ls-&gt;fs-&gt;f-&gt;maxstacksize &gt;= ls-&gt;fs-&gt;freereg &amp;&amp;
+<span class="linenr">1333: </span>               ls-&gt;fs-&gt;freereg &gt;= ls-&gt;fs-&gt;nactvar);
+<span class="linenr">1334: </span>    ls-&gt;fs-&gt;freereg = ls-&gt;fs-&gt;nactvar;  <span class="org-comment-delimiter">/* </span><span class="org-comment">free registers</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">1335: </span>  }
+<span class="linenr">1336: </span>  leavelevel(ls);
+<span class="linenr">1337: </span>}
+</pre>
+</div>
+
+<p>
+这些函数都有一个共性，全部都接收参数 <code>LexState *ls</code> ，从其得到 token。
+部分函数接收参数 <code>expdesc* v</code> ，表示当前过程之后，得到的表达式结果。
+</p>
+
+<p>
+<code>expdesc</code> 结构非常关键，在代码生成章节再详细描述。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>lparser.h</label><pre class="src src-c"><span class="linenr">15: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">16: </span><span class="org-comment">** Expression descriptor</span>
+<span class="linenr">17: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">18: </span>
+<span class="linenr">19: </span><span class="org-keyword">typedef</span> <span class="org-keyword">enum</span> {
+<span class="linenr">20: </span>  <span class="org-variable-name">VVOID</span>,        <span class="org-comment-delimiter">/* </span><span class="org-comment">no value</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">21: </span>  <span class="org-variable-name">VNIL</span>,
+<span class="linenr">22: </span>  <span class="org-variable-name">VTRUE</span>,
+<span class="linenr">23: </span>  <span class="org-variable-name">VFALSE</span>,
+<span class="linenr">24: </span>  <span class="org-variable-name">VK</span>,           <span class="org-comment-delimiter">/* </span><span class="org-comment">info = index of constant in `k'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">25: </span>  <span class="org-variable-name">VKNUM</span>,        <span class="org-comment-delimiter">/* </span><span class="org-comment">nval = numerical value</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">26: </span>  <span class="org-variable-name">VLOCAL</span>,       <span class="org-comment-delimiter">/* </span><span class="org-comment">info = local register</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">27: </span>  <span class="org-variable-name">VUPVAL</span>,       <span class="org-comment-delimiter">/* </span><span class="org-comment">info = index of upvalue in `upvalues'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">28: </span>  <span class="org-variable-name">VGLOBAL</span>,      <span class="org-comment-delimiter">/* </span><span class="org-comment">info = index of table; aux = index of global name in `k'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">29: </span>  <span class="org-variable-name">VINDEXED</span>,     <span class="org-comment-delimiter">/* </span><span class="org-comment">info = table register; aux = index register (or `k')</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">30: </span>  <span class="org-variable-name">VJMP</span>,         <span class="org-comment-delimiter">/* </span><span class="org-comment">info = instruction pc</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">31: </span>  <span class="org-variable-name">VRELOCABLE</span>,   <span class="org-comment-delimiter">/* </span><span class="org-comment">info = instruction pc</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">32: </span>  <span class="org-variable-name">VNONRELOC</span>,    <span class="org-comment-delimiter">/* </span><span class="org-comment">info = result register</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">33: </span>  <span class="org-variable-name">VCALL</span>,        <span class="org-comment-delimiter">/* </span><span class="org-comment">info = instruction pc</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">34: </span>  <span class="org-variable-name">VVARARG</span>       <span class="org-comment-delimiter">/* </span><span class="org-comment">info = instruction pc</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">35: </span>} <span class="org-type">expkind</span>;
+<span class="linenr">36: </span>
+<span class="linenr">37: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">expdesc</span> {
+<span class="linenr">38: </span>  <span class="org-type">expkind</span> <span class="org-variable-name">k</span>;
+<span class="linenr">39: </span>  <span class="org-keyword">union</span> {
+<span class="linenr">40: </span>    <span class="org-keyword">struct</span> { <span class="org-type">int</span> <span class="org-variable-name">info</span>, <span class="org-variable-name">aux</span>; } <span class="org-variable-name">s</span>;
+<span class="linenr">41: </span>    <span class="org-type">lua_Number</span> <span class="org-variable-name">nval</span>;
+<span class="linenr">42: </span>  } <span class="org-variable-name">u</span>;
+<span class="linenr">43: </span>  <span class="org-type">int</span> <span class="org-variable-name">t</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">patch list of `exit when true'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">44: </span>  <span class="org-type">int</span> <span class="org-variable-name">f</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">patch list of `exit when false'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">45: </span>} <span class="org-type">expdesc</span>;
+</pre>
+</div>
+
+<p>
+如此对照 EBNF 的语法描述，就可以方便地对语法分析的过程有大体的了解。
+</p>
+
+<p>
+所有函数之间的调用过程，就像是隐式的 AST 的遍历过程。
+代码生成的实现过程就隐藏在这一个个函数中。
+</p>
+
+
+<div id="orga37d977" class="figure">
+<p><img src="parser-ast.png" alt="parser-ast.png">
+</p>
+</div>
+
+<p>
+整体以 chunk 为入口，下分为多个 stat，每个 stat 有独立的结构，最终到基础的 expr 单元，
+像一棵树形结构，自顶向下。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgdf70c5f" class="outline-2">
+<h2 id="orgdf70c5f"><span class="section-number-2">3</span> practice</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+<code>luaY_parser</code> 是 parser 模块的入口，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lparser.c</label><pre class="src src-c"><span class="linenr">383: </span><span class="org-type">Proto</span> *<span class="org-function-name">luaY_parser</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">ZIO</span> *<span class="org-variable-name">z</span>, <span class="org-type">Mbuffer</span> *<span class="org-variable-name">buff</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>) {
 <span class="linenr">384: </span>  <span class="org-keyword">struct</span> <span class="org-type">LexState</span> <span class="org-variable-name">lexstate</span>;
 <span class="linenr">385: </span>  <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> <span class="org-variable-name">funcstate</span>;
 <span class="linenr">386: </span>  lexstate.buff = buff;
@@ -443,50 +535,37 @@ luaY parser 是整体的入口
 </div>
 
 <p>
-其中从 chunk 入口，递归完成整体分析
+Line 391 调用 chunk，开始递归向下的分析。
 </p>
 
 <p>
-break at chunk
+读者可以使用调试器，在 chunk 处加上断点，运行 lua 代码，
+使用 next/step 观察内部运行的走向，对照 EBNF 来理解语法分析的整体结构。
 </p>
 
-<p>
-观察源代码
-</p>
+<pre class="example" id="org64a604a">
+$ make -s debug source=if.lua
+</pre>
 
 <p>
-观察 token
-</p>
-
-<p>
-n/s 观察代码的走向，只关注语法分析的过程
-</p>
-
-<p>
-e.g. localstat
-</p>
-
-
-<p>
-print *ls py extension
+建议最开始以 stat 为单位，对每个 stat 进行独立的观察，最终再整合为宏观的理解。
 </p>
 </div>
 </div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://www.lua.org/manual/5.1/manual.html#8">http://www.lua.org/manual/5.1/manual.html#8</a>
+</p></div></div>
 
 
-<div id="outline-container-orgdf70c5f" class="outline-2">
-<h2 id="orgdf70c5f"><span class="section-number-2">4</span> practice</h2>
-<div class="outline-text-2" id="text-4">
-<p>
-尝试随意的代码，在 chunk 处打上断点
-n/s 观察代码的走向
-</p>
 </div>
-</div>
-</div>
+</div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-07 四 15:57</p>
+<p>Updated: 2021-01-08 五 12:00</p>
 <p>Created: 2021-01-07 四 15:46</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

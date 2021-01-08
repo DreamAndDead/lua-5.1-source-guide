@@ -84,7 +84,6 @@ digraph {
 	subgraph cluster_0 {
 	lua[label="Lua Code"];
 	tk[label="Token"];
-	label="lexer";
 	style=filled;
 	color=lightblue;
 }

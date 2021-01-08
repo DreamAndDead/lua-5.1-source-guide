@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-07 四 15:47 -->
+<!-- 2021-01-08 五 10:50 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>lexer</title>
@@ -191,8 +191,9 @@
   .org-svg { width: 90%; }
   /*]]>*/-->
 </style>
-<link rel="stylesheet" type="text/css" href="htmlize.css">
+<link id="theme" rel="stylesheet" type="text/css" href="htmlize.css">
 <link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript" src="main.js"></script>
 <script type="text/javascript">
 // @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
 <!--/*--><![CDATA[/*><!--*/
@@ -239,7 +240,7 @@
 </p>
 
 
-<div id="orgc1eb8e0" class="figure">
+<div id="org163b0da" class="figure">
 <p><img src="compiler-trandition.png" alt="compiler-trandition.png">
 </p>
 </div>
@@ -253,7 +254,7 @@ lua 是解释型语言，但同样存在从源码到字节码的编译过程，�
 </p>
 
 
-<div id="org79f327c" class="figure">
+<div id="org3f0069e" class="figure">
 <p><img src="compiler-lua-detail-process.png" alt="compiler-lua-detail-process.png">
 </p>
 </div>
@@ -269,7 +270,7 @@ parser 孤身一人完成了从 token 到 opcode 的过程。
 
 
 
-<div id="org8c0bcd9" class="figure">
+<div id="org7479e96" class="figure">
 <p><img src="lexer-feature.png" alt="lexer-feature.png">
 </p>
 </div>
@@ -286,7 +287,7 @@ lexer 通常是第一个组件，将源代码转换为 token，将字符流转�
 </p>
 
 
-<div id="orgb223ec6" class="figure">
+<div id="org4bea004" class="figure">
 <p><img src="lexer-stream.png" alt="lexer-stream.png">
 </p>
 </div>
@@ -468,7 +469,7 @@ lex 过程的重要部分
 </ul>
 
 
-<div id="org40f1ecd" class="figure">
+<div id="orgb739077" class="figure">
 <p><img src="lexer-lexstate-inside.png" alt="lexer-lexstate-inside.png">
 </p>
 </div>
@@ -683,19 +684,19 @@ lexer 内部的核心方法就是 llex。
 </p>
 
 
-<div id="org58a0ac5" class="figure">
+<div id="org5880895" class="figure">
 <p><img src="lexer-matching-process-0.png" alt="lexer-matching-process-0.png">
 </p>
 </div>
 
 
-<div id="org394a143" class="figure">
+<div id="orgdc45621" class="figure">
 <p><img src="lexer-matching-process-1.png" alt="lexer-matching-process-1.png">
 </p>
 </div>
 
 
-<div id="org23a46b6" class="figure">
+<div id="org86d874f" class="figure">
 <p><img src="lexer-matching-process-2.png" alt="lexer-matching-process-2.png">
 </p>
 </div>
@@ -804,7 +805,7 @@ llex 的具体过程不再赘述，读者可以打开调试器，用一些代码
 庆幸的是 lua 依旧发现这个错误，
 </p>
 
-<pre class="example" id="orgb23a251">
+<pre class="example" id="orgac70629">
 malformed number near '.3.3.3'
 </pre>
 
@@ -900,7 +901,7 @@ lua 中可以用 <code>[[]]</code> 来表示长字符串，但是存在一种变
 </p>
 
 
-<div id="orgd12c679" class="figure">
+<div id="org5cbb484" class="figure">
 <p><img src="lexer-lookahead.png" alt="lexer-lookahead.png">
 </p>
 </div>
@@ -932,13 +933,13 @@ lua 中可以用 <code>[[]]</code> 来表示长字符串，但是存在一种变
 </div>
 
 
-<div id="orgeaeef61" class="figure">
+<div id="org3d25ae7" class="figure">
 <p><img src="lexer-next.png" alt="lexer-next.png">
 </p>
 </div>
 
 
-<div id="org97ed183" class="figure">
+<div id="org661ff9b" class="figure">
 <p><img src="lexer-next-next.png" alt="lexer-next-next.png">
 </p>
 </div>
@@ -1026,7 +1027,7 @@ lua 中可以用 <code>[[]]</code> 来表示长字符串，但是存在一种变
 </div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-07 四 15:46</p>
+<p>Updated: 2021-01-08 五 10:50</p>
 <p>Created: 2021-01-05 二 16:40</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
