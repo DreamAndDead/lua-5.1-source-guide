@@ -3,120 +3,142 @@
 #+TITLE: generator
 #+DATE: <2021-01-08 五 11:34>
 
-同时使用流式的处理方式，如果使用多趟式的处理过程，则需要一次完整的遍历
-token 数组，交给 parser
+上一章尝试单独解析语法分析过程，本章关注具体的代码生成过程。
 
-lua 使用了流式的处理过程，提供核心的方法，next，供 parser 按需使用
-核心使用的便是 lexstate
+#+begin_src dot :file generator-feature.png
+digraph {
+	rankdir = TB;
+	node[shape=box];
 
-lua 中的 parse 过程使用 lazy 加载 token 的方式
-按需加载 token
+	lua[label="Lua Code"];
+	tk[label="Token"];
 
+	subgraph cluster_0 {
+	ast[label="AST", style="dotted"];
+	op[label="Opcode"];
+	style=filled;
+	color=lightblue;
+}
+	vm[label="VM"];
 
+	lua -> tk[label="lex"];
+	tk -> ast[label="parse"];
+	ast -> op[label="generate"];
+	op -> vm[label="executed"];
+}
+#+end_src
 
-parser 介绍了整体的语法分析过程
+#+RESULTS:
+[[file:generator-feature.png]]
 
-gen 来详细深入，隐藏在语法分析过程之下的代码生成部分
+* function vs proto vs closure
 
-#+CAPTION: fs f combine picture
+在具体深入代码生成之前，先来区分三个概念，function proto 和 closure。
 
-生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
+function，是 lua 语言中定义的概念，是 8 种基础类型之一，表示函数，
+具体在 lua 代码中用关键字 =function= 来定义。
 
+如同 string 概念在底层由 TString 结构来实现一样，
+function 在底层用 Proto 结构来实现，是 function 整体编译之后得到的同语义结构。
 
-规则间的同义转换
+编译得到的 Proto 是静态的，在实际运行的时候，需要封装为 Closure 结构，交由 vm 来执行。
+Closure 为 upvalue 分配了空间，并统一表示了 c function 和 lua function。
 
-语法规则    vm opcode 规则
+这也是为什么在 object 章节，提到基础类型对应的实现结构时，用 Closure 而不是用 Proto 来表示 function。
 
-生成过程，就是等义转换的过程
+所以在编译时期，我们关注 Proto，而在运行时期，才关注 Closure。
 
-隐藏在语法分析下的艺术
+** chunk
 
+lua 内部使用了一种巧妙的实现，在编译时，将整个文件当做一个匿名 function 来对待。
+相当于文件头加了 =function ()= ，文件尾加了 =end= 。
 
-语法制导翻译
+#+caption: lparser.c
+#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 383 :lines "383-399"
 
-把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
+可以看到， =luaY_parser= 读取文件，最终生成并返回 =Proto *= 。
 
+因为整体分析的入口是 chunk，lua 又将文件当做匿名函数来对待，
+这也是很多 lua 书籍中提到 chunk 的原因，表示文件编译得到的结果。
 
-通用方式，是通过语法分析，得到 ast，进行属性计算
-很多情况下，翻译可以在扫描过程中完成
+** embeded
 
-L 属性翻译
+如果按照 function 和 Proto 一一对应的关系，会出现函数层级的问题。
 
+比如下面的示例代码，
 
-语法制导
-中间代码
-代码生成
+#+begin_src lua
+function a()
+   function b()
+   end
+end
 
-完全整合在一起
+function c()
+   function d()
+   end
 
-能正确运行已经是奇迹
+   function e()
+   end
+end
+#+end_src
 
+如果将 lua 代码文件看作 Proto chunk，代码中定义的 a b c d 同样是 function 且编译为 Proto。
+但是 function a b c d e 是 lua 代码的一部分，所以其 Proto 也应该被包含在 Proto chunk 中。
 
+lua 内部根据 function 定义的位置，来记录这种包含关系。
 
-gen 的这一步，多关乎两者之间的连接过程
-中间状态
+#+begin_src dot :file generator-function-level.png
+digraph {
+	node[shape=box];
+	
+	subgraph cluster_0 {
+		label="chunk";
 
-为了达到最终的结果，中间的阶段
+		subgraph cluster_2 {
+			label="c";
 
+			e;d;
+		}
 
+		subgraph cluster_1 {
+			label="a";
 
-在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
+			b;
+		}
+	}
+}
+#+end_src
 
+#+RESULTS:
+[[file:generator-function-level.png]]
 
+function a c 直接定义在代码文件（顶层匿名函数）中，
+b d e 则直接定义在 a 和 c 中。
 
-总体原则，
-- 语法制导
-- 后缀方法
-- 栈模拟运算
+#+begin_src dot :file generator-proto-level.png
+digraph {
+	node[shape=box];
 
+	rankdir = LR;
 
-关注 compile time
+	ac[shape=record, label=" <a> a | <c> c "];
+	de[shape=record, label=" <d> d | <e> e "];
 
-因为分析从左向右，从前至后的，所以对于一些结构需要特别的方法来处理
-比如 if 分支的处理，回填 jmp 地址
+	chunk -> ac:a[label="p"];
+	ac:a -> b[label="p"];
+	ac:c -> de:d[label="p"];
+}
+#+end_src
 
-以及 function proto 分析过程出现的栈过程
+#+RESULTS:
+[[file:generator-proto-level.png]]
 
+Proto 结构中使用 struct Proto * 数组 p（Line 235）来记录其直接包含的 Proto。
 
-* big picture
-  :LOGBOOK:
-  - Note taken on [2020-12-10 四 10:08] \\
-  why ~function~ concept is important in lua!
-  - Note taken on [2020-12-07 一 13:54] \\
-  lexical scoping 和 syntax scoping 的区别？ 闭包的不同实现？
-  :END:
+#+caption: lobject.h
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-254"
 
-#+CAPTION: luaY_parser function
-
-概念 vs
-- function，是 lua 中的概念，函数
-- proto，是 function 分析之后的同语义结构
-- closure，封装 proto，提供 upval 空间，用于 vm 运行时
-
-Proto 最终生成的 bytecode 与相关环境
-基本可以将 proto 等同于生成的可执行文件，交给 vm 就可以执行，不过其中有一些结构上的安排。
-
-一个 function 对应生成一个 proto，一个 lua 文件，可被认为是一个匿名函数
-故最终返回的是一个 proto。
-
-function 是基础类型，如果 lua 文件作为一级函数，则其中定义的函数为二级函数
-
-其中函数内部定义的函数为三级函数，可以不断向下延伸
-
-每一级函数，在 **p 中记录其包含的下一级函数，根据出现的顺序，用数组来记录。
-
-
-#+CAPTION: proto and function
-
-
-以 function 为单位，生成一块一块的 proto，组合在一起。
-
-
-前面提到过，在词法分析的过程中，有 lexstate 结构，它存储了一切词法分析过程中的状态
-在生成过程中，也存在如此结构，称为 funcstate，存储生成过程中涉及到的状态
-其中的 proto 就是生成的结果。
-
-总体过程如下。
+** big picture
 
 #+CAPTION: ls fs f big picture
 
@@ -125,32 +147,22 @@ function 是基础类型，如果 lua 文件作为一级函数，则其中定义
 每当生成一个新的 function，都会新建一个 fs，并指向父 fs，并对接 ls，生成自己的 f
 在结束之后，将 f 的结果并入父 fs 的 f 中。
 
-
 其实 fs 和 f 几乎是一个整体，总是同时行动。
 区别在于，proto 作为最终返回的结果，内容最小化，不多不少
 而作为中间过程中相关的 state，并不是 vm 需要关心的，所以就剔除到 fs 结构中了。
 
+lua 中的 parse 过程使用 lazy 加载 token 的方式，按需加载 token
 
 ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用，生成返回 f 之后，就被丢弃。
 
-
-
-
-
-
-
-
 其中的 k 表，opcode，就是在 vm 模型讨论的，
 关于 upval 的信息，隐藏在了 code 中。
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c :lines "228-254"
 
+#+caption: lobject.h
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 228 :lines "228-254"
 
-- func state
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "57-76"
-
-
-
-
+#+caption: lparser.h
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c -n 57 :lines "57-76"
 
 为什么 local var 和 active local var 存储在两个部分？
 
@@ -162,24 +174,7 @@ ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用
 而是否 active 对于 bytecode 并不重要。
 active 状态用于辅助 funcstate 生成 bytecode。
 
-
-
-
-
-
-
-
-
-
-
-
-#+CAPTION: lex next -> Y parser -> proto
-
-
-
 #+CAPTION: ls fs f structure, proto and cascade proto for functions
-
-
 
 #+CAPTION: fs f inside
 
@@ -197,7 +192,23 @@ f locvars  fs nlocvars
 fs upvalues  f nups
 f upvalues  f nups
 
+* generate
 
+生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
+
+规则间的同义转换
+语法规则    vm opcode 规则
+生成过程，就是等义转换的过程
+隐藏在语法分析下的艺术
+
+在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
+
+总体原则，
+- 语法制导
+- 后缀方法
+- 栈模拟运算
+
+把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
 
 
 代码的生成过程有一个隐式的假设，对 vm 的运作方式有明显的假定
@@ -381,7 +392,7 @@ print(f(), a)
 
 #+CAPTION: 18 global at runtime
 
-** TODO expdesc
+** expdesc
     :LOGBOOK:
     - Note taken on [2020-12-07 一 17:34] \\
     各个状态如何发生作用？
@@ -453,7 +464,7 @@ print(f(), a)
  | VCALL    | to VNONRELOC, store call code A value                |
  | VVARARG  | set B to 2? to VRELOCABLE                            |
 
-** TODO how freereg & freeexp works
+** how freereg & freeexp works
 
 #+CAPTION: page 19 & 20
 
@@ -961,6 +972,11 @@ a 并不是 upval，可见 upval 只针对 function 而言
 loop 情况，到 while for 具体分析。
 
 ** if
+   :LOGBOOK:
+   - Note taken on [2021-01-08 五 13:51] \\
+     因为分析从左向右，从前至后的，所以对于一些结构需要特别的方法来处理
+     比如 if 分支的处理，回填 jmp 地址
+   :END:
 
 顺序解析的难题之一
 分支
@@ -1234,6 +1250,9 @@ tailcall 本身已经有了 return 的语义
 
 
 * practice
+
+理想的 vm
+独立，lua 实现对 vm 做了协同的妥协
 
 ** arithmetic
 
