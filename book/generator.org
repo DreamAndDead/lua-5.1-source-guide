@@ -92,18 +92,19 @@ digraph {
 	node[shape=box];
 	
 	subgraph cluster_0 {
-		label="chunk";
+		label="chunk()";
 
 		subgraph cluster_2 {
-			label="c";
+			label="c()";
 
-			e;d;
+			e[label="e()"];
+			d[label="d()"];
 		}
 
 		subgraph cluster_1 {
-			label="a";
+			label="a()";
 
-			b;
+			b[label="b()"];
 		}
 	}
 }
@@ -138,61 +139,475 @@ Proto 结构中使用 struct Proto * 数组 p（Line 235）来记录其直接包
 #+caption: lobject.h
 #+INCLUDE: ../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-254"
 
-** big picture
+** FuncState
 
-#+CAPTION: ls fs f big picture
+在 lua 的语法分析中，function 解析是一个重要的部分。
 
-可以看出，ls 是单例，向 fs 输入 token，并在不同的 func 层次，对接不同的 fs 结构。
+EBNF 和 regex 的区别在于，EBNF 可以描述一种递归过程，而 regex 则不能。
 
-每当生成一个新的 function，都会新建一个 fs，并指向父 fs，并对接 ls，生成自己的 f
-在结束之后，将 f 的结果并入父 fs 的 f 中。
+chunk 作为解析 function 的入口，得到 Proto，这个过程在遇到 function 定义时，不断的递归调用，生成 Proto，
+并按照层级链接起来。
 
-其实 fs 和 f 几乎是一个整体，总是同时行动。
-区别在于，proto 作为最终返回的结果，内容最小化，不多不少
-而作为中间过程中相关的 state，并不是 vm 需要关心的，所以就剔除到 fs 结构中了。
-
-lua 中的 parse 过程使用 lazy 加载 token 的方式，按需加载 token
-
-ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用，生成返回 f 之后，就被丢弃。
-
-其中的 k 表，opcode，就是在 vm 模型讨论的，
-关于 upval 的信息，隐藏在了 code 中。
-
-#+caption: lobject.h
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 228 :lines "228-254"
+在了解这个过程之前，要先介绍另一个重要的结构 FuncState 。
 
 #+caption: lparser.h
 #+INCLUDE: ../lua-5.1.5/src/lparser.h src c -n 57 :lines "57-76"
 
-为什么 local var 和 active local var 存储在两个部分？
+从名称可以看出，和 LexState 相似，也用于记录中间状态。
+FuncState 用于记录 function 分析过程中的状态，和 function 定义一一对应，
+每遇到一个 function 定义时，lua 都会新建一个 FuncState，记录当下解析 function 的中间状态。
 
-因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
-且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
+** big picture
 
-因为 active 状态只能在 parse 过程分辨。
-离开作用域自然不是 active 的。
-而是否 active 对于 bytecode 并不重要。
-active 状态用于辅助 funcstate 生成 bytecode。
+LexState FuncState Proto 这三者在分析过程中协同生成最终的 Proto。
 
-#+CAPTION: ls fs f structure, proto and cascade proto for functions
+比如解析如下示例代码，
 
-#+CAPTION: fs f inside
+#+begin_src lua -n 1
+function a()
+   function b()
+   end
+end
+#+end_src
 
-fs->f->sizek 和 fs->nk 是有区别的
-nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
-如 length 和 capacity 的区别
-当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
+在整体文件分析开始之前，parser 已经准备好 FuncState，通过 LexState.ls 索引，
+FuncState.f 指向相应要生成的 Proto。
 
-f k  fs nk
-f p  fs np
-f code  fs pc
-fs actvar  fs nactvar
-f locvars  fs nlocvars
+#+CAPTION: ls fs f big picture
+#+begin_src dot :file generator-big-picture-0.png
+digraph {
+	node[shape=box];
+	rankdir=LR;
 
-fs upvalues  f nups
-f upvalues  f nups
+	ls;
+	c[label="fs"];
+	cp[label="f"];
+
+	ls -> c -> cp;
+}
+#+end_src
+
+
+#+RESULTS:
+[[file:generator-big-picture-0.png]]
+
+解析第 1 行之后，需要函数定义 a，parser 生成新的 FuncState，并更新 ls.fs 的指向。
+同时，fs a 通过 prev 指向 fs chunk，表示层级关系。
+
+#+begin_src dot :file generator-big-picture-1.png
+digraph {
+	node[shape=box];
+	rankdir=LR;
+
+	ls;
+	c[label="fs"];
+	cp[label="f"];
+
+	f[label="fs"];
+	fp[label="f"];
+
+	ls -> f;
+	c -> cp;
+
+	f -> fp;
+	f -> c[label="prev"];
+
+	{rank=same; c; f;}
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-big-picture-1.png]]
+
+
+第 2 行，遇到函数 b 定义，同样的，生成 FuncState 并更新 ls.fs 的指向。
+
+#+begin_src dot :file generator-big-picture-2.png
+digraph {
+	node[shape=box];
+	rankdir=LR;
+
+	ls;
+	c[label="fs"];
+	cp[label="f"];
+
+	f[label="fs"];
+	fp[label="f"];
+
+	g[label="fs"];
+	gp[label="f"];
+
+	ls -> g;
+	c -> cp;
+
+	f -> fp;
+	f -> c[label="prev"];
+
+	g -> gp;
+	g -> f[label="prev"];
+
+	{rank=same; c; f; g;}
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-big-picture-2.png]]
+
+第 3 行，函数 b 定义结束，此时 ls.fs 指向 fs b 的 prev，回到上个函数定义层级。
+并将函数 b 生成的 Proto 链接到上层函数 a 的 Proto。
+
+此时，fs b 已经结束其作用。
+
+#+begin_src dot :file generator-big-picture-3.png
+digraph {
+	node[shape=box];
+	rankdir=LR;
+
+	ls;
+	c[label="fs"];
+	cp[label="f"];
+
+	f[label="fs"];
+	fp[label="f"];
+
+	g[label="fs", style=dashed];
+	gp[label="f"];
+
+	ls -> f;
+	c -> cp;
+
+	f -> fp;
+	f -> c[label="prev"];
+
+	g -> gp;
+	g -> f[label="prev"];
+
+	{rank=same; c; f; g;}
+
+	fp -> gp[label="p[0]"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-big-picture-3.png]]
+
+#+begin_src dot :file generator-big-picture-4.png
+digraph {
+	node[shape=box];
+	rankdir=LR;
+
+	ls;
+	c[label="fs"];
+	cp[label="f"];
+
+	f[label="fs", style=dashed];
+	fp[label="f"];
+
+	g[label="fs", style=dashed];
+	gp[label="f"];
+
+	ls -> c -> cp;
+
+	f -> fp;
+	f -> c[label="prev"];
+
+	g -> gp;
+	g -> f[label="prev"];
+
+	{rank=same; c; f; g;}
+
+	fp -> gp[label="p[0]"];
+	cp -> fp[label="p[0]"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-big-picture-4.png]]
+
+第 4 行，函数 a 定义结束，同上，更新 ls.fs 指向，并链接 Proto a 到 Proto chunk。
+
+#+begin_src dot :file generator-big-picture-5.png
+digraph {
+	node[shape=box];
+	rankdir=LR;
+
+	ls[label="ls", style=dashed];
+	c[label="fs", style=dashed];
+	cp[label="f", style=filled, color=lightblue];
+
+	f[label="fs", style=dashed];
+	fp[label="f"];
+
+	g[label="fs", style=dashed];
+	gp[label="f"];
+
+	ls -> c -> cp;
+
+	f -> fp;
+	f -> c[label="prev"];
+
+	g -> gp;
+	g -> f[label="prev"];
+
+	{rank=same; c; f; g;}
+
+	fp -> gp[label="p[0]"];
+	cp -> fp[label="p[0]"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-big-picture-5.png]]
+
+最终返回 Proto chunk，ls 和 fs 都已经结束其使命，毕竟它们的作用只用于记录中间状态
+
+在 parser 内部，上面描述的过程发生在 =open_func() close_func()= 中，读者可仔细体会其细节。
+
+#+caption: lparser.c
+#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 328 :lines "328-381"
+
+** FuncState vs Proto
+   :LOGBOOK:
+   - Note taken on [2021-01-11 一 14:06] \\
+     为什么 local var 和 active local var 存储在两个部分？
+     
+     因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
+     且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
+     
+     因为 active 状态只能在 parse 过程分辨。
+     离开作用域自然不是 active 的。
+     而是否 active 对于 bytecode 并不重要。
+     active 状态用于辅助 funcstate 生成 bytecode。
+   - Note taken on [2021-01-11 一 14:06] \\
+     关于 upval 的信息，隐藏在了 code 中
+   :END:
+
+FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细做一番了解。
+
+仔细观察两个结构内部的字段，会发现两者之间有紧密的联系，界限很模糊，
+都些许记录了分析过程的结果。
+关键的差异在于，Proto 只保留最终结果，而 FuncState 记录中间状态。
+
+对应这个原则，来详细探究下两个结构的内部。
+
+先来看 Proto。
+
+#+caption: lobject.h
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-254"
+
+其中字段分为 3 部分来看
+
+暂不讨论
+- =int *lineinfo=
+- =TString *source=
+- =int linedefined=
+- =int lastlinedefined=
+- =GCObject *gclist=
+
+元信息
+- =lu_byte numparams= ，函数的固定参数个数
+- =lu_byte is_vararg= ，函数的可变参数
+- =lu_byte maxstacksize= ，函数运行时，最大使用的栈空间
+
+数组结果
+- =TValue *k= ，常量表
+- =Instruction *code= ，字节码
+- =struct Proto **p= ，内部其它函数定义
+- =struct LocVar *locvars= ，局部变量信息
+- =TString **upvalues= ，upvalue 信息
+- 与 len size 相关的字段
+
+对照之前对 vm 执行模型的讨论，code 和 k 就与之对应。
+
+这里一个有意思的区别，在于 size 和 n。
+
+上面提到的 5 个数组，都对应一个 size 字段，用于记录数组的大小。
+同时，也对应一个 n 字段，用于记录当前数组已使用的大小（下一个空闲的位置）。
+
+在分析的过程中，数组 size 值记录空间总长度，当空间不足时，会继续扩大分配。
+而数组 n 值用于时刻标识下一个空闲索引，记录分析结果并自增，它的值比 size 小。
+
+当最终分析结束时，将 n 值赋值给相应的 size 值，省略多余不用的空间，此时两者才会相同。
+
+如此看来，n 值应该存放在 FuncState 中，但是存在例外的是 =lu_byte nups= 。
+
+#+begin_src dot :file generator-fcode.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	
+	fcode[shape=record, label="
+	      | | | | <n> | | |
+	      ", xlabel="f->code"];
+
+	fsizecode[label="f->sizecode", shape=plain];
+	
+	fspc[label="fs->pc", shape=plain];
+
+	fspc -> fcode:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-fcode.png]]
+
+#+begin_src dot :file generator-fk.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	
+	fk[shape=record, label="
+	      | | | | <n> | | |
+	      ", xlabel="f->k"];
+
+	fsizek[label="f->sizek", shape=plain];
+	
+	fsnk[label="fs->nk", shape=plain];
+
+	fsnk -> fk:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-fk.png]]
+
+#+begin_src dot :file generator-fp.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	
+	fp[shape=record, label="
+	      | | | | <n> | | |
+	      ", xlabel="f->p"];
+
+	fsizep[label="f->sizep", shape=plain];
+	
+	fsnp[label="fs->np", shape=plain];
+
+	fsnp -> fp:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-fp.png]]
+
+
+#+begin_src dot :file generator-fupval.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	
+	fupval[shape=record, label="
+	      | | | | <n> | | |
+	      ", xlabel="f->upvalues"];
+
+	fsizeupval[label="f->sizeupvalues", shape=plain];
+	
+	fnups[label="f->nups", shape=plain];
+
+	fnups -> fupval:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-fupval.png]]
+
+#+begin_src dot :file generator-flocvars.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	
+	flocvars[shape=record, label="
+	      | | | | <n> | | |
+	      ", xlabel="f->locvars"];
+
+	fsizelocvars[label="f->sizelocvars", shape=plain];
+	
+	fsnlocvars[label="fs->nlocvars", shape=plain];
+
+	fsnlocvars -> flocvars:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-flocvars.png]]
+
+相同的视角，来观察 FuncState。
+
+#+caption: lparser.h
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c -n 57 :lines "57-76"
+
+暂不讨论
+- =Proto *f=
+- =struct FuncState *prev=
+- =struct LexState *ls=
+- =struct lua_State *L=
+
+后续讨论
+- =struct BlockCnt *bl=
+- =int lasttarget=
+- =int jpc=
+- =int freereg=
+
+中间结果
+- =upvaldesc upvalues[LUAI_MAXUPVALUES]=
+- =unsigned short actvar[LUAI_MAXVARS]=
+- 其它 n 字段
+
+两个数组是定长的，即 size 是固定的， =f->nups= =fs->nactvar= 用于对应其 n 字段。
+
+#+begin_src dot :file generator-fsupval.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	
+	fsupval[shape=record, label="
+	      | | | | <n> | | |
+	      ", xlabel="fs->upvalues"];
+
+	fssizeupval[label="LUAI_MAXUPVALUES", shape=plain];
+	
+	fnups[label="f->nups", shape=plain];
+
+	fnups -> fsupval:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-fsupval.png]]
+
+#+begin_src dot :file generator-fsactvar.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	
+	fsactvar[shape=record, label="
+	      | | | | <n> | | |
+	      ", xlabel="fs->actvar"];
+
+	fssizeactvar[label="LUAI_MAXVARS", shape=plain];
+	
+	fsnactvar[label="fs->nactvar", shape=plain];
+
+	fsnactvar -> fsactvar:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-fsactvar.png]]
+
+在编译过程中，所得到的结果会不断的存储入上述数组及其它字段中。
 
 * generate
+
+编译时和运行时的区别。
 
 生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
 
@@ -210,27 +625,10 @@ f upvalues  f nups
 
 把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
 
-
 代码的生成过程有一个隐式的假设，对 vm 的运作方式有明显的假定
 如果纯粹的分离开来，应该对一套 opcode 进行编程
 但是这里 opcode 的定义显然就是 vm 本身
 
-** register
-   :LOGBOOK:
-   - Note taken on [2020-12-07 一 14:01] \\
-   如何调度寄存器？
-   :END:
-
-register is stack
-
-parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
-因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
-
-move a b
-
-但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
-因为这是编译时，而不是运行时
-    
 ** variable
 
 变量有 3 类，local upval global
@@ -392,6 +790,24 @@ print(f(), a)
 
 #+CAPTION: 18 global at runtime
 
+** register
+   :LOGBOOK:
+   - Note taken on [2020-12-07 一 14:01] \\
+   如何调度寄存器？
+   :END:
+
+register is stack
+
+parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
+因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+
+move a b
+
+但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
+因为这是编译时，而不是运行时
+
+local 变量 和 中间结果
+
 ** expdesc
     :LOGBOOK:
     - Note taken on [2020-12-07 一 17:34] \\
@@ -479,7 +895,7 @@ freereg 的作用
 和 nactvar 的关系
 
 
-* tools
+* ChunkSpy
 
 以实例为基础的探索
 基础方法
@@ -594,7 +1010,6 @@ singlevaraux
 添加到 f 的 upval 表中
 
 新增 upval 并返回 upval 对应的索引
-
 
 *** vararg
     :LOGBOOK:
@@ -728,7 +1143,6 @@ TODO 因为 luaK_nil 的优化过程，没有生成代码
 
 
 =adjustlocalvars= 调整 nactvar 的值，并设置相应的 startpc
-
 
 *** with assignment
 
@@ -899,7 +1313,6 @@ exp2reg，存储到指定 reg
 其中解析了 jump 相关的内容
 
 最终成为 VNONRELOC
-
 
 
 *** upvalue
@@ -1131,7 +1544,6 @@ for k, v in pairs(t) do
   print(k, v)
 end
 #+end_src
-
 
 *** fornum
 

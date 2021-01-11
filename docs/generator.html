@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-08 五 17:27 -->
+<!-- 2021-01-11 一 14:24 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>generator</title>
@@ -225,7 +225,7 @@
 </p>
 
 
-<div id="org54fe956" class="figure">
+<div id="org070e608" class="figure">
 <p><img src="generator-feature.png" alt="generator-feature.png">
 </p>
 </div>
@@ -300,8 +300,8 @@ lua 内部使用了一种巧妙的实现，在编译时，将整个文件当做�
 </div>
 </div>
 
-<div id="outline-container-orgf6c56c5" class="outline-3">
-<h3 id="orgf6c56c5"><span class="section-number-3">1.2</span> level</h3>
+<div id="outline-container-org984e5f6" class="outline-3">
+<h3 id="org984e5f6"><span class="section-number-3">1.2</span> embeded</h3>
 <div class="outline-text-3" id="text-1-2">
 <p>
 如果按照 function 和 Proto 一一对应的关系，会出现函数层级的问题。
@@ -337,7 +337,7 @@ lua 内部根据 function 定义的位置，来记录这种包含关系。
 </p>
 
 
-<div id="orgd177a2c" class="figure">
+<div id="org381a479" class="figure">
 <p><img src="generator-function-level.png" alt="generator-function-level.png">
 </p>
 </div>
@@ -348,7 +348,7 @@ b d e 则直接定义在 a 和 c 中。
 </p>
 
 
-<div id="orge94d7eb" class="figure">
+<div id="org397d5dc" class="figure">
 <p><img src="generator-proto-level.png" alt="generator-proto-level.png">
 </p>
 </div>
@@ -389,139 +389,437 @@ Proto 结构中使用 struct Proto * 数组 p（Line 235）来记录其直接包
 </div>
 </div>
 
-<div id="outline-container-org6bc1c06" class="outline-3">
-<h3 id="org6bc1c06"><span class="section-number-3">1.3</span> big picture</h3>
+<div id="outline-container-org5b478ed" class="outline-3">
+<h3 id="org5b478ed"><span class="section-number-3">1.3</span> FuncState</h3>
 <div class="outline-text-3" id="text-1-3">
 <p>
-可以看出，ls 是单例，向 fs 输入 token，并在不同的 func 层次，对接不同的 fs 结构。
+在 lua 的语法分析中，function 解析是一个重要的部分。
 </p>
 
 <p>
-每当生成一个新的 function，都会新建一个 fs，并指向父 fs，并对接 ls，生成自己的 f
-在结束之后，将 f 的结果并入父 fs 的 f 中。
-</p>
-
-
-<p>
-其实 fs 和 f 几乎是一个整体，总是同时行动。
-区别在于，proto 作为最终返回的结果，内容最小化，不多不少
-而作为中间过程中相关的 state，并不是 vm 需要关心的，所以就剔除到 fs 结构中了。
+EBNF 和 regex 的区别在于，EBNF 可以描述一种递归过程，而 regex 则不能。
 </p>
 
 <p>
-lua 中的 parse 过程使用 lazy 加载 token 的方式，按需加载 token
+chunk 作为解析 function 的入口，得到 Proto，这个过程在遇到 function 定义时，不断的递归调用，生成 Proto，
+并按照层级链接起来。
 </p>
 
 <p>
-ls fs 在 gen 的过程中，都只是承担着一个中间作用，辅助作用，生成返回 f 之后，就被丢弃。
+在了解这个过程之前，要先介绍另一个重要的结构 FuncState 。
 </p>
 
-
-<p>
-其中的 k 表，opcode，就是在 vm 模型讨论的，
-关于 upval 的信息，隐藏在了 code 中。
-</p>
 <div class="org-src-container">
-<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
-<span class="org-comment">** Function Prototypes</span>
-<span class="org-comment-delimiter">*/</span>
-<span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Proto</span> {
-  CommonHeader;
-  <span class="org-type">TValue</span> *<span class="org-variable-name">k</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">constants used by the function</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">Instruction</span> *<span class="org-variable-name">code</span>;
-  <span class="org-keyword">struct</span> <span class="org-type">Proto</span> **<span class="org-variable-name">p</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">functions defined inside the function</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> *<span class="org-variable-name">lineinfo</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">map from opcodes to source lines</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">struct</span> <span class="org-type">LocVar</span> *<span class="org-variable-name">locvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">information about local variables</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">TString</span> **<span class="org-variable-name">upvalues</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">upvalue names</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">TString</span>  *<span class="org-variable-name">source</span>;
-  <span class="org-type">int</span> <span class="org-variable-name">sizeupvalues</span>;
-  <span class="org-type">int</span> <span class="org-variable-name">sizek</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `k'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">sizecode</span>;
-  <span class="org-type">int</span> <span class="org-variable-name">sizelineinfo</span>;
-  <span class="org-type">int</span> <span class="org-variable-name">sizep</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `p'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">sizelocvars</span>;
-  <span class="org-type">int</span> <span class="org-variable-name">linedefined</span>;
-  <span class="org-type">int</span> <span class="org-variable-name">lastlinedefined</span>;
-  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">nups</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of upvalues</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">numparams</span>;
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">is_vararg</span>;
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">maxstacksize</span>;
-} <span class="org-type">Proto</span>;
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lparser.h</label><pre class="src src-c"><span class="linenr">57: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">state needed to generate code for a given function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">58: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> {
+<span class="linenr">59: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">f</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current function header</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">60: </span>  <span class="org-type">Table</span> *<span class="org-variable-name">h</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">table to find (and reuse) elements in `k'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">61: </span>  <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> *<span class="org-variable-name">prev</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">enclosing function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">62: </span>  <span class="org-keyword">struct</span> <span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">lexical state</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">63: </span>  <span class="org-keyword">struct</span> <span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">copy of the Lua state</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">64: </span>  <span class="org-keyword">struct</span> <span class="org-type">BlockCnt</span> *<span class="org-variable-name">bl</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">chain of current blocks</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">65: </span>  <span class="org-type">int</span> <span class="org-variable-name">pc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">next position to code (equivalent to `ncode')</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">66: </span>  <span class="org-type">int</span> <span class="org-variable-name">lasttarget</span>;   <span class="org-comment-delimiter">/* </span><span class="org-comment">`pc' of last `jump target'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">67: </span>  <span class="org-type">int</span> <span class="org-variable-name">jpc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of pending jumps to `pc'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">68: </span>  <span class="org-type">int</span> <span class="org-variable-name">freereg</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">first free register</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">69: </span>  <span class="org-type">int</span> <span class="org-variable-name">nk</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `k'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">70: </span>  <span class="org-type">int</span> <span class="org-variable-name">np</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `p'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">71: </span>  <span class="org-type">short</span> <span class="org-variable-name">nlocvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `locvars'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">72: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">nactvar</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of active local variables</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">73: </span>  <span class="org-type">upvaldesc</span> <span class="org-variable-name">upvalues</span>[LUAI_MAXUPVALUES];  <span class="org-comment-delimiter">/* </span><span class="org-comment">upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">74: </span>  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">actvar</span>[LUAI_MAXVARS];  <span class="org-comment-delimiter">/* </span><span class="org-comment">declared-variable stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">75: </span>} <span class="org-type">FuncState</span>;
 </pre>
 </div>
 
+<p>
+从名称可以看出，和 LexState 相似，也用于记录中间状态。
+FuncState 用于记录 function 分析过程中的状态，和 function 定义一一对应，
+每遇到一个 function 定义时，lua 都会新建一个 FuncState，记录当下解析 function 的中间状态。
+</p>
+</div>
+</div>
 
+<div id="outline-container-org6bc1c06" class="outline-3">
+<h3 id="org6bc1c06"><span class="section-number-3">1.4</span> big picture</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+LexState FuncState Proto 这三者在分析过程中协同生成最终的 Proto。
+</p>
+
+<p>
+比如解析如下示例代码，
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="linenr">1: </span><span class="org-keyword">function</span> <span class="org-function-name">a</span>()
+<span class="linenr">2: </span>   <span class="org-keyword">function</span> <span class="org-function-name">b</span>()
+<span class="linenr">3: </span>   <span class="org-keyword">end</span>
+<span class="linenr">4: </span><span class="org-keyword">end</span>
+</pre>
+</div>
+
+<p>
+在整体文件分析开始之前，parser 已经准备好 FuncState，通过 LexState.ls 索引，
+FuncState.f 指向相应要生成的 Proto。
+</p>
+
+
+<div id="orga98404e" class="figure">
+<p><img src="generator-big-picture-0.png" alt="generator-big-picture-0.png">
+</p>
+</div>
+
+<p>
+解析第 1 行之后，需要函数定义 a，parser 生成新的 FuncState，并更新 ls.fs 的指向。
+同时，fs a 通过 prev 指向 fs chunk，表示层级关系。
+</p>
+
+
+<div id="org67bb46d" class="figure">
+<p><img src="generator-big-picture-1.png" alt="generator-big-picture-1.png">
+</p>
+</div>
+
+
+<p>
+第 2 行，遇到函数 b 定义，同样的，生成 FuncState 并更新 ls.fs 的指向。
+</p>
+
+
+<div id="org1330283" class="figure">
+<p><img src="generator-big-picture-2.png" alt="generator-big-picture-2.png">
+</p>
+</div>
+
+<p>
+第 3 行，函数 b 定义结束，此时 ls.fs 指向 fs b 的 prev，回到上个函数定义层级。
+并将函数 b 生成的 Proto 链接到上层函数 a 的 Proto。
+</p>
+
+<p>
+此时，fs b 已经结束其作用。
+</p>
+
+
+<div id="org97e9181" class="figure">
+<p><img src="generator-big-picture-3.png" alt="generator-big-picture-3.png">
+</p>
+</div>
+
+
+<div id="orgc60d2ad" class="figure">
+<p><img src="generator-big-picture-4.png" alt="generator-big-picture-4.png">
+</p>
+</div>
+
+<p>
+第 4 行，函数 a 定义结束，同上，更新 ls.fs 指向，并链接 Proto a 到 Proto chunk。
+</p>
+
+
+<div id="orgc4719a5" class="figure">
+<p><img src="generator-big-picture-5.png" alt="generator-big-picture-5.png">
+</p>
+</div>
+
+<p>
+最终返回 Proto chunk，ls 和 fs 都已经结束其使命，毕竟它们的作用只用于记录中间状态
+</p>
+
+<p>
+在 parser 内部，上面描述的过程发生在 <code>open_func() close_func()</code> 中，读者可仔细体会其细节。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lparser.c</label><pre class="src src-c"><span class="linenr">328: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">open_func</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>, <span class="org-type">FuncState</span> *<span class="org-variable-name">fs</span>) {
+<span class="linenr">329: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">L</span> = ls-&gt;L;
+<span class="linenr">330: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">f</span> = luaF_newproto(L);
+<span class="linenr">331: </span>  fs-&gt;f = f;
+<span class="linenr">332: </span>  fs-&gt;prev = ls-&gt;fs;  <span class="org-comment-delimiter">/* </span><span class="org-comment">linked list of funcstates</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">333: </span>  fs-&gt;ls = ls;
+<span class="linenr">334: </span>  fs-&gt;L = L;
+<span class="linenr">335: </span>  ls-&gt;fs = fs;
+<span class="linenr">336: </span>  fs-&gt;pc = 0;
+<span class="linenr">337: </span>  fs-&gt;lasttarget = -1;
+<span class="linenr">338: </span>  fs-&gt;jpc = NO_JUMP;
+<span class="linenr">339: </span>  fs-&gt;freereg = 0;
+<span class="linenr">340: </span>  fs-&gt;nk = 0;
+<span class="linenr">341: </span>  fs-&gt;np = 0;
+<span class="linenr">342: </span>  fs-&gt;nlocvars = 0;
+<span class="linenr">343: </span>  fs-&gt;nactvar = 0;
+<span class="linenr">344: </span>  fs-&gt;bl = <span class="org-constant">NULL</span>;
+<span class="linenr">345: </span>  f-&gt;source = ls-&gt;source;
+<span class="linenr">346: </span>  f-&gt;maxstacksize = 2;  <span class="org-comment-delimiter">/* </span><span class="org-comment">registers 0/1 are always valid</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">347: </span>  fs-&gt;h = luaH_new(L, 0, 0);
+<span class="linenr">348: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">anchor table of constants and prototype (to avoid being collected)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">349: </span>  sethvalue2s(L, L-&gt;top, fs-&gt;h);
+<span class="linenr">350: </span>  incr_top(L);
+<span class="linenr">351: </span>  setptvalue2s(L, L-&gt;top, f);
+<span class="linenr">352: </span>  incr_top(L);
+<span class="linenr">353: </span>}
+<span class="linenr">354: </span>
+<span class="linenr">355: </span>
+<span class="linenr">356: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">close_func</span> (<span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>) {
+<span class="linenr">357: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">L</span> = ls-&gt;L;
+<span class="linenr">358: </span>  <span class="org-type">FuncState</span> *<span class="org-variable-name">fs</span> = ls-&gt;fs;
+<span class="linenr">359: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">f</span> = fs-&gt;f;
+<span class="linenr">360: </span>  removevars(ls, 0);
+<span class="linenr">361: </span>  luaK_ret(fs, 0, 0);  <span class="org-comment-delimiter">/* </span><span class="org-comment">final return</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">362: </span>  luaM_reallocvector(L, f-&gt;code, f-&gt;sizecode, fs-&gt;pc, Instruction);
+<span class="linenr">363: </span>  f-&gt;sizecode = fs-&gt;pc;
+<span class="linenr">364: </span>  luaM_reallocvector(L, f-&gt;lineinfo, f-&gt;sizelineinfo, fs-&gt;pc, <span class="org-type">int</span>);
+<span class="linenr">365: </span>  f-&gt;sizelineinfo = fs-&gt;pc;
+<span class="linenr">366: </span>  luaM_reallocvector(L, f-&gt;k, f-&gt;sizek, fs-&gt;nk, TValue);
+<span class="linenr">367: </span>  f-&gt;sizek = fs-&gt;nk;
+<span class="linenr">368: </span>  luaM_reallocvector(L, f-&gt;p, f-&gt;sizep, fs-&gt;np, <span class="org-type">Proto</span> *);
+<span class="linenr">369: </span>  f-&gt;sizep = fs-&gt;np;
+<span class="linenr">370: </span>  luaM_reallocvector(L, f-&gt;locvars, f-&gt;sizelocvars, fs-&gt;nlocvars, LocVar);
+<span class="linenr">371: </span>  f-&gt;sizelocvars = fs-&gt;nlocvars;
+<span class="linenr">372: </span>  luaM_reallocvector(L, f-&gt;upvalues, f-&gt;sizeupvalues, f-&gt;nups, <span class="org-type">TString</span> *);
+<span class="linenr">373: </span>  f-&gt;sizeupvalues = f-&gt;nups;
+<span class="linenr">374: </span>  lua_assert(luaG_checkcode(f));
+<span class="linenr">375: </span>  lua_assert(fs-&gt;bl == <span class="org-constant">NULL</span>);
+<span class="linenr">376: </span>  ls-&gt;fs = fs-&gt;prev;
+<span class="linenr">377: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">last token read was anchored in defunct function; must reanchor it</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">378: </span>  <span class="org-keyword">if</span> (fs) anchor_token(ls);
+<span class="linenr">379: </span>  L-&gt;top -= 2;  <span class="org-comment-delimiter">/* </span><span class="org-comment">remove table and prototype from the stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">380: </span>}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0321ec9" class="outline-3">
+<h3 id="org0321ec9"><span class="section-number-3">1.5</span> FuncState vs Proto</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细做一番了解。
+</p>
+
+<p>
+仔细观察两个结构内部的字段，会发现两者之间有紧密的联系，界限很模糊，
+都些许记录了分析过程的结果。
+关键的差异在于，Proto 只保留最终结果，而 FuncState 记录中间状态。
+</p>
+
+<p>
+对应这个原则，来详细探究下两个结构的内部。
+</p>
+
+<p>
+先来看 Proto。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>lobject.h</label><pre class="src src-C"><span class="linenr">228: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">229: </span><span class="org-comment">** Function Prototypes</span>
+<span class="linenr">230: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">231: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Proto</span> {
+<span class="linenr">232: </span>  CommonHeader;
+<span class="linenr">233: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">k</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">constants used by the function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">234: </span>  <span class="org-type">Instruction</span> *<span class="org-variable-name">code</span>;
+<span class="linenr">235: </span>  <span class="org-keyword">struct</span> <span class="org-type">Proto</span> **<span class="org-variable-name">p</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">functions defined inside the function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">236: </span>  <span class="org-type">int</span> *<span class="org-variable-name">lineinfo</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">map from opcodes to source lines</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">237: </span>  <span class="org-keyword">struct</span> <span class="org-type">LocVar</span> *<span class="org-variable-name">locvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">information about local variables</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">238: </span>  <span class="org-type">TString</span> **<span class="org-variable-name">upvalues</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">upvalue names</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">239: </span>  <span class="org-type">TString</span>  *<span class="org-variable-name">source</span>;
+<span class="linenr">240: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizeupvalues</span>;
+<span class="linenr">241: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizek</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `k'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">242: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizecode</span>;
+<span class="linenr">243: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizelineinfo</span>;
+<span class="linenr">244: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizep</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of `p'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">245: </span>  <span class="org-type">int</span> <span class="org-variable-name">sizelocvars</span>;
+<span class="linenr">246: </span>  <span class="org-type">int</span> <span class="org-variable-name">linedefined</span>;
+<span class="linenr">247: </span>  <span class="org-type">int</span> <span class="org-variable-name">lastlinedefined</span>;
+<span class="linenr">248: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
+<span class="linenr">249: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">nups</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">250: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">numparams</span>;
+<span class="linenr">251: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">is_vararg</span>;
+<span class="linenr">252: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">maxstacksize</span>;
+<span class="linenr">253: </span>} <span class="org-type">Proto</span>;
+</pre>
+</div>
+
+<p>
+其中字段分为 3 部分来看
+</p>
+
+<p>
+暂不讨论
+</p>
 <ul class="org-ul">
-<li>func state</li>
+<li><code>int *lineinfo</code></li>
+<li><code>TString *source</code></li>
+<li><code>int linedefined</code></li>
+<li><code>int lastlinedefined</code></li>
+<li><code>GCObject *gclist</code></li>
 </ul>
+
+<p>
+元信息
+</p>
+<ul class="org-ul">
+<li><code>lu_byte numparams</code> ，函数的固定参数个数</li>
+<li><code>lu_byte is_vararg</code> ，函数的可变参数</li>
+<li><code>lu_byte maxstacksize</code> ，函数运行时，最大使用的栈空间</li>
+</ul>
+
+<p>
+数组结果
+</p>
+<ul class="org-ul">
+<li><code>TValue *k</code> ，常量表</li>
+<li><code>Instruction *code</code> ，字节码</li>
+<li><code>struct Proto **p</code> ，内部其它函数定义</li>
+<li><code>struct LocVar *locvars</code> ，局部变量信息</li>
+<li><code>TString **upvalues</code> ，upvalue 信息</li>
+<li>与 len size 相关的字段</li>
+</ul>
+
+<p>
+对照之前对 vm 执行模型的讨论，code 和 k 就与之对应。
+</p>
+
+<p>
+这里一个有意思的区别，在于 size 和 n。
+</p>
+
+<p>
+上面提到的 5 个数组，都对应一个 size 字段，用于记录数组的大小。
+同时，也对应一个 n 字段，用于记录当前数组已使用的大小（下一个空闲的位置）。
+</p>
+
+<p>
+在分析的过程中，数组 size 值记录空间总长度，当空间不足时，会继续扩大分配。
+而数组 n 值用于时刻标识下一个空闲索引，记录分析结果并自增，它的值比 size 小。
+</p>
+
+<p>
+当最终分析结束时，将 n 值赋值给相应的 size 值，省略多余不用的空间，此时两者才会相同。
+</p>
+
+<p>
+如此看来，n 值应该存放在 FuncState 中，但是存在例外的是 <code>lu_byte nups</code> 。
+</p>
+
+
+<div id="org9cd686f" class="figure">
+<p><img src="generator-fcode.png" alt="generator-fcode.png">
+</p>
+</div>
+
+
+<div id="org387a921" class="figure">
+<p><img src="generator-fk.png" alt="generator-fk.png">
+</p>
+</div>
+
+
+<div id="org07d7b78" class="figure">
+<p><img src="generator-fp.png" alt="generator-fp.png">
+</p>
+</div>
+
+
+
+<div id="org42c548c" class="figure">
+<p><img src="generator-fupval.png" alt="generator-fupval.png">
+</p>
+</div>
+
+
+<div id="org649deef" class="figure">
+<p><img src="generator-flocvars.png" alt="generator-flocvars.png">
+</p>
+</div>
+
+<p>
+相同的视角，来观察 FuncState。
+</p>
+
 <div class="org-src-container">
-<pre class="src src-c"><span class="org-comment-delimiter">/* </span><span class="org-comment">state needed to generate code for a given function</span><span class="org-comment-delimiter"> */</span>
-<span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> {
-  <span class="org-type">Proto</span> *<span class="org-variable-name">f</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current function header</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">Table</span> *<span class="org-variable-name">h</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">table to find (and reuse) elements in `k'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> *<span class="org-variable-name">prev</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">enclosing function</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">struct</span> <span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">lexical state</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">struct</span> <span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">copy of the Lua state</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">struct</span> <span class="org-type">BlockCnt</span> *<span class="org-variable-name">bl</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">chain of current blocks</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">pc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">next position to code (equivalent to `ncode')</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">lasttarget</span>;   <span class="org-comment-delimiter">/* </span><span class="org-comment">`pc' of last `jump target'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">jpc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of pending jumps to `pc'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">freereg</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">first free register</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">nk</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `k'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">np</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `p'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">short</span> <span class="org-variable-name">nlocvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `locvars'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">nactvar</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of active local variables</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">upvaldesc</span> <span class="org-variable-name">upvalues</span>[LUAI_MAXUPVALUES];  <span class="org-comment-delimiter">/* </span><span class="org-comment">upvalues</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">actvar</span>[LUAI_MAXVARS];  <span class="org-comment-delimiter">/* </span><span class="org-comment">declared-variable stack</span><span class="org-comment-delimiter"> */</span>
-} <span class="org-type">FuncState</span>;
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>lparser.h</label><pre class="src src-c"><span class="linenr">57: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">state needed to generate code for a given function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">58: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> {
+<span class="linenr">59: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">f</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current function header</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">60: </span>  <span class="org-type">Table</span> *<span class="org-variable-name">h</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">table to find (and reuse) elements in `k'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">61: </span>  <span class="org-keyword">struct</span> <span class="org-type">FuncState</span> *<span class="org-variable-name">prev</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">enclosing function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">62: </span>  <span class="org-keyword">struct</span> <span class="org-type">LexState</span> *<span class="org-variable-name">ls</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">lexical state</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">63: </span>  <span class="org-keyword">struct</span> <span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">copy of the Lua state</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">64: </span>  <span class="org-keyword">struct</span> <span class="org-type">BlockCnt</span> *<span class="org-variable-name">bl</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">chain of current blocks</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">65: </span>  <span class="org-type">int</span> <span class="org-variable-name">pc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">next position to code (equivalent to `ncode')</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">66: </span>  <span class="org-type">int</span> <span class="org-variable-name">lasttarget</span>;   <span class="org-comment-delimiter">/* </span><span class="org-comment">`pc' of last `jump target'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">67: </span>  <span class="org-type">int</span> <span class="org-variable-name">jpc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of pending jumps to `pc'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">68: </span>  <span class="org-type">int</span> <span class="org-variable-name">freereg</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">first free register</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">69: </span>  <span class="org-type">int</span> <span class="org-variable-name">nk</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `k'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">70: </span>  <span class="org-type">int</span> <span class="org-variable-name">np</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `p'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">71: </span>  <span class="org-type">short</span> <span class="org-variable-name">nlocvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of elements in `locvars'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">72: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">nactvar</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of active local variables</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">73: </span>  <span class="org-type">upvaldesc</span> <span class="org-variable-name">upvalues</span>[LUAI_MAXUPVALUES];  <span class="org-comment-delimiter">/* </span><span class="org-comment">upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">74: </span>  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">actvar</span>[LUAI_MAXVARS];  <span class="org-comment-delimiter">/* </span><span class="org-comment">declared-variable stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">75: </span>} <span class="org-type">FuncState</span>;
 </pre>
 </div>
 
+<p>
+暂不讨论
+</p>
+<ul class="org-ul">
+<li><code>Proto *f</code></li>
+<li><code>struct FuncState *prev</code></li>
+<li><code>struct LexState *ls</code></li>
+<li><code>struct lua_State *L</code></li>
+</ul>
 
 <p>
-为什么 local var 和 active local var 存储在两个部分？
+后续讨论
+</p>
+<ul class="org-ul">
+<li><code>struct BlockCnt *bl</code></li>
+<li><code>int lasttarget</code></li>
+<li><code>int jpc</code></li>
+<li><code>int freereg</code></li>
+</ul>
+
+<p>
+中间结果
+</p>
+<ul class="org-ul">
+<li><code>upvaldesc upvalues[LUAI_MAXUPVALUES]</code></li>
+<li><code>unsigned short actvar[LUAI_MAXVARS]</code></li>
+<li>其它 n 字段</li>
+</ul>
+
+<p>
+两个数组是定长的，即 size 是固定的， <code>f-&gt;nups</code> <code>fs-&gt;nactvar</code> 用于对应其 n 字段。
 </p>
 
-<p>
-因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
-且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
+
+<div id="org588390a" class="figure">
+<p><img src="generator-fsupval.png" alt="generator-fsupval.png">
 </p>
+</div>
+
+
+<div id="org05849d7" class="figure">
+<p><img src="generator-fsactvar.png" alt="generator-fsactvar.png">
+</p>
+</div>
 
 <p>
-因为 active 状态只能在 parse 过程分辨。
-离开作用域自然不是 active 的。
-而是否 active 对于 bytecode 并不重要。
-active 状态用于辅助 funcstate 生成 bytecode。
-</p>
-
-<p>
-fs-&gt;f-&gt;sizek 和 fs-&gt;nk 是有区别的
-nk 是随着实际情况准确的在变化，而 sizek 准确的说，更像是在记录扩容的空间大小
-如 length 和 capacity 的区别
-当然，最终分析完成之后，会使用赋值 sizek = nk，作为最终的生成结果
-</p>
-
-<p>
-f k  fs nk
-f p  fs np
-f code  fs pc
-fs actvar  fs nactvar
-f locvars  fs nlocvars
-</p>
-
-<p>
-fs upvalues  f nups
-f upvalues  f nups
+在编译过程中，所得到的结果会不断的存储入上述数组及其它字段中。
 </p>
 </div>
 </div>
 </div>
-
 
 <div id="outline-container-orgda89633" class="outline-2">
 <h2 id="orgda89633"><span class="section-number-2">2</span> generate</h2>
 <div class="outline-text-2" id="text-2">
+<p>
+编译时和运行时的区别。
+</p>
+
 <p>
 生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
 </p>
@@ -550,7 +848,6 @@ f upvalues  f nups
 把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
 </p>
 
-
 <p>
 代码的生成过程有一个隐式的假设，对 vm 的运作方式有明显的假定
 如果纯粹的分离开来，应该对一套 opcode 进行编程
@@ -558,40 +855,17 @@ f upvalues  f nups
 </p>
 </div>
 
-<div id="outline-container-org817cea7" class="outline-3">
-<h3 id="org817cea7"><span class="section-number-3">2.1</span> register</h3>
-<div class="outline-text-3" id="text-2-1">
-<p>
-register is stack
-</p>
-
-<p>
-parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
-因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
-</p>
-
-<p>
-move a b
-</p>
-
-<p>
-但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
-因为这是编译时，而不是运行时
-</p>
-</div>
-</div>
-
 <div id="outline-container-org3a7d0dc" class="outline-3">
-<h3 id="org3a7d0dc"><span class="section-number-3">2.2</span> variable</h3>
-<div class="outline-text-3" id="text-2-2">
+<h3 id="org3a7d0dc"><span class="section-number-3">2.1</span> variable</h3>
+<div class="outline-text-3" id="text-2-1">
 <p>
 变量有 3 类，local upval global
 </p>
 </div>
 
 <div id="outline-container-orgd7c6f1a" class="outline-4">
-<h4 id="orgd7c6f1a"><span class="section-number-4">2.2.1</span> local</h4>
-<div class="outline-text-4" id="text-2-2-1">
+<h4 id="orgd7c6f1a"><span class="section-number-4">2.1.1</span> local</h4>
+<div class="outline-text-4" id="text-2-1-1">
 <p>
 local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
 </p>
@@ -630,9 +904,9 @@ local 只在使用时发生作用，而在使用时，已经被记录在 code �
 </div>
 </div>
 
-<div id="outline-container-org943cf2b" class="outline-4">
-<h4 id="org943cf2b"><span class="section-number-4">2.2.2</span> upvalue</h4>
-<div class="outline-text-4" id="text-2-2-2">
+<div id="outline-container-org95ef219" class="outline-4">
+<h4 id="org95ef219"><span class="section-number-4">2.1.2</span> upvalue</h4>
+<div class="outline-text-4" id="text-2-1-2">
 <p>
 在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
 </p>
@@ -725,9 +999,9 @@ dead 状态的区别。
 </div>
 </div>
 
-<div id="outline-container-org44e97bb" class="outline-4">
-<h4 id="org44e97bb"><span class="section-number-4">2.2.3</span> global</h4>
-<div class="outline-text-4" id="text-2-2-3">
+<div id="outline-container-orgd3b4edb" class="outline-4">
+<h4 id="orgd3b4edb"><span class="section-number-4">2.1.3</span> global</h4>
+<div class="outline-text-4" id="text-2-1-3">
 <p>
 前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
 </p>
@@ -787,6 +1061,33 @@ setfenv 的概念
 </pre>
 </div>
 </div>
+</div>
+</div>
+
+<div id="outline-container-org817cea7" class="outline-3">
+<h3 id="org817cea7"><span class="section-number-3">2.2</span> register</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+register is stack
+</p>
+
+<p>
+parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
+因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+</p>
+
+<p>
+move a b
+</p>
+
+<p>
+但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
+因为这是编译时，而不是运行时
+</p>
+
+<p>
+local 变量 和 中间结果
+</p>
 </div>
 </div>
 
@@ -1033,8 +1334,8 @@ freereg 的作用
 </div>
 
 
-<div id="outline-container-orgbcb0380" class="outline-2">
-<h2 id="orgbcb0380"><span class="section-number-2">3</span> tools</h2>
+<div id="outline-container-org0e8a8a6" class="outline-2">
+<h2 id="org0e8a8a6"><span class="section-number-2">3</span> ChunkSpy</h2>
 <div class="outline-text-2" id="text-3">
 <p>
 以实例为基础的探索
@@ -1053,7 +1354,7 @@ make inspect
 chunkspy 中 .local .const 的概念对应
 </p>
 
-<pre class="example" id="orgb984f2a">
+<pre class="example" id="orgfbbe163">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
 .function  0 0 2 3
@@ -1203,7 +1504,6 @@ singlevaraux
 </p>
 </div>
 </div>
-
 
 <div id="outline-container-org7601e9d" class="outline-4">
 <h4 id="org7601e9d"><span class="section-number-4">4.1.2</span> vararg</h4>
@@ -1355,7 +1655,7 @@ localstat vs localfunc
 </pre>
 </div>
 
-<pre class="example" id="org3458861">
+<pre class="example" id="org049a496">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
 .function  0 0 2 3
@@ -1429,7 +1729,6 @@ TODO 因为 luaK<sub>nil</sub> 的优化过程，没有生成代码
 </div>
 </div>
 
-
 <div id="outline-container-org96bc860" class="outline-4">
 <h4 id="org96bc860"><span class="section-number-4">4.2.2</span> with assignment</h4>
 <div class="outline-text-4" id="text-4-2-2">
@@ -1455,7 +1754,7 @@ var 多则置 nil
 </pre>
 </div>
 
-<pre class="example" id="org16c05c3">
+<pre class="example" id="org1cff1d2">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
 .function  0 0 2 5
@@ -1600,8 +1899,8 @@ exprstat -&gt; assignment stat
 </p>
 </div>
 
-<div id="outline-container-orgc0bda73" class="outline-4">
-<h4 id="orgc0bda73"><span class="section-number-4">4.3.1</span> global</h4>
+<div id="outline-container-org1bb4214" class="outline-4">
+<h4 id="org1bb4214"><span class="section-number-4">4.3.1</span> global</h4>
 <div class="outline-text-4" id="text-4-3-1">
 <div class="org-src-container">
 <pre class="src src-lua">a, b, c = 10, 20, 30
@@ -1696,9 +1995,8 @@ exp2reg，存储到指定 reg
 </div>
 
 
-
-<div id="outline-container-org6c3887f" class="outline-4">
-<h4 id="org6c3887f"><span class="section-number-4">4.3.2</span> upvalue</h4>
+<div id="outline-container-orgbf87e41" class="outline-4">
+<h4 id="orgbf87e41"><span class="section-number-4">4.3.2</span> upvalue</h4>
 <div class="outline-text-4" id="text-4-3-2">
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = 10
@@ -1811,8 +2109,8 @@ loop 情况，到 while for 具体分析。
 </div>
 </div>
 
-<div id="outline-container-org384c3c0" class="outline-3">
-<h3 id="org384c3c0"><span class="section-number-3">4.5</span> if</h3>
+<div id="outline-container-org19ccd95" class="outline-3">
+<h3 id="org19ccd95"><span class="section-number-3">4.5</span> if</h3>
 <div class="outline-text-3" id="text-4-5">
 <p>
 顺序解析的难题之一
@@ -1855,8 +2153,8 @@ luaK<sub>jump</sub> 时，使用 jpc 重置的技巧，防止在生成 jump 时�
 </p>
 </div>
 
-<div id="outline-container-orgdc9ceb2" class="outline-4">
-<h4 id="orgdc9ceb2"><span class="section-number-4">4.5.1</span> if</h4>
+<div id="outline-container-orgb3b5516" class="outline-4">
+<h4 id="orgb3b5516"><span class="section-number-4">4.5.1</span> if</h4>
 <div class="outline-text-4" id="text-4-5-1">
 <p>
 dischargejpc
@@ -2019,7 +2317,6 @@ for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有�
 </div>
 </div>
 
-
 <div id="outline-container-org0202719" class="outline-4">
 <h4 id="org0202719"><span class="section-number-4">4.8.1</span> fornum</h4>
 <div class="outline-text-4" id="text-4-8-1">
@@ -2028,7 +2325,7 @@ for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有�
 因为 lex 规则的限定
 </p>
 
-<pre class="example" id="orgc15d6ad">
+<pre class="example" id="orgd13dcce">
 .local  "(for generator)"  ; 0
 .local  "(for state)"  ; 1
 .local  "(for control)"  ; 2
@@ -2235,7 +2532,7 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-08 五 17:26</p>
+<p>Updated: 2021-01-11 一 14:23</p>
 <p>Created: 2021-01-08 五 11:34</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
