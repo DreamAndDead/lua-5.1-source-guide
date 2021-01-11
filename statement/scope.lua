@@ -1,20 +1,9 @@
-
+local a
 
 do
-   local a
-
+   local b
    do
-      local b
-      do
-	 local c
-      end
+      local c
    end
-
-   do
-      local d
-      do
-	 local e
-      end
-   end
-   
 end
+

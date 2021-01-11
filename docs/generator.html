@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-11 一 14:24 -->
+<!-- 2021-01-11 一 17:06 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>generator</title>
@@ -225,7 +225,7 @@
 </p>
 
 
-<div id="org070e608" class="figure">
+<div id="org142857c" class="figure">
 <p><img src="generator-feature.png" alt="generator-feature.png">
 </p>
 </div>
@@ -337,7 +337,7 @@ lua 内部根据 function 定义的位置，来记录这种包含关系。
 </p>
 
 
-<div id="org381a479" class="figure">
+<div id="org2c08af7" class="figure">
 <p><img src="generator-function-level.png" alt="generator-function-level.png">
 </p>
 </div>
@@ -348,7 +348,7 @@ b d e 则直接定义在 a 和 c 中。
 </p>
 
 
-<div id="org397d5dc" class="figure">
+<div id="org9d9655f" class="figure">
 <p><img src="generator-proto-level.png" alt="generator-proto-level.png">
 </p>
 </div>
@@ -465,7 +465,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="orga98404e" class="figure">
+<div id="org1ba9f91" class="figure">
 <p><img src="generator-big-picture-0.png" alt="generator-big-picture-0.png">
 </p>
 </div>
@@ -476,7 +476,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org67bb46d" class="figure">
+<div id="org25e49fb" class="figure">
 <p><img src="generator-big-picture-1.png" alt="generator-big-picture-1.png">
 </p>
 </div>
@@ -487,7 +487,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org1330283" class="figure">
+<div id="org50ed4e3" class="figure">
 <p><img src="generator-big-picture-2.png" alt="generator-big-picture-2.png">
 </p>
 </div>
@@ -502,13 +502,13 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org97e9181" class="figure">
+<div id="org706496d" class="figure">
 <p><img src="generator-big-picture-3.png" alt="generator-big-picture-3.png">
 </p>
 </div>
 
 
-<div id="orgc60d2ad" class="figure">
+<div id="orgacef76e" class="figure">
 <p><img src="generator-big-picture-4.png" alt="generator-big-picture-4.png">
 </p>
 </div>
@@ -518,7 +518,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="orgc4719a5" class="figure">
+<div id="org0219e2b" class="figure">
 <p><img src="generator-big-picture-5.png" alt="generator-big-picture-5.png">
 </p>
 </div>
@@ -704,32 +704,32 @@ FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细
 </p>
 
 
-<div id="org9cd686f" class="figure">
+<div id="org173e226" class="figure">
 <p><img src="generator-fcode.png" alt="generator-fcode.png">
 </p>
 </div>
 
 
-<div id="org387a921" class="figure">
+<div id="org1a3b575" class="figure">
 <p><img src="generator-fk.png" alt="generator-fk.png">
 </p>
 </div>
 
 
-<div id="org07d7b78" class="figure">
+<div id="orgcc26ba6" class="figure">
 <p><img src="generator-fp.png" alt="generator-fp.png">
 </p>
 </div>
 
 
 
-<div id="org42c548c" class="figure">
+<div id="org6c73eb1" class="figure">
 <p><img src="generator-fupval.png" alt="generator-fupval.png">
 </p>
 </div>
 
 
-<div id="org649deef" class="figure">
+<div id="orga11f90a" class="figure">
 <p><img src="generator-flocvars.png" alt="generator-flocvars.png">
 </p>
 </div>
@@ -795,13 +795,13 @@ FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细
 </p>
 
 
-<div id="org588390a" class="figure">
+<div id="orga6d28b0" class="figure">
 <p><img src="generator-fsupval.png" alt="generator-fsupval.png">
 </p>
 </div>
 
 
-<div id="org05849d7" class="figure">
+<div id="org2a2aaea" class="figure">
 <p><img src="generator-fsactvar.png" alt="generator-fsactvar.png">
 </p>
 </div>
@@ -817,96 +817,147 @@ FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细
 <h2 id="orgda89633"><span class="section-number-2">2</span> generate</h2>
 <div class="outline-text-2" id="text-2">
 <p>
-编译时和运行时的区别。
+从某种角度看，编译过程就是规则间的同义转换过程。
 </p>
 
 <p>
-生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
+代码生成，最终将符合语法规则的 lua 代码，生成为 vm 可执行的同义字节码，
+这个过程是隐藏在语法分析下的艺术。
 </p>
 
 <p>
-规则间的同义转换
-语法规则    vm opcode 规则
-生成过程，就是等义转换的过程
-隐藏在语法分析下的艺术
+两个规则间可以进行同义转换的连接点，在于对 vm 的共识，
+正因为编译器"懂得" vm，知晓字节码的格式与功能，知晓运行时的栈结构，
+知晓 k 表 Gbl 表的读取方式，才能生成 vm 可执行的同义字节码。
 </p>
 
 <p>
-在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
+这种共识贯穿在整个代码生成的过程中。
 </p>
 
 <p>
-总体原则，
+但是无论编译器如何了解 vm，编译时和运行时还是存在区别的。
+代码生成时，只是想象存在一个假想的 vm，它在执行生成的所有结果。
+</p>
+
+<p>
+所以代码生成这个过程是最为繁杂的，到 vm 真正运行时反而轻松了，只需要读指令，执行指令就可以了。
+</p>
+
+<p>
+阅读代码生成相关的代码，笔者还没有精确地把握住其中的原理，只能提供几个原则给读者参考，
 </p>
 <ul class="org-ul">
-<li>语法制导</li>
-<li>后缀方法</li>
-<li>栈模拟运算</li>
+<li>总体是语法制导翻译的过程</li>
+<li>使用后缀方式的生成顺序，比如 a + b 按照 a b + 的顺序来转换生成</li>
+<li>精确模拟 vm 的运行方式，包括栈运算，Gbl 表及其它</li>
 </ul>
 
 <p>
-把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
+章节结束之后，读者可以多使用调试器分析示例代码，探索其中的奥妙。
 </p>
+</div>
+</div>
 
+<div id="outline-container-org64f28c2" class="outline-2">
+<h2 id="org64f28c2"><span class="section-number-2">3</span> key concept</h2>
+<div class="outline-text-2" id="text-3">
 <p>
-代码的生成过程有一个隐式的假设，对 vm 的运作方式有明显的假定
-如果纯粹的分离开来，应该对一套 opcode 进行编程
-但是这里 opcode 的定义显然就是 vm 本身
+在仔细探索代码生成之前，先明确几个在生成过程中的重点。
 </p>
 </div>
 
 <div id="outline-container-org3a7d0dc" class="outline-3">
-<h3 id="org3a7d0dc"><span class="section-number-3">2.1</span> variable</h3>
-<div class="outline-text-3" id="text-2-1">
+<h3 id="org3a7d0dc"><span class="section-number-3">3.1</span> variable</h3>
+<div class="outline-text-3" id="text-3-1">
 <p>
-变量有 3 类，local upval global
+从作用域来看，lua 中的变量有 3 类，分别为 <code>local upvalue global</code> ，
+三者在底层的实现方式各不相同。
 </p>
 </div>
 
 <div id="outline-container-orgd7c6f1a" class="outline-4">
-<h4 id="orgd7c6f1a"><span class="section-number-4">2.1.1</span> local</h4>
-<div class="outline-text-4" id="text-2-1-1">
+<h4 id="orgd7c6f1a"><span class="section-number-4">3.1.1</span> local</h4>
+<div class="outline-text-4" id="text-3-1-1">
 <p>
-local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
+local 变量的活动范围（active），开始于在作用域中出现的那一刻，一直到作用域结束，
+而作用域是有明显的栈特性的，新开辟作用域时入栈，离开作用域时出栈。
 </p>
 
 <p>
-作用域是有明显的栈特性的，新作用域入栈，离开作用域出栈
+在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，变为 inactive 状态。
 </p>
 
 <p>
-在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，local var dead，让出空间
+利用这个特性，lua 在编译时，在 fs 中用 actvar 和 nactvar 时刻记录着当前 active local 变量的状态。
 </p>
 
 <p>
-这样栈中从 base 到 top，就始终记录着 active local 变量，作用范围由大到小。
+比如如下示例代码，
 </p>
 
-<p>
-利用这种特征，在 fs 中用 actvar 和 nactvar 始终记录着当前 active local var 的状态。
-</p>
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span>
+
+<span class="org-keyword">do</span>
+   <span class="org-keyword">local</span> <span class="org-variable-name">b</span>
+   <span class="org-keyword">do</span>
+      <span class="org-keyword">local</span> <span class="org-variable-name">c</span>
+   <span class="org-keyword">end</span>
+<span class="org-keyword">end</span>
+
+<span class="org-keyword">do</span>
+   <span class="org-keyword">local</span> <span class="org-variable-name">d</span>
+   <span class="org-keyword">do</span>
+      <span class="org-keyword">local</span> <span class="org-variable-name">e</span>
+   <span class="org-keyword">end</span>
+<span class="org-keyword">end</span>
+</pre>
+</div>
 
 <p>
-statement/scope.lua
+在代码分析的不同时刻， <code>fs-&gt;actvar</code> 记录的栈状态是这样的，
 </p>
 
-<p>
-b lparser.c:1306
+
+<div id="org6f84076" class="figure">
+<p><img src="generator-active-local-scope.png" alt="generator-active-local-scope.png">
 </p>
+</div>
 
 <p>
-fs-&gt;nlocvars 的原因，不需要这个变量，nlocvars 只用来指向下一个可放置的位置
+上面只是粗略描述了 active local 变量的栈状态，而实际在 parser 内部，是通过两个数组来存储的。
 </p>
 
+
+<div id="orge62c60f" class="figure">
+<p><img src="generator-actvar-locvars.png" alt="generator-actvar-locvars.png">
+</p>
+</div>
+
 <p>
-local 只在使用时发生作用，而在使用时，已经被记录在 code 中了
+数组 <code>fs-&gt;actvar</code> 的元素是 <code>unsigned short</code> 类型，只用来记录变量的索引。
+索引数组 <code>f-&gt;locvars</code> 中的元素，其中元素类型为 <code>struct LocVar *</code> 。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>lobject.h</label><pre class="src src-c"><span class="linenr">262: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">LocVar</span> {
+<span class="linenr">263: </span>  <span class="org-type">TString</span> *<span class="org-variable-name">varname</span>;
+<span class="linenr">264: </span>  <span class="org-type">int</span> <span class="org-variable-name">startpc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">first point where variable is active</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">265: </span>  <span class="org-type">int</span> <span class="org-variable-name">endpc</span>;    <span class="org-comment-delimiter">/* </span><span class="org-comment">first point where variable is dead</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">266: </span>} <span class="org-type">LocVar</span>;
+</pre>
+</div>
+
+<p>
+LocVar 主要记录变量的名字， <code>startpc endpc</code> 在字节码层面记录其活动范围。
 </p>
 </div>
 </div>
 
-<div id="outline-container-org95ef219" class="outline-4">
-<h4 id="org95ef219"><span class="section-number-4">2.1.2</span> upvalue</h4>
-<div class="outline-text-4" id="text-2-1-2">
+<div id="outline-container-org94f214c" class="outline-4">
+<h4 id="org94f214c"><span class="section-number-4">3.1.2</span> upvalue</h4>
+<div class="outline-text-4" id="text-3-1-2">
 <p>
 在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
 </p>
@@ -999,9 +1050,9 @@ dead 状态的区别。
 </div>
 </div>
 
-<div id="outline-container-orgd3b4edb" class="outline-4">
-<h4 id="orgd3b4edb"><span class="section-number-4">2.1.3</span> global</h4>
-<div class="outline-text-4" id="text-2-1-3">
+<div id="outline-container-orge7f7193" class="outline-4">
+<h4 id="orge7f7193"><span class="section-number-4">3.1.3</span> global</h4>
+<div class="outline-text-4" id="text-3-1-3">
 <p>
 前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
 </p>
@@ -1065,8 +1116,8 @@ setfenv 的概念
 </div>
 
 <div id="outline-container-org817cea7" class="outline-3">
-<h3 id="org817cea7"><span class="section-number-3">2.2</span> register</h3>
-<div class="outline-text-3" id="text-2-2">
+<h3 id="org817cea7"><span class="section-number-3">3.2</span> register</h3>
+<div class="outline-text-3" id="text-3-2">
 <p>
 register is stack
 </p>
@@ -1092,8 +1143,8 @@ local 变量 和 中间结果
 </div>
 
 <div id="outline-container-org2413925" class="outline-3">
-<h3 id="org2413925"><span class="section-number-3">2.3</span> expdesc</h3>
-<div class="outline-text-3" id="text-2-3">
+<h3 id="org2413925"><span class="section-number-3">3.3</span> expdesc</h3>
+<div class="outline-text-3" id="text-3-3">
 <p>
 递归下降
 语法制导
@@ -1308,8 +1359,8 @@ dischargevars
 </div>
 
 <div id="outline-container-org288faf5" class="outline-3">
-<h3 id="org288faf5"><span class="section-number-3">2.4</span> how freereg &amp; freeexp works</h3>
-<div class="outline-text-3" id="text-2-4">
+<h3 id="org288faf5"><span class="section-number-3">3.4</span> how freereg &amp; freeexp works</h3>
+<div class="outline-text-3" id="text-3-4">
 <p>
 freereg 的作用
 </p>
@@ -1335,8 +1386,8 @@ freereg 的作用
 
 
 <div id="outline-container-org0e8a8a6" class="outline-2">
-<h2 id="org0e8a8a6"><span class="section-number-2">3</span> ChunkSpy</h2>
-<div class="outline-text-2" id="text-3">
+<h2 id="org0e8a8a6"><span class="section-number-2">4</span> ChunkSpy</h2>
+<div class="outline-text-2" id="text-4">
 <p>
 以实例为基础的探索
 基础方法
@@ -1354,7 +1405,7 @@ make inspect
 chunkspy 中 .local .const 的概念对应
 </p>
 
-<pre class="example" id="orgfbbe163">
+<pre class="example" id="orge79a222">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
 .function  0 0 2 3
@@ -1406,8 +1457,8 @@ function 结束注释
 
 
 <div id="outline-container-orge88350e" class="outline-2">
-<h2 id="orge88350e"><span class="section-number-2">4</span> statement</h2>
-<div class="outline-text-2" id="text-4">
+<h2 id="orge88350e"><span class="section-number-2">5</span> statement</h2>
+<div class="outline-text-2" id="text-5">
 <ul class="org-ul">
 <li>原子性</li>
 <li>依赖性</li>
@@ -1423,8 +1474,8 @@ function 结束注释
 
 
 <div id="outline-container-org9bb0e19" class="outline-3">
-<h3 id="org9bb0e19"><span class="section-number-3">4.1</span> function</h3>
-<div class="outline-text-3" id="text-4-1">
+<h3 id="org9bb0e19"><span class="section-number-3">5.1</span> function</h3>
+<div class="outline-text-3" id="text-5-1">
 <p>
 compile time
 </p>
@@ -1451,8 +1502,8 @@ body 过程不过是参数和 chunk 的递归过程
 </div>
 
 <div id="outline-container-org783c94b" class="outline-4">
-<h4 id="org783c94b"><span class="section-number-4">4.1.1</span> upval</h4>
-<div class="outline-text-4" id="text-4-1-1">
+<h4 id="org783c94b"><span class="section-number-4">5.1.1</span> upval</h4>
+<div class="outline-text-4" id="text-5-1-1">
 <p>
 和 closure 同一级的变量被引用，使用 move 指令
 &gt;= 级的变量，使用 getupval 指令
@@ -1506,8 +1557,8 @@ singlevaraux
 </div>
 
 <div id="outline-container-org7601e9d" class="outline-4">
-<h4 id="org7601e9d"><span class="section-number-4">4.1.2</span> vararg</h4>
-<div class="outline-text-4" id="text-4-1-2">
+<h4 id="org7601e9d"><span class="section-number-4">5.1.2</span> vararg</h4>
+<div class="outline-text-4" id="text-5-1-2">
 <p>
 lobject.h:256
 </p>
@@ -1619,8 +1670,8 @@ chunk func 是 2
 </div>
 
 <div id="outline-container-org4b53610" class="outline-3">
-<h3 id="org4b53610"><span class="section-number-3">4.2</span> local assignment</h3>
-<div class="outline-text-3" id="text-4-2">
+<h3 id="org4b53610"><span class="section-number-3">5.2</span> local assignment</h3>
+<div class="outline-text-3" id="text-5-2">
 <div class="org-src-container">
 <pre class="src src-bnf">localstat <span class="org-constant">::=</span> LOCAL NAME {`,' NAME} [`=' explist]
 localstat <span class="org-constant">::=</span> LOCAL FUNCTION NAME body
@@ -1648,14 +1699,14 @@ localstat vs localfunc
 </div>
 
 <div id="outline-container-org920841f" class="outline-4">
-<h4 id="org920841f"><span class="section-number-4">4.2.1</span> no assignment</h4>
-<div class="outline-text-4" id="text-4-2-1">
+<h4 id="org920841f"><span class="section-number-4">5.2.1</span> no assignment</h4>
+<div class="outline-text-4" id="text-5-2-1">
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span>, <span class="org-variable-name">b</span>, <span class="org-variable-name">c</span>
 </pre>
 </div>
 
-<pre class="example" id="org049a496">
+<pre class="example" id="org9a3c427">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
 .function  0 0 2 3
@@ -1730,12 +1781,12 @@ TODO 因为 luaK<sub>nil</sub> 的优化过程，没有生成代码
 </div>
 
 <div id="outline-container-org96bc860" class="outline-4">
-<h4 id="org96bc860"><span class="section-number-4">4.2.2</span> with assignment</h4>
-<div class="outline-text-4" id="text-4-2-2">
+<h4 id="org96bc860"><span class="section-number-4">5.2.2</span> with assignment</h4>
+<div class="outline-text-4" id="text-5-2-2">
 </div>
 <ol class="org-ol">
 <li><a id="org95de82d"></a>normal<br>
-<div class="outline-text-5" id="text-4-2-2-1">
+<div class="outline-text-5" id="text-5-2-2-1">
 <p>
 没有赋值，等于 nexps = 0 的最小情况
 </p>
@@ -1754,7 +1805,7 @@ var 多则置 nil
 </pre>
 </div>
 
-<pre class="example" id="org1cff1d2">
+<pre class="example" id="org686c378">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
 .function  0 0 2 5
@@ -1844,7 +1895,7 @@ TK<sub>STRING</sub> 在之前已经变成 VK，加在 k 表中的索引，同样
 </li>
 
 <li><a id="orgff510d9"></a>k table<br>
-<div class="outline-text-5" id="text-4-2-2-2">
+<div class="outline-text-5" id="text-5-2-2-2">
 <p>
 通过 numberK 和 stringK 方法
 </p>
@@ -1892,16 +1943,16 @@ nil bool 在赋值时并没有使用 loadk，而使用 loadnil loadbool 指令
 
 
 <div id="outline-container-org5dc4044" class="outline-3">
-<h3 id="org5dc4044"><span class="section-number-3">4.3</span> nonlocal assignment</h3>
-<div class="outline-text-3" id="text-4-3">
+<h3 id="org5dc4044"><span class="section-number-3">5.3</span> nonlocal assignment</h3>
+<div class="outline-text-3" id="text-5-3">
 <p>
 exprstat -&gt; assignment stat
 </p>
 </div>
 
-<div id="outline-container-org1bb4214" class="outline-4">
-<h4 id="org1bb4214"><span class="section-number-4">4.3.1</span> global</h4>
-<div class="outline-text-4" id="text-4-3-1">
+<div id="outline-container-org5723c94" class="outline-4">
+<h4 id="org5723c94"><span class="section-number-4">5.3.1</span> global</h4>
+<div class="outline-text-4" id="text-5-3-1">
 <div class="org-src-container">
 <pre class="src src-lua">a, b, c = 10, 20, 30
 </pre>
@@ -1995,9 +2046,9 @@ exp2reg，存储到指定 reg
 </div>
 
 
-<div id="outline-container-orgbf87e41" class="outline-4">
-<h4 id="orgbf87e41"><span class="section-number-4">4.3.2</span> upvalue</h4>
-<div class="outline-text-4" id="text-4-3-2">
+<div id="outline-container-org5e272fc" class="outline-4">
+<h4 id="org5e272fc"><span class="section-number-4">5.3.2</span> upvalue</h4>
+<div class="outline-text-4" id="text-5-3-2">
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = 10
 
@@ -2014,8 +2065,8 @@ exp2reg，存储到指定 reg
 </div>
 
 <div id="outline-container-orgcc86fa7" class="outline-4">
-<h4 id="orgcc86fa7"><span class="section-number-4">4.3.3</span> indexed</h4>
-<div class="outline-text-4" id="text-4-3-3">
+<h4 id="orgcc86fa7"><span class="section-number-4">5.3.3</span> indexed</h4>
+<div class="outline-text-4" id="text-5-3-3">
 <p>
 a.b   a['b']
 是相同语义
@@ -2043,8 +2094,8 @@ gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 
 </div>
 
 <div id="outline-container-org04a8aaa" class="outline-3">
-<h3 id="org04a8aaa"><span class="section-number-3">4.4</span> do</h3>
-<div class="outline-text-3" id="text-4-4">
+<h3 id="org04a8aaa"><span class="section-number-3">5.4</span> do</h3>
+<div class="outline-text-3" id="text-5-4">
 <ul class="org-ul">
 <li>block vs chunk
 <ul class="org-ul">
@@ -2109,9 +2160,9 @@ loop 情况，到 while for 具体分析。
 </div>
 </div>
 
-<div id="outline-container-org19ccd95" class="outline-3">
-<h3 id="org19ccd95"><span class="section-number-3">4.5</span> if</h3>
-<div class="outline-text-3" id="text-4-5">
+<div id="outline-container-org506aa39" class="outline-3">
+<h3 id="org506aa39"><span class="section-number-3">5.5</span> if</h3>
+<div class="outline-text-3" id="text-5-5">
 <p>
 顺序解析的难题之一
 分支
@@ -2153,9 +2204,9 @@ luaK<sub>jump</sub> 时，使用 jpc 重置的技巧，防止在生成 jump 时�
 </p>
 </div>
 
-<div id="outline-container-orgb3b5516" class="outline-4">
-<h4 id="orgb3b5516"><span class="section-number-4">4.5.1</span> if</h4>
-<div class="outline-text-4" id="text-4-5-1">
+<div id="outline-container-orgb738dbc" class="outline-4">
+<h4 id="orgb738dbc"><span class="section-number-4">5.5.1</span> if</h4>
+<div class="outline-text-4" id="text-5-5-1">
 <p>
 dischargejpc
 负责从当前 pc 解析 jump chain
@@ -2173,27 +2224,27 @@ dischargejpc
 </div>
 
 <div id="outline-container-org6dc2c8e" class="outline-4">
-<h4 id="org6dc2c8e"><span class="section-number-4">4.5.2</span> if else</h4>
-<div class="outline-text-4" id="text-4-5-2">
+<h4 id="org6dc2c8e"><span class="section-number-4">5.5.2</span> if else</h4>
+<div class="outline-text-4" id="text-5-5-2">
 </div>
 </div>
 
 <div id="outline-container-org722ad33" class="outline-4">
-<h4 id="org722ad33"><span class="section-number-4">4.5.3</span> if elseif</h4>
-<div class="outline-text-4" id="text-4-5-3">
+<h4 id="org722ad33"><span class="section-number-4">5.5.3</span> if elseif</h4>
+<div class="outline-text-4" id="text-5-5-3">
 </div>
 </div>
 
 <div id="outline-container-org76aa6fa" class="outline-4">
-<h4 id="org76aa6fa"><span class="section-number-4">4.5.4</span> if elseif else</h4>
-<div class="outline-text-4" id="text-4-5-4">
+<h4 id="org76aa6fa"><span class="section-number-4">5.5.4</span> if elseif else</h4>
+<div class="outline-text-4" id="text-5-5-4">
 </div>
 </div>
 </div>
 
 <div id="outline-container-orgd22754c" class="outline-3">
-<h3 id="orgd22754c"><span class="section-number-3">4.6</span> while</h3>
-<div class="outline-text-3" id="text-4-6">
+<h3 id="orgd22754c"><span class="section-number-3">5.6</span> while</h3>
+<div class="outline-text-3" id="text-5-6">
 <p>
 block
 </p>
@@ -2218,15 +2269,15 @@ enterblock 自然生成 0 block
 </div>
 
 <div id="outline-container-org4e04970" class="outline-4">
-<h4 id="org4e04970"><span class="section-number-4">4.6.1</span> break</h4>
-<div class="outline-text-4" id="text-4-6-1">
+<h4 id="org4e04970"><span class="section-number-4">5.6.1</span> break</h4>
+<div class="outline-text-4" id="text-5-6-1">
 </div>
 </div>
 </div>
 
 <div id="outline-container-orga8fc6ee" class="outline-3">
-<h3 id="orga8fc6ee"><span class="section-number-3">4.7</span> repeat</h3>
-<div class="outline-text-3" id="text-4-7">
+<h3 id="orga8fc6ee"><span class="section-number-3">5.7</span> repeat</h3>
+<div class="outline-text-3" id="text-5-7">
 <p>
 repeat    
 </p>
@@ -2283,8 +2334,8 @@ break 同 while 时的表现相同
 
 
 <div id="outline-container-orgdd98c3b" class="outline-3">
-<h3 id="orgdd98c3b"><span class="section-number-3">4.8</span> for</h3>
-<div class="outline-text-3" id="text-4-8">
+<h3 id="orgdd98c3b"><span class="section-number-3">5.8</span> for</h3>
+<div class="outline-text-3" id="text-5-8">
 <p>
 for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
 依然是通过 jmp 来实现的。
@@ -2318,14 +2369,14 @@ for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有�
 </div>
 
 <div id="outline-container-org0202719" class="outline-4">
-<h4 id="org0202719"><span class="section-number-4">4.8.1</span> fornum</h4>
-<div class="outline-text-4" id="text-4-8-1">
+<h4 id="org0202719"><span class="section-number-4">5.8.1</span> fornum</h4>
+<div class="outline-text-4" id="text-5-8-1">
 <p>
 隐式生成的变量，用 ( 来标识，是不会与正常 lua 代码中分析得到的 NAME 冲突的
 因为 lex 规则的限定
 </p>
 
-<pre class="example" id="orgd13dcce">
+<pre class="example" id="org7d09c9a">
 .local  "(for generator)"  ; 0
 .local  "(for state)"  ; 1
 .local  "(for control)"  ; 2
@@ -2334,8 +2385,8 @@ for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有�
 </div>
 
 <div id="outline-container-org333e2d9" class="outline-4">
-<h4 id="org333e2d9"><span class="section-number-4">4.8.2</span> forlist</h4>
-<div class="outline-text-4" id="text-4-8-2">
+<h4 id="org333e2d9"><span class="section-number-4">5.8.2</span> forlist</h4>
+<div class="outline-text-4" id="text-5-8-2">
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">g</span>, <span class="org-variable-name">s</span> = <span class="org-builtin">pairs</span>({1,2,3})
 
@@ -2353,8 +2404,8 @@ upvalue 同 fornum
 </div>
 
 <div id="outline-container-org48de970" class="outline-3">
-<h3 id="org48de970"><span class="section-number-3">4.9</span> function call</h3>
-<div class="outline-text-3" id="text-4-9">
+<h3 id="org48de970"><span class="section-number-3">5.9</span> function call</h3>
+<div class="outline-text-3" id="text-5-9">
 <p>
 function call
 </p>
@@ -2378,8 +2429,8 @@ lparser.c:609
 </div>
 
 <div id="outline-container-org5a6b901" class="outline-4">
-<h4 id="org5a6b901"><span class="section-number-4">4.9.1</span> self</h4>
-<div class="outline-text-4" id="text-4-9-1">
+<h4 id="org5a6b901"><span class="section-number-4">5.9.1</span> self</h4>
+<div class="outline-text-4" id="text-5-9-1">
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">o</span> = {}
 
@@ -2424,8 +2475,8 @@ self 只是为 call 做准备，将对象提前放到相应位置
 
 
 <div id="outline-container-org84d3938" class="outline-3">
-<h3 id="org84d3938"><span class="section-number-3">4.10</span> ret</h3>
-<div class="outline-text-3" id="text-4-10">
+<h3 id="org84d3938"><span class="section-number-3">5.10</span> ret</h3>
+<div class="outline-text-3" id="text-5-10">
 <p>
 return 在 chunk 中发挥作用
 从当前 closure 中返回
@@ -2450,8 +2501,8 @@ lparser.c:1238
 </div>
 
 <div id="outline-container-org0510e67" class="outline-4">
-<h4 id="org0510e67"><span class="section-number-4">4.10.1</span> tailcall</h4>
-<div class="outline-text-4" id="text-4-10-1">
+<h4 id="org0510e67"><span class="section-number-4">5.10.1</span> tailcall</h4>
+<div class="outline-text-4" id="text-5-10-1">
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-comment-delimiter">-- </span><span class="org-comment">tail call</span>
 <span class="org-keyword">return</span> f()
@@ -2482,8 +2533,8 @@ tailcall 本身已经有了 return 的语义
 
 
 <div id="outline-container-orgb67fb9c" class="outline-2">
-<h2 id="orgb67fb9c"><span class="section-number-2">5</span> practice</h2>
-<div class="outline-text-2" id="text-5">
+<h2 id="orgb67fb9c"><span class="section-number-2">6</span> practice</h2>
+<div class="outline-text-2" id="text-6">
 <p>
 理想的 vm
 独立，lua 实现对 vm 做了协同的妥协
@@ -2491,8 +2542,8 @@ tailcall 本身已经有了 return 的语义
 </div>
 
 <div id="outline-container-org959b5ec" class="outline-3">
-<h3 id="org959b5ec"><span class="section-number-3">5.1</span> arithmetic</h3>
-<div class="outline-text-3" id="text-5-1">
+<h3 id="org959b5ec"><span class="section-number-3">6.1</span> arithmetic</h3>
+<div class="outline-text-3" id="text-6-1">
 <ul class="org-ul">
 <li>优先级</li>
 </ul>
@@ -2512,8 +2563,8 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 </div>
 
 <div id="outline-container-org5aa406e" class="outline-3">
-<h3 id="org5aa406e"><span class="section-number-3">5.2</span> logic</h3>
-<div class="outline-text-3" id="text-5-2">
+<h3 id="org5aa406e"><span class="section-number-3">6.2</span> logic</h3>
+<div class="outline-text-3" id="text-6-2">
 <ul class="org-ul">
 <li>and or</li>
 </ul>
@@ -2521,8 +2572,8 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 </div>
 
 <div id="outline-container-org5da4352" class="outline-3">
-<h3 id="org5da4352"><span class="section-number-3">5.3</span> constructor</h3>
-<div class="outline-text-3" id="text-5-3">
+<h3 id="org5da4352"><span class="section-number-3">6.3</span> constructor</h3>
+<div class="outline-text-3" id="text-6-3">
 <ul class="org-ul">
 <li>setlist always consistent, diff with settable</li>
 </ul>
@@ -2532,7 +2583,7 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-11 一 14:23</p>
+<p>Updated: 2021-01-11 一 17:06</p>
 <p>Created: 2021-01-08 五 11:34</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

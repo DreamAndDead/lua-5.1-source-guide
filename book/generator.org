@@ -607,60 +607,173 @@ digraph  {
 
 * generate
 
-编译时和运行时的区别。
+从某种角度看，编译过程就是规则间的同义转换过程。
 
-生成过程的模型和实际运行的模型，连接点是对 stack 的隐式共识，实际以 proto 传递。
+代码生成，最终将符合语法规则的 lua 代码，生成为 vm 可执行的同义字节码，
+这个过程是隐藏在语法分析下的艺术。
 
-规则间的同义转换
-语法规则    vm opcode 规则
-生成过程，就是等义转换的过程
-隐藏在语法分析下的艺术
+两个规则间可以进行同义转换的连接点，在于对 vm 的共识，
+正因为编译器"懂得" vm，知晓字节码的格式与功能，知晓运行时的栈结构，
+知晓 k 表 Gbl 表的读取方式，才能生成 vm 可执行的同义字节码。
 
-在生成的过程中，有一个 imaginary 的栈，和相应 imaginary 的操作存储在 code
+这种共识贯穿在整个代码生成的过程中。
 
-总体原则，
-- 语法制导
-- 后缀方法
-- 栈模拟运算
+但是无论编译器如何了解 vm，编译时和运行时还是存在区别的。
+代码生成时，只是想象存在一个假想的 vm，它在执行生成的所有结果。
 
-把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
+所以代码生成这个过程是最为繁杂的，到 vm 真正运行时反而轻松了，只需要读指令，执行指令就可以了。
 
-代码的生成过程有一个隐式的假设，对 vm 的运作方式有明显的假定
-如果纯粹的分离开来，应该对一套 opcode 进行编程
-但是这里 opcode 的定义显然就是 vm 本身
+阅读代码生成相关的代码，笔者还没有精确地把握住其中的原理，只能提供几个原则给读者参考，
+- 总体是语法制导翻译的过程
+- 使用后缀方式的生成顺序，比如 a + b 按照 a b + 的顺序来转换生成
+- 精确模拟 vm 的运行方式，包括栈运算，Gbl 表及其它
 
+章节结束之后，读者可以多使用调试器分析示例代码，探索其中的奥妙。
+
+* key concept
+
+在仔细探索代码生成之前，先明确几个在生成过程中的重点。
+  
 ** variable
 
-变量有 3 类，local upval global
+从作用域来看，lua 中的变量有 3 类，分别为 =local upvalue global= ，
+三者在底层的实现方式各不相同。
 
 *** local
     :LOGBOOK:
+    - Note taken on [2021-01-11 一 17:06] \\
+      如何和运行时的栈关联起来？
     - Note taken on [2020-12-15 二 11:14] \\
     变量逆序查找，比如出现 local 覆盖的情况
     searchvar() lparser.c:207
     :END:
 
-local 变量的作用范围（active），开始于在作用域中出现的一刻，到作用域结束。
+local 变量的活动范围（active），开始于在作用域中出现的那一刻，一直到作用域结束，
+而作用域是有明显的栈特性的，新开辟作用域时入栈，离开作用域时出栈。
 
-作用域是有明显的栈特性的，新作用域入栈，离开作用域出栈
+在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，变为 inactive 状态。
 
-在一个作用域内，local 变量按照声明顺序入栈，离开作用域时全部出栈，local var dead，让出空间
+利用这个特性，lua 在编译时，在 fs 中用 actvar 和 nactvar 时刻记录着当前 active local 变量的状态。
 
-这样栈中从 base 到 top，就始终记录着 active local 变量，作用范围由大到小。
+比如如下示例代码，
 
-#+CAPTION: 16 active local scope & fs->actvar nactvar
+#+begin_src lua
+local a
 
-利用这种特征，在 fs 中用 actvar 和 nactvar 始终记录着当前 active local var 的状态。
+do
+   local b
+   do
+      local c
+   end
+end
 
-#+CAPTION: 16 actvar & locvars
+do
+   local d
+   do
+      local e
+   end
+end
+#+end_src
 
-statement/scope.lua
+在代码分析的不同时刻， =fs->actvar= 记录的栈状态是这样的，
 
-b lparser.c:1306
+#+CAPTION: active local scope & fs->actvar nactvar
+#+begin_src dot :file generator-active-local-scope.png
+digraph {
+	rankdir = LR;
+	
+	code[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td align="left" border="1" bgcolor="white">local a</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">do</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">    local b</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">    do</td></tr>
+	        <tr><td port="fir" align="left" border="1" bgcolor="white">        local c</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">    end</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">end</td></tr>
+	        <tr><td port="sec" align="left" border="1" bgcolor="white"> </td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">do</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">    local d</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">    do</td></tr>
+	        <tr><td port="trd" align="left" border="1" bgcolor="white">        local e</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">    end</td></tr>
+	        <tr><td align="left" border="1" bgcolor="white">end</td></tr>
+	      </table>
+	     >];
 
-fs->nlocvars 的原因，不需要这个变量，nlocvars 只用来指向下一个可放置的位置
+	fir[shape=record, label="
+	      |<n>| c | b | a
+	      ", xlabel="fs->actvar"];
 
-local 只在使用时发生作用，而在使用时，已经被记录在 code 中了
+	sec[shape=record, label="
+	      || |<n> | a
+	      ", xlabel="fs->actvar"];
+
+	trd[shape=record, label="
+	      |<n>| e | d | a
+	      ", xlabel="fs->actvar"];
+
+	fir -> code:fir;
+	sec -> code:sec;
+	trd -> code:trd;
+
+	node[shape=plain];
+
+	n1[label="fs->nactvar = 3"];
+	n2[label="fs->nactvar = 1"];
+	n3[label="fs->nactvar = 3"];
+
+	n1 -> fir:n;
+	n2 -> sec:n;
+	n3 -> trd:n;
+
+	nodesep = 1;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-active-local-scope.png]]
+
+上面只是粗略描述了 active local 变量的栈状态，而实际在 parser 内部，是通过两个数组来存储的。
+
+#+CAPTION: actvar & locvars
+#+begin_src dot :file generator-actvar-locvars.png
+digraph {
+	rankdir = LR;
+	ranksep = 1;
+
+	actvar[shape=record, label="
+	      |<n> | <n3> 4 | <n2> 3 | <n1> 0
+	      ", xlabel="fs->actvar"];
+
+	node[shape=plain];
+	
+	n[label="fs->nactvar = 3"];
+	nn[label="fs->nlocvars = 5"];
+
+	n -> actvar:n;
+	locvars:n -> nn[dir="back"];
+	
+	locvars[shape=record, label="
+               |<n>  | <n3> \"e\" | <n2> \"d\" | \"c\" | \"b\" | <n1> \"a\"
+	      ", xlabel="f->locvars"];
+
+	actvar:n1 -> locvars:n1;
+	actvar:n2 -> locvars:n2;
+	actvar:n3 -> locvars:n3;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-actvar-locvars.png]]
+
+数组 =fs->actvar= 的元素是 =unsigned short= 类型，只用来记录变量的索引。
+索引数组 =f->locvars= 中的元素，其中元素类型为 =struct LocVar *= 。
+
+#+caption: lobject.h
+#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 262 :lines "262-267"
+
+LocVar 主要记录变量的名字， =startpc endpc= 在字节码层面记录其活动范围。
 
 *** upvalue
 
@@ -810,6 +923,8 @@ local 变量 和 中间结果
 
 ** expdesc
     :LOGBOOK:
+    - Note taken on [2021-01-11 一 15:42] \\
+      把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
     - Note taken on [2020-12-07 一 17:34] \\
     各个状态如何发生作用？
     :END:
