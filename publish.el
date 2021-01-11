@@ -6,6 +6,7 @@
 <p>Created: %d</p>
 <p>Author: %a</p>
 <p>Email: %e</p>
+<script src=\"https://utteranc.es/client.js\" repo=\"DreamAndDead/DreamAndDead.github.io\" issue-term=\"pathname\" label=\"Comment\" theme=\"github-light\" crossorigin=\"anonymous\" async></script>
 ")
 
 
