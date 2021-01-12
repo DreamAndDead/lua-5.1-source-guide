@@ -775,109 +775,93 @@ digraph {
 
 LocVar 主要记录变量的名字， =startpc endpc= 在字节码层面记录其活动范围。
 
+宏 getlocvar 精确描述了图示过程。
+
+#+caption: lparser.c
+#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 32 :lines "32-33"
+
 *** upvalue
+    :LOGBOOK:
+    - Note taken on [2021-01-12 二 09:41] \\
+      在分析时，如何使用 f fs 中的数组？
+    :END:
 
-在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
+upvalue 在本文翻译为上值，它即非 local，又不是 global。
+直观从代码上看，即引用作用域之外的变量。
 
-但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
-所以其 upvalue 不一定出现在 stack frame 上
+lua 将 function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转。
+又因为 local 变量的作用域限定于词法，这便是 upvalue 机制发挥作用的地方。
 
+如下示例代码，
 
-#+begin_quote
-对象是带函数的值
-闭包是带值的函数
-#+end_quote
-
-#+begin_src lua :results output
+#+begin_src lua :results output :exports both
 local function outer()
    local a = 0
 
    local function inner()
-      local b = 0
-
       a = a + 1
-      return a
+      print(a)
    end
 
    inner()
-
+   
    return inner
 end
 
 local f = outer()
 
-print(f())
-print(f())
-print(f())
-
-local g = outer()
-
-print(g())
-print(g())
-print(g())
+f()
+f()
 #+end_src
 
 #+RESULTS:
+: 1
 : 2
 : 3
-: 4
-: 2
-: 3
-: 4
 
-function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转
+内部第 1 次调用 inner() 时，输出 1 。
+当调用 outer()，将 inner 赋值与 f，调用两次 f() 得到 2 3 。
 
-这种情况下，和 local 作用域机制在一起，就会出现问题
+第 1 次调用 inner() 时，依然在 a 的作用域内，输出 1 是符合直觉的。
 
-a 的作用域在 outer 内部，同时被 inner 引用并修改，最终 outer 返回 inner
+问题在于调用 f() 时，因为 a 只作用在 outer 的作用域，而 f 在 outer 作用域外部，
+已经离开了 a 的作用域，这种情况下为何还可以访问 a ？
 
-调用 outer，赋值给 f
+这便是闭包机制的由来，a 对于 inner 而言是 upvalue 类型。
+这也是 lua 中为何 function 不是 function 而是 closure 的原因，function 及 upvalue 组成了 closure，
+所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于单独分配 upvalue 空间并管理。
 
-按照语义，f 应该是内部的 inner func，每次调用都得到 a 的自增值
-
-调用 3 次，得到 1 2 3
-
-问题在于，a 只作用在 outer 内部，而 f 在 outer 外部，已经离开了 a 的作用域，
-在这种情况下如何保证语义的正确？
-
-这便是闭包机制的由来，a 对于 inner 而言，不是 local，而是 upvalue 类型。
-
-这也是 lua 中为何 func 不是 func 而是 closure 的原因，func 及 upvalue 组成了 closure，
-所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于分配 upvalue 空间。
-
-#+CAPTION: 17 upvalue at runtime
-
-再调用 outer，赋值给 g，调用 3 次，得到一样的结果，从中可以得到 upvalue 作用于 active 和
-dead 状态的区别。
+详细的说，第 1 次调用 inner() 时，local a 依然存活，称 upvalue a 为 open 状态。
+当离开 outer() 作用域，upvalue a 为 close 状态。
 
 *** global
+    :LOGBOOK:
+    - Note taken on [2021-01-12 二 10:11] \\
+      在运行时，global 是单独于基层的 closure 存在的，是运行状态的一部分
+      Gbl 表
+    - Note taken on [2021-01-12 二 10:01] \\
+      global at runtime？
+    :END:
 
-前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
+如果依然说，global 变量是除 local 变量和 upvalue 变量的变量，读者肯定不信服。
 
-其中隐含的一点，外层变量对于内层可见，假如强制设定外层对于内部不可见，便不会有 upvalue 的问题。
+之所以存在 upvalue 和 global，隐含的一点是，在 lua 中外层变量对于内层是可见的，
+既然是可见的，对于外层变量引用自然有一个查找的过程，变量类型正是在查找的过程中确定的。
 
-对于可见的情况，对于当前引用的变量，自然有一个查找的过程。
-和嵌套相反，是层层向上寻找的过程。
+- 在当前作用域中可以找到的，为 local 类型
+- 在当前作用域之外的作用域可以找到的，为 upvalue 类型
+- 所有作用域都无法找到的，为 global 类型
 
-变量
-在本层可以找到的，为 local
-在本层之外可以找到的，为 upvalue
-所有层都无法找到的，为 global
+按照这个逻辑，顶层的 chunk 是没有 upvalue 的，在当前作用域中查找不到的变量，
+只能是 global 类型。
 
-global 的概念解决了两个细节问题
-为什么顶层的 function 是没有 upvalue 的？
-因为在本层找不到的变量，向上已经没有层级，只能是 global
+setfenv 影响的就是函数的 global 环境，
+设定不同的 global 表，可以影响内部对 global 的引用，
+实现不同的运行效果，类似于封装成一个小沙盒，
 
-setfenv 的概念
-函数的运行环境，即是 global，在编译的 chunk 运行之前，设定 global 的值，
-可以影响内部对 global 值的引用，从而实现不同的运行效果。
+比如如下代码，变量 a 对 outer inner 都是全局变量，所以全部修改都影响到 global a 的值。
 
-
-在实现中，global 是单独于基层的 closure 存在的，是运行状态的一部分
-所以不存在作用域的问题，始终在顶层。
-
-
-#+begin_src lua :results output
+#+begin_src lua :results output :exports both
 local function outer()
   a = 10
 
@@ -900,8 +884,6 @@ print(f(), a)
 : 11	11
 : 12	12
 : 13	13
-
-#+CAPTION: 18 global at runtime
 
 ** register
    :LOGBOOK:

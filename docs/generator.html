@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-11 一 17:06 -->
+<!-- 2021-01-12 二 10:14 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>generator</title>
@@ -225,7 +225,7 @@
 </p>
 
 
-<div id="org142857c" class="figure">
+<div id="org7eb4429" class="figure">
 <p><img src="generator-feature.png" alt="generator-feature.png">
 </p>
 </div>
@@ -337,7 +337,7 @@ lua 内部根据 function 定义的位置，来记录这种包含关系。
 </p>
 
 
-<div id="org2c08af7" class="figure">
+<div id="orgd59589b" class="figure">
 <p><img src="generator-function-level.png" alt="generator-function-level.png">
 </p>
 </div>
@@ -348,7 +348,7 @@ b d e 则直接定义在 a 和 c 中。
 </p>
 
 
-<div id="org9d9655f" class="figure">
+<div id="org2161c4f" class="figure">
 <p><img src="generator-proto-level.png" alt="generator-proto-level.png">
 </p>
 </div>
@@ -465,7 +465,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org1ba9f91" class="figure">
+<div id="orgb61d051" class="figure">
 <p><img src="generator-big-picture-0.png" alt="generator-big-picture-0.png">
 </p>
 </div>
@@ -476,7 +476,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org25e49fb" class="figure">
+<div id="orgb9861c0" class="figure">
 <p><img src="generator-big-picture-1.png" alt="generator-big-picture-1.png">
 </p>
 </div>
@@ -487,7 +487,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org50ed4e3" class="figure">
+<div id="orgfeee905" class="figure">
 <p><img src="generator-big-picture-2.png" alt="generator-big-picture-2.png">
 </p>
 </div>
@@ -502,13 +502,13 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org706496d" class="figure">
+<div id="orga30a95a" class="figure">
 <p><img src="generator-big-picture-3.png" alt="generator-big-picture-3.png">
 </p>
 </div>
 
 
-<div id="orgacef76e" class="figure">
+<div id="org86299a3" class="figure">
 <p><img src="generator-big-picture-4.png" alt="generator-big-picture-4.png">
 </p>
 </div>
@@ -518,7 +518,7 @@ FuncState.f 指向相应要生成的 Proto。
 </p>
 
 
-<div id="org0219e2b" class="figure">
+<div id="org91bb5d3" class="figure">
 <p><img src="generator-big-picture-5.png" alt="generator-big-picture-5.png">
 </p>
 </div>
@@ -704,32 +704,32 @@ FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细
 </p>
 
 
-<div id="org173e226" class="figure">
+<div id="org5925396" class="figure">
 <p><img src="generator-fcode.png" alt="generator-fcode.png">
 </p>
 </div>
 
 
-<div id="org1a3b575" class="figure">
+<div id="org799cfb1" class="figure">
 <p><img src="generator-fk.png" alt="generator-fk.png">
 </p>
 </div>
 
 
-<div id="orgcc26ba6" class="figure">
+<div id="org6bc5a37" class="figure">
 <p><img src="generator-fp.png" alt="generator-fp.png">
 </p>
 </div>
 
 
 
-<div id="org6c73eb1" class="figure">
+<div id="org058cef2" class="figure">
 <p><img src="generator-fupval.png" alt="generator-fupval.png">
 </p>
 </div>
 
 
-<div id="orga11f90a" class="figure">
+<div id="org412cf73" class="figure">
 <p><img src="generator-flocvars.png" alt="generator-flocvars.png">
 </p>
 </div>
@@ -795,13 +795,13 @@ FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细
 </p>
 
 
-<div id="orga6d28b0" class="figure">
+<div id="org7363f88" class="figure">
 <p><img src="generator-fsupval.png" alt="generator-fsupval.png">
 </p>
 </div>
 
 
-<div id="org2a2aaea" class="figure">
+<div id="org9ab464c" class="figure">
 <p><img src="generator-fsactvar.png" alt="generator-fsactvar.png">
 </p>
 </div>
@@ -920,7 +920,7 @@ local 变量的活动范围（active），开始于在作用域中出现的那�
 </p>
 
 
-<div id="org6f84076" class="figure">
+<div id="org198927d" class="figure">
 <p><img src="generator-active-local-scope.png" alt="generator-active-local-scope.png">
 </p>
 </div>
@@ -930,7 +930,7 @@ local 变量的活动范围（active），开始于在作用域中出现的那�
 </p>
 
 
-<div id="orge62c60f" class="figure">
+<div id="org840b353" class="figure">
 <p><img src="generator-actvar-locvars.png" alt="generator-actvar-locvars.png">
 </p>
 </div>
@@ -952,38 +952,42 @@ local 变量的活动范围（active），开始于在作用域中出现的那�
 <p>
 LocVar 主要记录变量的名字， <code>startpc endpc</code> 在字节码层面记录其活动范围。
 </p>
+
+<p>
+宏 getlocvar 精确描述了图示过程。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>lparser.c</label><pre class="src src-c"><span class="linenr">32: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">getlocvar</span>(<span class="org-variable-name">fs</span>, <span class="org-variable-name">i</span>)        ((fs)-&gt;f-&gt;locvars[(fs)-&gt;actvar[i]])
+</pre>
+</div>
 </div>
 </div>
 
-<div id="outline-container-org94f214c" class="outline-4">
-<h4 id="org94f214c"><span class="section-number-4">3.1.2</span> upvalue</h4>
+<div id="outline-container-org1b55dc1" class="outline-4">
+<h4 id="org1b55dc1"><span class="section-number-4">3.1.2</span> upvalue</h4>
 <div class="outline-text-4" id="text-3-1-2">
 <p>
-在 pascal 中，在 outer scope 的变量，可以通过 frame stack 去查找
+upvalue 在本文翻译为上值，它即非 local，又不是 global。
+直观从代码上看，即引用作用域之外的变量。
 </p>
 
 <p>
-但是在 lua 中，函数也是一种值，可以四处流转，说不定在什么地方调用
-所以其 upvalue 不一定出现在 stack frame 上
+lua 将 function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转。
+又因为 local 变量的作用域限定于词法，这便是 upvalue 机制发挥作用的地方。
 </p>
 
-
-<blockquote>
 <p>
-对象是带函数的值
-闭包是带值的函数
+如下示例代码，
 </p>
-</blockquote>
 
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">outer</span>()
    <span class="org-keyword">local</span> <span class="org-variable-name">a</span> = 0
 
    <span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">inner</span>()
-      <span class="org-keyword">local</span> <span class="org-variable-name">b</span> = 0
-
       a = a + 1
-      <span class="org-keyword">return</span> a
+      <span class="org-builtin">print</span>(a)
    <span class="org-keyword">end</span>
 
    inner()
@@ -993,104 +997,77 @@ LocVar 主要记录变量的名字， <code>startpc endpc</code> 在字节码层
 
 <span class="org-keyword">local</span> <span class="org-variable-name">f</span> = outer()
 
-<span class="org-builtin">print</span>(f())
-<span class="org-builtin">print</span>(f())
-<span class="org-builtin">print</span>(f())
-
-<span class="org-keyword">local</span> <span class="org-variable-name">g</span> = outer()
-
-<span class="org-builtin">print</span>(g())
-<span class="org-builtin">print</span>(g())
-<span class="org-builtin">print</span>(g())
+f()
+f()
 </pre>
 </div>
 
+<pre class="example">
+1
+2
+3
+</pre>
+
+
 <p>
-function 作为基础类型之一，可以作为普通变量，参数，返回值，赋值，而四处流转
+内部第 1 次调用 inner() 时，输出 1 。
+当调用 outer()，将 inner 赋值与 f，调用两次 f() 得到 2 3 。
 </p>
 
 <p>
-这种情况下，和 local 作用域机制在一起，就会出现问题
+第 1 次调用 inner() 时，依然在 a 的作用域内，输出 1 是符合直觉的。
 </p>
 
 <p>
-a 的作用域在 outer 内部，同时被 inner 引用并修改，最终 outer 返回 inner
+问题在于调用 f() 时，因为 a 只作用在 outer 的作用域，而 f 在 outer 作用域外部，
+已经离开了 a 的作用域，这种情况下为何还可以访问 a ？
 </p>
 
 <p>
-调用 outer，赋值给 f
+这便是闭包机制的由来，a 对于 inner 而言是 upvalue 类型。
+这也是 lua 中为何 function 不是 function 而是 closure 的原因，function 及 upvalue 组成了 closure，
+所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于单独分配 upvalue 空间并管理。
 </p>
 
 <p>
-按照语义，f 应该是内部的 inner func，每次调用都得到 a 的自增值
-</p>
-
-<p>
-调用 3 次，得到 1 2 3
-</p>
-
-<p>
-问题在于，a 只作用在 outer 内部，而 f 在 outer 外部，已经离开了 a 的作用域，
-在这种情况下如何保证语义的正确？
-</p>
-
-<p>
-这便是闭包机制的由来，a 对于 inner 而言，不是 local，而是 upvalue 类型。
-</p>
-
-<p>
-这也是 lua 中为何 func 不是 func 而是 closure 的原因，func 及 upvalue 组成了 closure，
-所有 func 在运行时都封装为 closure 来运行，其中重要的原因就在于分配 upvalue 空间。
-</p>
-
-<p>
-再调用 outer，赋值给 g，调用 3 次，得到一样的结果，从中可以得到 upvalue 作用于 active 和
-dead 状态的区别。
+详细的说，第 1 次调用 inner() 时，local a 依然存活，称 upvalue a 为 open 状态。
+当离开 outer() 作用域，upvalue a 为 close 状态。
 </p>
 </div>
 </div>
 
-<div id="outline-container-orge7f7193" class="outline-4">
-<h4 id="orge7f7193"><span class="section-number-4">3.1.3</span> global</h4>
+<div id="outline-container-org16cebd3" class="outline-4">
+<h4 id="org16cebd3"><span class="section-number-4">3.1.3</span> global</h4>
 <div class="outline-text-4" id="text-3-1-3">
 <p>
-前面提到了 local 变量的作用域，以及 upvalue 出现的原因及解决方法。
+如果依然说，global 变量是除 local 变量和 upvalue 变量的变量，读者肯定不信服。
 </p>
 
 <p>
-其中隐含的一点，外层变量对于内层可见，假如强制设定外层对于内部不可见，便不会有 upvalue 的问题。
+之所以存在 upvalue 和 global，隐含的一点是，在 lua 中外层变量对于内层是可见的，
+既然是可见的，对于外层变量引用自然有一个查找的过程，变量类型正是在查找的过程中确定的。
+</p>
+
+<ul class="org-ul">
+<li>在当前作用域中可以找到的，为 local 类型</li>
+<li>在当前作用域之外的作用域可以找到的，为 upvalue 类型</li>
+<li>所有作用域都无法找到的，为 global 类型</li>
+</ul>
+
+<p>
+按照这个逻辑，顶层的 chunk 是没有 upvalue 的，在当前作用域中查找不到的变量，
+只能是 global 类型。
 </p>
 
 <p>
-对于可见的情况，对于当前引用的变量，自然有一个查找的过程。
-和嵌套相反，是层层向上寻找的过程。
+setfenv 影响的就是函数的 global 环境，
+设定不同的 global 表，可以影响内部对 global 的引用，
+实现不同的运行效果，类似于封装成一个小沙盒，
 </p>
 
 <p>
-变量
-在本层可以找到的，为 local
-在本层之外可以找到的，为 upvalue
-所有层都无法找到的，为 global
+比如如下代码，变量 a 对 outer inner 都是全局变量，所以全部修改都影响到 global a 的值。
 </p>
-
-<p>
-global 的概念解决了两个细节问题
-为什么顶层的 function 是没有 upvalue 的？
-因为在本层找不到的变量，向上已经没有层级，只能是 global
-</p>
-
-<p>
-setfenv 的概念
-函数的运行环境，即是 global，在编译的 chunk 运行之前，设定 global 的值，
-可以影响内部对 global 值的引用，从而实现不同的运行效果。
-</p>
-
-
-<p>
-在实现中，global 是单独于基层的 closure 存在的，是运行状态的一部分
-所以不存在作用域的问题，始终在顶层。
-</p>
-
 
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">outer</span>()
@@ -1111,6 +1088,12 @@ setfenv 的概念
 <span class="org-builtin">print</span>(f(), a)
 </pre>
 </div>
+
+<pre class="example">
+11	11
+12	12
+13	13
+</pre>
 </div>
 </div>
 </div>
@@ -1405,7 +1388,7 @@ make inspect
 chunkspy 中 .local .const 的概念对应
 </p>
 
-<pre class="example" id="orge79a222">
+<pre class="example" id="org15490d3">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
 .function  0 0 2 3
@@ -1706,7 +1689,7 @@ localstat vs localfunc
 </pre>
 </div>
 
-<pre class="example" id="org9a3c427">
+<pre class="example" id="orgd574668">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
 .function  0 0 2 3
@@ -1805,7 +1788,7 @@ var 多则置 nil
 </pre>
 </div>
 
-<pre class="example" id="org686c378">
+<pre class="example" id="orgaab4f5d">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
 .function  0 0 2 5
@@ -1950,8 +1933,8 @@ exprstat -&gt; assignment stat
 </p>
 </div>
 
-<div id="outline-container-org5723c94" class="outline-4">
-<h4 id="org5723c94"><span class="section-number-4">5.3.1</span> global</h4>
+<div id="outline-container-orgaceca68" class="outline-4">
+<h4 id="orgaceca68"><span class="section-number-4">5.3.1</span> global</h4>
 <div class="outline-text-4" id="text-5-3-1">
 <div class="org-src-container">
 <pre class="src src-lua">a, b, c = 10, 20, 30
@@ -2046,8 +2029,8 @@ exp2reg，存储到指定 reg
 </div>
 
 
-<div id="outline-container-org5e272fc" class="outline-4">
-<h4 id="org5e272fc"><span class="section-number-4">5.3.2</span> upvalue</h4>
+<div id="outline-container-org73d5a7e" class="outline-4">
+<h4 id="org73d5a7e"><span class="section-number-4">5.3.2</span> upvalue</h4>
 <div class="outline-text-4" id="text-5-3-2">
 <div class="org-src-container">
 <pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span> = 10
@@ -2160,8 +2143,8 @@ loop 情况，到 while for 具体分析。
 </div>
 </div>
 
-<div id="outline-container-org506aa39" class="outline-3">
-<h3 id="org506aa39"><span class="section-number-3">5.5</span> if</h3>
+<div id="outline-container-org0958dc0" class="outline-3">
+<h3 id="org0958dc0"><span class="section-number-3">5.5</span> if</h3>
 <div class="outline-text-3" id="text-5-5">
 <p>
 顺序解析的难题之一
@@ -2204,8 +2187,8 @@ luaK<sub>jump</sub> 时，使用 jpc 重置的技巧，防止在生成 jump 时�
 </p>
 </div>
 
-<div id="outline-container-orgb738dbc" class="outline-4">
-<h4 id="orgb738dbc"><span class="section-number-4">5.5.1</span> if</h4>
+<div id="outline-container-org5000617" class="outline-4">
+<h4 id="org5000617"><span class="section-number-4">5.5.1</span> if</h4>
 <div class="outline-text-4" id="text-5-5-1">
 <p>
 dischargejpc
@@ -2376,7 +2359,7 @@ for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有�
 因为 lex 规则的限定
 </p>
 
-<pre class="example" id="org7d09c9a">
+<pre class="example" id="org9d62f78">
 .local  "(for generator)"  ; 0
 .local  "(for state)"  ; 1
 .local  "(for control)"  ; 2
@@ -2583,10 +2566,11 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-11 一 17:06</p>
+<p>Updated: 2021-01-12 二 10:14</p>
 <p>Created: 2021-01-08 五 11:34</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+<script src="https://utteranc.es/client.js" repo="DreamAndDead/DreamAndDead.github.io" issue-term="pathname" label="Comment" theme="github-light" crossorigin="anonymous" async></script>
 </div>
 </body>
 </html>
