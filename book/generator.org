@@ -981,7 +981,7 @@ freereg 的作用
 
 本节开始从实例具体分析代码生成的过程，和实例一起来探求其中的生成模式。
 
-因为语法元素的递归性，其中的组合是无限的，所以本节只讲解其中重要的“原子性”的部分，
+因为语法元素的递归性，其中的组合是无限的，所以本节只挑选讲解部分重要的“原子性”的部分，
 至于各种组合的变数读者可自由探索。
 
 ** tool
@@ -1049,7 +1049,515 @@ line 8
 
 读者结合 opcode 章节对各个指令功能的理解，不难理解 lua 代码和字节码的同义关系。
 
+** local
+
+先来观察 local 语句。
+
+语法描述如下，
+
+#+begin_src bnf
+stat      ::= localstat
+localstat ::= LOCAL NAME {`,' NAME} [`=' explist]
+localstat ::= LOCAL FUNCTION NAME body
+#+end_src
+
+localstat 可用于定义局部变量和局部函数。
+
+函数部分到后面小节再讨论，对于局部变量，根据是否赋值可分为两种情况。
+
+*** no assignment
+
+如下简单的代码示例，定义局部变量，无赋值，
+
+#+begin_src lua
+local a, b, c
+#+end_src
+
+分析得到如下结果，
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+[1] return     0   1      
+; end of function
+#+end_example
+
+示例代码只是单纯进行了局部变量的声明，最终没有生成任何字节码。
+
+分析的过程，就是递归向下的函数过程， =chunk -> stat -> localstat= 。
+
+#+caption: lparser.c
+#+begin_src C -n 1179 -r
+static void localstat (LexState *ls) {
+  /* stat -> LOCAL NAME {`,' NAME} [`=' explist1] */
+  int nvars = 0;
+  int nexps;
+  expdesc e;
+  do {
+    new_localvar(ls, str_checkname(ls), nvars++);   (ref:new_localvar)
+  } while (testnext(ls, ','));
+  if (testnext(ls, '='))
+    nexps = explist1(ls, &e);
+  else {
+    e.k = VVOID;
+    nexps = 0;
+  }
+  adjust_assign(ls, nvars, nexps, &e);
+  adjustlocalvars(ls, nvars);
+}
+#+end_src
+
+关键在于 [[(new_localvar)][new_localvar]] 函数，在循环中读入 a b c，并进行变量分析。
+
+#+caption: lparser.c
+#+begin_src C -n 160 -r
+static void new_localvar (LexState *ls, TString *name, int n) {
+  FuncState *fs = ls->fs;
+  luaY_checklimit(fs, fs->nactvar+n+1, LUAI_MAXVARS, "local variables");
+  fs->actvar[fs->nactvar+n] = cast(unsigned short, registerlocalvar(ls, name));
+}
+#+end_src
+
+#+caption: lparser.c
+#+begin_src C -n 143 -r
+static int registerlocalvar (LexState *ls, TString *varname) {
+  FuncState *fs = ls->fs;
+  Proto *f = fs->f;
+  int oldsize = f->sizelocvars;
+  luaM_growvector(ls->L, f->locvars, fs->nlocvars, f->sizelocvars,
+                  LocVar, SHRT_MAX, "too many local variables");
+  while (oldsize < f->sizelocvars) f->locvars[oldsize++].varname = NULL;
+  f->locvars[fs->nlocvars].varname = varname;
+  luaC_objbarrier(ls->L, f, varname);
+  return fs->nlocvars++;
+}
+#+end_src
+
+其中根据变量出现的顺序，依次使用 registerlocalvar 得到变量索引，再记录到 =fs->actvar= 中。
+
+这就是前面讨论过的，局部变量的存储方式，使用 =fs->actvar= 记录索引， =f->locvars= 记录变量名称。
+
+#+CAPTION: local no assign
+#+begin_src dot :file generator-local-no-assign.png
+digraph {
+	rankdir = LR;
+	ranksep = 1;
+
+	actvar[shape=record, label="
+	      |<n> | <n3> 2 | <n2> 1 | <n1> 0
+	      ", xlabel="fs->actvar"];
+
+	node[shape=plain];
+	
+	n[label="fs->nactvar = 3"];
+	nn[label="fs->nlocvars = 3"];
+
+	n -> actvar:n;
+	locvars:n -> nn[dir="back"];
+	
+	locvars[shape=record, label="
+               |<n>  | <n3> \"c\" | <n2> \"b\" | <n1> \"a\"
+	      ", xlabel="f->locvars"];
+
+	actvar:n1 -> locvars:n1;
+	actvar:n2 -> locvars:n2;
+	actvar:n3 -> locvars:n3;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-local-no-assign.png]]
+
+[[(new_localvar)][new_locvar]] 完成的就是这个过程。
+
+这也对应了 chunkspy 分析结果中的 .local 部分。
+
+*** with assignment
+
+再来看 local 变量赋值的情况。
+
+分析示例代码，得到如下结果，
+    
+#+begin_src lua
+local a, b, c, d, e = 10, "second", nil, true, false
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
+.function  0 0 2 5
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+.local  "d"  ; 3
+.local  "e"  ; 4
+.const  10  ; 0
+.const  "second"  ; 1
+[1] loadk      0   0        ; 10
+[2] loadk      1   1        ; "second"
+[3] loadnil    2   2      
+[4] loadbool   3   1   0    ; true
+[5] loadbool   4   0   0    ; false
+[6] return     0   1      
+; end of function
+#+end_example
+
+除了 .local 条目变多了，也增加了 .const 部分，意味着 k 表多出了 2 项记录。
+
+依旧从 localstat 来分析，
+
+#+caption: lparser.c
+#+begin_src C -n 1179 -r
+static void localstat (LexState *ls) {
+  /* stat -> LOCAL NAME {`,' NAME} [`=' explist1] */
+  int nvars = 0;
+  int nexps;
+  expdesc e;
+  do {
+    new_localvar(ls, str_checkname(ls), nvars++);
+  } while (testnext(ls, ','));
+  if (testnext(ls, '='))
+    nexps = explist1(ls, &e);           (ref:localstat_explist)
+  else {
+    e.k = VVOID;
+    nexps = 0;
+  }
+  adjust_assign(ls, nvars, nexps, &e);
+  adjustlocalvars(ls, nvars);
+}
+#+end_src
+
+在记录变量信息之后，遇到 ~=~ ，开始分析 ~=~ 后的 [[(localstat_explist)][表达式列表]] ，作为变量的赋值内容。
+
+后面的表达式都是简单表达式，最终会调用 simpleexp 进行解析。
+
+#+begin_src bnf
+explist      ::= expr {`,' expr}
+expr         ::= subexpr
+subexpr      ::= (simpleexp | unop subexpr) {binop subexpr}
+
+simpleexp    ::= NUMBER | STRING | NIL | TRUE | FALSE | DOTS |
+                 constructor | FUNCTION body | primaryexp
+#+end_src
+
+下面有趣的地方来了，字节码和 k 表中的元素是何时生成的？
+这就和代码生成的方式紧密相关了。
+
+parser 模块中代码生成的强大在于，它是流式生成的。
+意思即一边读入 token，分析状态，就直接生成代码！
+
+从代码具体来看，
+
+#+begin_src C -r -n 596
+static int explist1 (LexState *ls, expdesc *v) {
+  /* explist1 -> expr { `,' expr } */
+  int n = 1;  /* at least one expression */
+  expr(ls, v);                         (ref:fir_exp)
+  while (testnext(ls, ',')) {
+    luaK_exp2nextreg(ls->fs, v);       (ref:fir_gen)
+    expr(ls, v);                       (ref:sec_exp)
+    n++;
+  }
+  return n;
+}
+#+end_src
+
+在[[(fir_exp)][第 1 次分析表达式]] 时，读入并分析了 10，并在 [[(sec_exp)][第 2 次分析表达式 "second"]] 之前，已经[[(fir_gen)][生成代码并更新了 k 表]]。
+
+先来看 expr()，由于分析的是简单表达式，最终会调用 simpleexp 进行分析，
+
+#+begin_src C -n 727 -r
+static void simpleexp (LexState *ls, expdesc *v) {
+  /* simpleexp -> NUMBER | STRING | NIL | true | false | ... |
+                  constructor | FUNCTION body | primaryexp */
+  switch (ls->t.token) {
+    case TK_NUMBER: {
+      init_exp(v, VKNUM, 0);
+      v->u.nval = ls->t.seminfo.r;
+      break;
+    }
+    case TK_STRING: {
+      codestring(ls, v, ls->t.seminfo.ts);
+      break;
+    }
+    case TK_NIL: {
+      init_exp(v, VNIL, 0);
+      break;
+    }
+    case TK_TRUE: {
+      init_exp(v, VTRUE, 0);
+      break;
+    }
+    case TK_FALSE: {
+      init_exp(v, VFALSE, 0);
+      break;
+    }
+    case TK_DOTS: {  /* vararg */
+      FuncState *fs = ls->fs;
+      check_condition(ls, fs->f->is_vararg,
+                      "cannot use " LUA_QL("...") " outside a vararg function");
+      fs->f->is_vararg &= ~VARARG_NEEDSARG;  /* don't need 'arg' */
+      init_exp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 1, 0));
+      break;
+    }
+    case '{': {  /* constructor */
+      constructor(ls, v);
+      return;
+    }
+    case TK_FUNCTION: {
+      luaX_next(ls);
+      body(ls, v, 0, ls->linenumber);
+      return;
+    }
+    default: {
+      primaryexp(ls, v);
+      return;
+    }
+  }
+  luaX_next(ls);
+}
+#+end_src
+
+第 1 次分析 10 时，token 类型是 =TK_NUMBER= ，直接填充 expdesc 即可，
+然后调用 luaK_exp2nextreg 生成代码。
+
+luaK_exp2nextreg 是一个综合过程，由更基础的几个函数组成。
+
+深入分析之前，先来补充之前 FuncState 未描述的一个字段，freereg。
+
+字节码被 vm 运行时，vm 维持一个栈，来存放寄存器和中间结果。
+编译器只知晓这个栈的存在，但是在编译时，这个栈并没有真实存在，
+只能凭借想象去操作它。
+
+freereg 就是用来记录栈顶的变量。
+
+当存储新的寄存器值时，freereg 就会自增，为寄存器开出空间；
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 209 :lines "209-213"
+
+相应的，如果寄存器不再使用，freereg 会自减，回收相应的空间。
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 215 :lines "215-221"
+
+从中可以看出，freereg 将栈分为两部分，在栈底为 local 变量保留空间（reg >= fs->nactvar），
+上层用于计算中间结果。
+
+#+caption: freereg and stack
+#+begin_src dot :file generator-freereg-stack.png
+digraph {
+	rankdir = LR;
+	
+	fir[shape=record, label="
+	    ||||<n> | a
+	    ", xlabel="vm stack"];
+
+	node[shape=plain];
+	
+	n1[label="fs->freereg = 1"];
+
+	n1 -> fir:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-freereg-stack.png]]
+
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 414 :lines "414-420"
+
+在 luaK_exp2nextreg 中，先找出下一个可用的栈/寄存器空间，然后将表达式的值解析到寄存器中，
+即生成字节码。
+
+最终在 discharge2reg 函数生成相应指令 loadk。
+
+这里出现了第二个重点，对 k 表的操作。
+
+因为其类型为数字，所以调用的是 luaK_numberK。
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 229 :lines "229-278"
+
+所有操作 k 表的方法，最终都使用 addk 操作，其作用也很简单，
+在 k 表中搜索，如果存在，则直接返回相应索引，其中使用 table fs->h 做 k 表元素的反向索引，加快搜索过程；
+若不存在，则自增，并返回相应的索引。
+
+#+caption: number k
+#+begin_src dot :file generator-numberk-10.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	rankdir = LR;
+	
+	fk[shape=record, label="
+	      | | | | <n> |10
+	      ", xlabel="f->k"];
+
+	fsizek[label="f->sizek", shape=plain];
+	
+	fsnk[label="fs->nk", shape=plain];
+
+	fsnk -> fk:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-numberk-10.png]]
+
+将数字 10 存储入 k 表之后，生成 loadk 指令，将 freereg 和 k 索引作为其操作数。
+
+至此，parser 只读入了 token 10，便已经完成了操作 k 表，记录常数，并生成对应的指令，令人惊奇。
+
+对于第 2 个表达式 "second"，在 simpleexp 时，提前调用 codestring 加入了 k 表，
+将其作为 VK 类型来对待。
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 133 :lines "133-136"
+
+#+begin_src dot :file generator-stringk-second.png
+digraph  {
+	node[shape=box];
+	nodesep = 1.0;
+	ranksep = .5;
+	rankdir = LR;
+	
+	fk[shape=record, label="
+	      | | | <n>|\"second\" | 10
+	      ", xlabel="f->k"];
+
+	fsizek[label="f->sizek", shape=plain];
+	
+	fsnk[label="fs->nk", shape=plain];
+
+	fsnk -> fk:n;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-stringk-second.png]]
+
+同样的生成 loadk 指令。
+
+回到 localstat()，前面对变量和表达式进行解析之后，记录了 ~=~ 两边的数量 nvars nexps，
+=adjust_assign()= 进行左右数量的调整，多余的 var 空间置为 nil，多余的 exp 则省略。
+
+最终调用 =adjustlocalvars()= 调整 fs->nactvar 的值。
+
+**** TODO multret
+
+TODO 有 multret 的再讨论
+
+下面的情况是合法的，只不过前面的 multret 只返回一个值，而最后的可利用多个值
+
+#+begin_src lua
+local a, b, c = ..., ..., ...
+#+end_src
+
+** assign
+
+exprstat -> assignstat
+
+*** global
+
+#+begin_src lua
+a, b, c = 10, 20, 30
+#+end_src
+
+进入 primaryexp prefixexp 查找的时候，TK NAME 要进行 singlevar 查找
+
+赋值为 VGLOBAL，且 info 存储了名字对应的 k 表索引
+和 expkind 的注释不符合？
+
+
+
+进入 assignment，按照 ebnf ，本身是嵌套的
+进入之前，先将 v prev 设置为 NULL，后面全部链接起来
+
+
+LHS_assign 结构，在 expdesc 的基础上，添加了 prev 指针
+
+在 多个 , 之间的 var 全部链接起来
+
+其中可赋值的类型为
+VLOCAL VUPVAL VGLOBAL VINDEXED
+由 primaryexp 决定
+
+
+赋值阶段，在每个递归层次，用 luaK_storevar 来存储
+
+
+
+var ex
+
+先 discharge ex
+再生成 SETGLOBAL，使用 info 中存储的 k 索引
+gbl[kst[info]] = R(A)
+
+
+
+
+luaK_exp2anyreg
+
+只需要解析到 reg 就可以，临时使用，赋值之后就废弃
+
+
+exp 可能是 var，也可能是 值
+但是通过 dis var 是保险的
+
+默认依然使用 exp2nextreg，只不过在之前，添加了解析 jump 的部分
+
+exp2nextreg，存储在 freereg 之后
+
+exp2reg，存储到指定 reg
+
+其中解析了 jump 相关的内容
+
+最终成为 VNONRELOC
+
+*** upvalue
+
+#+begin_src lua
+local a = 10
+
+function f()
+  a = 20
+end
+#+end_src
+
+和 global 相似
+
+*** indexed
+
+a.b   a['b']
+是相同语义
+
+a 必须是 table，语义才正确
+
+
+gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 constant，也可能是
+一个表，一个函数，等其它值，这种值只能由 寄存器 存储
+
+同时，加上了 k，也可以节省临时寄存器的使用
+
+如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
+
 ** function
+
+#+begin_src lua
+local function f()
+end
+
+local f = function ()
+end
+#+end_src
+
 
 compile time
 
@@ -1158,279 +1666,6 @@ chunk func 是 2
 存储在 proto
 - numparams，vararg 不算一个参数
 - is_vararg
-
-** local assignment
-
-#+begin_src bnf
-localstat ::= LOCAL NAME {`,' NAME} [`=' explist]
-localstat ::= LOCAL FUNCTION NAME body
-#+end_src
-
-
-#+begin_src lua
-local function f()
-end
-
-local f = function ()
-end
-#+end_src
-
-localstat 有两种情况，func 的情况之后到 function 部分再讨论。
-另一种情况是局部变量声明，分为是否赋值两种情况。
-
-localstat vs localfunc
-
-*** no assignment
-
-#+begin_src lua
-local a, b, c
-#+end_src
-
-#+begin_example
-; function [0] definition (level 1)
-; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
-.function  0 0 2 3
-.local  "a"  ; 0
-.local  "b"  ; 1
-.local  "c"  ; 2
-[1] return     0   1      
-; end of function
-#+end_example
-
-考虑如上代码，声明局部变量 a。
-
-没有生成代码，毕竟没有任何运算或者操作
-
-所以只存储了 local 变量的信息
-
-#+CAPTION: 18 local no assignment
-
-lparser.c:143
-=registerlocalvar= 是操作 f->locvars 的过程
-
-lparser.c:163
-=new_localvar= 是操作 fs->actvar 的过程
-
-先注册，再存储相应的索引
-
-
-expdesc 为 VVOID，因为没有 exp，没有赋值
-e 记录的是最后一个 expr 的属性
-
-
-
-nvars = nexps
-
-
-=adjust_assign= 进行左右数量的调整
-
-多余空间置为 nil
-
-TODO 因为 luaK_nil 的优化过程，没有生成代码
-
-调整了 freereg 的值，是进行中间运算的安排的
-
-
-
-=adjustlocalvars= 调整 nactvar 的值，并设置相应的 startpc
-
-*** with assignment
-
-**** TODO multret
-
-TODO 有 multret 的再讨论
-
-下面的情况是合法的，只不过前面的 multret 只返回一个值，而最后的可利用多个值
-
-#+begin_src lua
-local a, b, c = ..., ..., ...
-#+end_src
-
-**** normal
-
-没有赋值，等于 nexps = 0 的最小情况
-
-var exp 的数量关系
-
-exp 多则舍弃
-var 多则置 nil
-
-#+begin_src lua
-local a, b, c, d, e = 10, "second", nil, true, false
-#+end_src
-
-#+begin_example
-; function [0] definition (level 1)
-; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
-.function  0 0 2 5
-.local  "a"  ; 0
-.local  "b"  ; 1
-.local  "c"  ; 2
-.local  "d"  ; 3
-.local  "e"  ; 4
-.const  10  ; 0
-.const  "second"  ; 1
-[1] loadk      0   0        ; 10
-[2] loadk      1   1        ; "second"
-[3] loadnil    2   2      
-[4] loadbool   3   1   0    ; true
-[5] loadbool   4   0   0    ; false
-[6] return     0   1      
-; end of function
-#+end_example
-
-
-下面来看赋值的情况，3 个变量均衡赋值。
-
-根据语法描述，左侧 var 结束之后，右侧部分都作为 explist 来解析，最终再完成赋值
-
-是典型的后缀形式的语法制导。
-
-这里先不重点讲 explist -> expr 的解析过程，只用几个基本类型，在 lex 阶段就可以确定的。
-
-lparser.c:599
-
-可确定 expr 的描述 v
-
-
-
-
-使用 luaK_exp2nextreg
-
-TODO freereg 的指导作用
-TODO 为何这样是正确的，什么时候进行回收？
-
-按照 freereg 所指的顺序，依次向上存储
-
-exp2reg freereg
-
-discharge2reg，将 exp 对应到 reg 即 local 中
-
-其中 VKNUM 直接存储入 k 表，生成 loadk 指令，使用 k 索引
-
-TK_STRING 在之前已经变成 VK，加在 k 表中的索引，同样生成 loadk 指令
-
-解析之后，exp 类型变为 VNONRELOC，info 中存储结果所在的寄存器
-
-
-在这个过程中，已经生成了 相关的 load 指令，到 freereg 的位置
-因为 exp 出现的顺序，和 var 出现的顺序对应，巧妙完成了赋值
-
-**** k table
-
-通过 numberK 和 stringK 方法
-
-在 addk 过程，
-fs->h 是一个 table，用于对 f->k 进行反向索引
-先在 h 中查找，是否已经有相应索引，可以直接返回
-如果没有，则新增一项
-
-fs->nk++
-
-
-lcode.c:229-278
-
-k 表只存储如下几种常量
-- nil
-- bool
-- number
-- string
-
-nil bool 在赋值时并没有使用 loadk，而使用 loadnil loadbool 指令
-插入 k 表用在别的地方
-- index
-- binop
-- compare
-
-
-** nonlocal assignment
-
-exprstat -> assignment stat
-
-*** global
-
-#+begin_src lua
-a, b, c = 10, 20, 30
-#+end_src
-
-进入 primaryexp prefixexp 查找的时候，TK NAME 要进行 singlevar 查找
-
-赋值为 VGLOBAL，且 info 存储了名字对应的 k 表索引
-和 expkind 的注释不符合？
-
-
-
-进入 assignment，按照 ebnf ，本身是嵌套的
-进入之前，先将 v prev 设置为 NULL，后面全部链接起来
-
-
-LHS_assign 结构，在 expdesc 的基础上，添加了 prev 指针
-
-在 多个 , 之间的 var 全部链接起来
-
-其中可赋值的类型为
-VLOCAL VUPVAL VGLOBAL VINDEXED
-由 primaryexp 决定
-
-
-赋值阶段，在每个递归层次，用 luaK_storevar 来存储
-
-
-
-var ex
-
-先 discharge ex
-再生成 SETGLOBAL，使用 info 中存储的 k 索引
-gbl[kst[info]] = R(A)
-
-
-
-
-luaK_exp2anyreg
-
-只需要解析到 reg 就可以，临时使用，赋值之后就废弃
-
-
-exp 可能是 var，也可能是 值
-但是通过 dis var 是保险的
-
-默认依然使用 exp2nextreg，只不过在之前，添加了解析 jump 的部分
-
-exp2nextreg，存储在 freereg 之后
-
-exp2reg，存储到指定 reg
-
-其中解析了 jump 相关的内容
-
-最终成为 VNONRELOC
-
-
-*** upvalue
-
-#+begin_src lua
-local a = 10
-
-function f()
-  a = 20
-end
-#+end_src
-
-和 global 相似
-
-*** indexed
-
-a.b   a['b']
-是相同语义
-
-a 必须是 table，语义才正确
-
-
-gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 constant，也可能是
-一个表，一个函数，等其它值，这种值只能由 寄存器 存储
-
-同时，加上了 k，也可以节省临时寄存器的使用
-
-如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
 
 ** do
 
