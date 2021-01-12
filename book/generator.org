@@ -898,70 +898,6 @@ print(f(), a)
 
 而在实际运行时，寄存器存储在 vm 的栈中。
 
-** TODO expdesc
-    :LOGBOOK:
-    - Note taken on [2021-01-11 一 15:42] \\
-      把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
-    - Note taken on [2020-12-07 一 17:34] \\
-    各个状态如何发生作用？
-    :END:
-
-递归下降
-语法制导
-后缀顺序
-配合 vm opcode 共同作用的结果
-
- exp 基本运作单元
- desc 描述其属性，是 ast 到 code 的纽带
-
- #+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
-
- - VVOID 什么都不做
- - VNIL  nil 值
- - VTRUE
- - VFALSE bool
- - VK    在 k 表中的值  没有 string 类型，因为在读取的过程中，直接将其放入 k 表中，变成 VK 类型了
- - VKNUM 数字字面量
-
-
- discharge2reg
- lcode.c:343
-
- 操作的只是 exp 相关的类型
-
- exp 需要解析到值，而 var 需要解析到位置？
-
- reg 是目的地
-
- VRELOCABLE 说明 A 本身还不确定，在 discharge 的时候，补全到 A 位置
-
- VNONRELOC 则说明本身已经解析到栈中 或 A 已经正确
-
-discharge2reg
-
- | exp desc   | gen code                                 |
- |------------+------------------------------------------|
- | VNIL       | loadnil                                  |
- | VTRUE      | loadbool                                 |
- | VFALSE     | loadbool                                 |
- | VK         | loadk                                    |
- | VKNUM      | loadk                                    |
- | VRELOCABLE | get its code and change A to reg         |
- | VNONRELOC  | reg != self reg, move; otherwise nothing |
- | VVOID      | nothing                                  |
- | VJMP       | nothing                                  |
-
- dischargevars
-
- | exp desc | discharge                                            |
- |----------+------------------------------------------------------|
- | VLOCAL   | to VNONRELOC                                         |
- | VUPVAL   | gen code GETUPVAL, A is uncertain, to VRELOCABLE     |
- | VGLOBAL  | gen code GETGLOBAL, A is uncertain, to VRELOCABLE    |
- | VINDEXED | free table and idx, gen code GETTABLE, to VRELOCABLE |
- | VCALL    | to VNONRELOC, store call code A value                |
- | VVARARG  | set B to 2? to VRELOCABLE                            |
-
 ** TODO how freereg & freeexp works
 
 #+CAPTION: page 19 & 20
@@ -1459,6 +1395,46 @@ TODO 有 multret 的再讨论
 #+begin_src lua
 local a, b, c = ..., ..., ...
 #+end_src
+
+
+** expdesc
+
+从 localstat 的示例中，已经看到代码生成的逻辑是别具一格的。
+
+结合递归下降，语法制导，后缀顺序，vm opcode 语义，得以以线性顺序生成字节码。
+
+其中 expdesc 的作用是非常重要的，将一些属性附加到文法符号上，辅助代码生成过程。
+
+#+caption: lparser.h
+#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "15-46"
+
+expdesc 用于记录 exp 表达式的相关信息。
+
+和 token 类型类似，expdesc 内部有字段记录类型，其它字段记录附加信息。
+
+所有类型用 enum expkind 表示，相应类型后的注释描述了对应其它字段需要记录的信息。
+
+其中重点的函数是 discharge2reg 和 dischargevars，用于解析相应的 expdesc，生成代码并更新状态。
+
+| expkind    | u                                               | discharge                                                            |
+|------------+-------------------------------------------------+----------------------------------------------------------------------|
+| VVOID      |                                                 |                                                                      |
+| VNIL       |                                                 | 生成指令 loadnil，重置为 VNONRELOC                                   |
+| VTRUE      |                                                 | 生成指令 loadbool，重置为 VNONRELOC                                  |
+| VFALSE     |                                                 | 生成指令 loadbool，重置为 VNONRELOC                                  |
+| VK         | info 记录 k 表索引                              | 生成指令 loadk，重置为 VNONRELOC                                     |
+| VKNUM      | nval 记录数值                                   | 生成指令 loadk，重置为 VNONRELOC                                     |
+| VLOCAL     | info 记录寄存器索引                             | 重置为 VNONRELOC                                                     |
+| VUPVAL     | info 记录 upvalues 数组中的索引                 | 生成指令 GETUPVAL, 重置为 VRELOCABLE，info 记录指令索引              |
+| VGLOBAL    | info 全局表的索引，aux 全局名称的 k 表索引      | 生成指令 GETGLOBAL, 重置为 VRELOCABLE，info 记录指令索引             |
+| VINDEXED   | info table 所在寄存器的索引，aux 索引值的 RK 值 | 生成指令 GETTABLE, 重置为 VRELOCABLE，info 记录指令索引              |
+| VJMP       | info 当前指令索引                               |                                                                      |
+| VRELOCABLE | info 当前指令索引                               | 定位到指令位置，修改 A 参数为 reg                                    |
+| VNONRELOC  | info 最终解析得到的寄存器位置                   | 如果当前寄存器位置与目标位置不同，则生成 move 指令；相同则什么都不做 |
+| VCALL      | info 当前指令索引                               | 重置为 VNONRELOC，info 记录指令的 A 参数                             |
+| VVARARG    | info 当前指令索引                               | 重置为 VRELOCABLE                                                    |
+
+具体如此设计的原因及作用，还需要读者在不同情况下再尝试领会。
 
 ** assign
 
