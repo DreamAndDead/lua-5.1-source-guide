@@ -891,19 +891,14 @@ print(f(), a)
    如何调度寄存器？
    :END:
 
-register is stack
+寄存器的主要作用是，存取 local 变量和存取中间结果。
 
-parse 生成 bytecode，关于寄存器的使用，只是从表面上生成相应的索引
-因为 parser 知道自己使用了哪些寄存器，还有哪些可以使用，这些信息是 运行时的 vm 所不知道的
+寄存器在编译时是一个抽象的概念，没有具体的分配空间，编译器只知晓存在这块区域，
+并且按照自己的需要来使用和调试。
 
-move a b
+而在实际运行时，寄存器存储在 vm 的栈中。
 
-但是并不分配寄存器的空间，只是用来调度使用哪个寄存器
-因为这是编译时，而不是运行时
-
-local 变量 和 中间结果
-
-** expdesc
+** TODO expdesc
     :LOGBOOK:
     - Note taken on [2021-01-11 一 15:42] \\
       把一些属性附加到代表语言构造的文法符号上，从而把信息和一个语言的构造联系起来
@@ -913,31 +908,20 @@ local 变量 和 中间结果
 
 递归下降
 语法制导
-后缀方法
+后缀顺序
 配合 vm opcode 共同作用的结果
 
-
- exp desc
-
  exp 基本运作单元
-
  desc 描述其属性，是 ast 到 code 的纽带
 
  #+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "19-46"
-
-
 
  - VVOID 什么都不做
  - VNIL  nil 值
  - VTRUE
  - VFALSE bool
- - VK    在 k 表中的值
+ - VK    在 k 表中的值  没有 string 类型，因为在读取的过程中，直接将其放入 k 表中，变成 VK 类型了
  - VKNUM 数字字面量
-
- 没有 string 类型，因为在读取的过程中，直接将其放入 k 表中，变成 VK 类型了
-
-
- TODO desc 到 reg 的轨迹追踪？
 
 
  discharge2reg
@@ -945,13 +929,15 @@ local 变量 和 中间结果
 
  操作的只是 exp 相关的类型
 
- exp 需要解析到值，而 var 需要解析到位置
+ exp 需要解析到值，而 var 需要解析到位置？
 
  reg 是目的地
 
  VRELOCABLE 说明 A 本身还不确定，在 discharge 的时候，补全到 A 位置
 
  VNONRELOC 则说明本身已经解析到栈中 或 A 已经正确
+
+discharge2reg
 
  | exp desc   | gen code                                 |
  |------------+------------------------------------------|
@@ -965,7 +951,6 @@ local 变量 和 中间结果
  | VVOID      | nothing                                  |
  | VJMP       | nothing                                  |
 
-
  dischargevars
 
  | exp desc | discharge                                            |
@@ -977,7 +962,7 @@ local 变量 和 中间结果
  | VCALL    | to VNONRELOC, store call code A value                |
  | VVARARG  | set B to 2? to VRELOCABLE                            |
 
-** how freereg & freeexp works
+** TODO how freereg & freeexp works
 
 #+CAPTION: page 19 & 20
 
@@ -992,68 +977,77 @@ freereg 的作用
 和 nactvar 的关系
 
 
-* ChunkSpy
+* statement
 
-以实例为基础的探索
-基础方法
-   
-make spy
+本节开始从实例具体分析代码生成的过程，和实例一起来探求其中的生成模式。
 
-make inspect
+因为语法元素的递归性，其中的组合是无限的，所以本节只讲解其中重要的“原子性”的部分，
+至于各种组合的变数读者可自由探索。
 
-chunkspy 中 .local .const 的概念对应
+** tool
+
+在开始以实例为基础的探索之前，先详细介绍相应工具的使用。
+
+以交互式启动 chunkspy，用于临时检验一些想法。
 
 #+begin_example
+$ make spy
+#+end_example
+
+分析特定 lua 文件，输出相应的编译结果。
+
+#+begin_example
+$ make -s inspect source=lua_file_path
+#+end_example
+
+比如分析如下代码，
+
+#+begin_src lua
+local a = 1
+#+end_src
+
+会输出如下结果，
+
+#+begin_example -n 1
 ; function [0] definition (level 1)
-; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
-.function  0 0 2 3
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
 .local  "a"  ; 0
-.local  "b"  ; 1
-.local  "c"  ; 2
-[1] return     0   1      
+.const  1  ; 0
+[1] loadk      0   0        ; 1
+[2] return     0   1      
 ; end of function
 #+end_example
 
+逐行来看，
+
 line 1
-level 1 指的是第一层级
+
+level 1 指的是第一层级，即 chunk；
 function [0] 表明是当前层级的第 1 个函数（以 0 开始索引）
 
 line 2
-0 个 upvalue
-0 个参数
-0b010 接收可变参数
-3 需要分配栈容量，2 是最小值，来源于在不断的运算过程中，栈增长减少，遇到的最大值
+
+函数有 0 个 upvalue，0 个参数，按 =0b010= 模式接收可变参数，需要分配栈容量 2。
 
 line 3
-和 line 2 相同，2 是 3 的注释
 
-line 4 5 6
-.local f->locvars 内容
+意义和 line 2 相同，line 2 是 line 3 的注释
 
-line 7
-f->code 指令
-最终一行总是默认生成一条 return 指令
-这里只有一条 return，说明代码并没有生成代码
+line 4 5
+
+.local 列出所有局部变量的名称及索引，即 f->locvars 的内容
+.const 列出 k 表的内容及索引
+
+line 6 7
+
+详细打印 f->code 指令，最终一行总是默认生成一条 return 指令
 
 line 8
-function 结束注释
 
+注释，表明 function 结束
 
-
-* statement
-  :LOGBOOK:
-  - Note taken on [2020-12-09 三 13:35] \\
-  先从 stat 开始分析，将得到的经验抽象为内容。
-  :END:
-
-- 原子性
-- 依赖性
-- 实例分析
-- 生成模式
-
-递归结合是无限的
-只讲解 atom ，组合交由读者探索
-
+读者结合 opcode 章节对各个指令功能的理解，不难理解 lua 代码和字节码的同义关系。
 
 ** function
 
@@ -1070,7 +1064,6 @@ func 有同名和匿名两种
 动态类型，名称与值的绑定，所以由 body 来处理全部
 
 #+CAPTION: 29 function
-
 
 body 过程不过是参数和 chunk 的递归过程
 
