@@ -1,17 +1,8 @@
 -- upvalue
 
-local a = 0
+local a
 
-function outer()
-   local b = 1
-
-   local function inner()
-      a = a + 1
-      b = b + 1
-      return a + b
-   end
-
-   return inner
+function f()
+  a = 10
 end
 
-f = outer()

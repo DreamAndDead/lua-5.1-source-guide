@@ -1438,91 +1438,197 @@ expdesc 用于记录 exp 表达式的相关信息。
 
 ** assign
 
-exprstat -> assignstat
+本节来探讨赋值语句
+
+#+begin_src bnf
+stat         ::= exprstat
+exprstat     ::= assignstat
+
+assignstat   ::= (prefixexp | primaryexp (`.' NAME | `[' expr `]')) assignment
+assignment   ::= `,' assignstat | `=' explist
+
+primaryexp   ::= prefixexp {`.' NAME | `[' expr `]' | `:' NAME funcargs | funcargs}
+prefixexp    ::= NAME | `(' expr `)'
+#+end_src
+
+赋值语句根据变量的类型不同，分为 global upvalue local indexed 几种情况，
+对应 expdesc 中的 VGLOBAL VUPVAL VLOCAL VINDEXED。
 
 *** global
+
+先来看 global 的赋值情况。
+
+分析如下代码，
 
 #+begin_src lua
 a, b, c = 10, 20, 30
 #+end_src
 
-进入 primaryexp prefixexp 查找的时候，TK NAME 要进行 singlevar 查找
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.const  "a"  ; 0
+.const  "b"  ; 1
+.const  "c"  ; 2
+.const  10  ; 3
+.const  20  ; 4
+.const  30  ; 5
+[1] loadk      0   3        ; 10
+[2] loadk      1   4        ; 20
+[3] loadk      2   5        ; 30
+[4] setglobal  2   2        ; c
+[5] setglobal  1   1        ; b
+[6] setglobal  0   0        ; a
+[7] return     0   1      
+; end of function
+#+end_example
 
-赋值为 VGLOBAL，且 info 存储了名字对应的 k 表索引
-和 expkind 的注释不符合？
+从 chunk 递归向下，最终到达 assignment 函数。
 
+从 ebnf 描述中可以看出，assignment 是一个递归的过程。
 
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 931 :lines "931-963"
 
-进入 assignment，按照 ebnf ，本身是嵌套的
-进入之前，先将 v prev 设置为 NULL，后面全部链接起来
+在遇到 ~=~ 之前，执行 if 语句块，递归调用 primaryexp 分析变量；
+遇到 ~=~ 之后，执行 else 语句块，分析表达式。
+在递归的终点，将表达式得到的值赋值给变量。
 
+因为示例代码中变量都很简单，primaryexp 主要调用 prefixexp 进行分析。
 
-LHS_assign 结构，在 expdesc 的基础上，添加了 prev 指针
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 667 :lines "667-688"
 
-在 多个 , 之间的 var 全部链接起来
+对应其中的 =TK_NAME= 类型，调用 singlevar 确定变量的类型，内容调用 singlevaraux 来实现。
 
-其中可赋值的类型为
-VLOCAL VUPVAL VGLOBAL VINDEXED
-由 primaryexp 决定
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 224 :lines "224-254"
 
+singlevaraux 是非常关键的过程，回忆之前在分析过程中，关于嵌套的 function 定义和 fs->prev 的链条，
+singlevaraux 就顺着 fs->prev 不断向上层作用域寻找变量。
 
-赋值阶段，在每个递归层次，用 luaK_storevar 来存储
+如果 ~fs == NULL~ ，说明已经到顶层，变量只能为 global 类型；
+如果在当前作用域可找到，说明是 local 变量；其它为 upval 变量。
 
+示例中 a b c 都为全局变量，所以 singlevaraux 返回 VGLOBAL，
+将相应 expdesc 类型赋值为 VGLOBAL，且 info 存储了变量名对应的 k 表索引。
 
+表达式分析阶段，将 10 20 30 加入 k 表，同时载入寄存器。
 
-var ex
+最终赋值阶段，在每个递归层次，用 luaK_storevar 来存储。
 
-先 discharge ex
-再生成 SETGLOBAL，使用 info 中存储的 k 索引
-gbl[kst[info]] = R(A)
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 472 :lines "472-501"
 
-
-
-
-luaK_exp2anyreg
-
-只需要解析到 reg 就可以，临时使用，赋值之后就废弃
-
-
-exp 可能是 var，也可能是 值
-但是通过 dis var 是保险的
-
-默认依然使用 exp2nextreg，只不过在之前，添加了解析 jump 的部分
-
-exp2nextreg，存储在 freereg 之后
-
-exp2reg，存储到指定 reg
-
-其中解析了 jump 相关的内容
-
-最终成为 VNONRELOC
+对应 case VGLOBAL，生成 setglobal 指令。
 
 *** upvalue
 
+分析如下代码，
+
 #+begin_src lua
-local a = 10
+local a
 
 function f()
-  a = 20
+  a = 10
 end
 #+end_src
 
-和 global 相似
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.local  "a"  ; 0
+.const  "f"  ; 0
+
+  ; function [0] definition (level 2)
+  ; 1 upvalues, 0 params, 0 is_vararg, 2 stacks
+  .function  1 0 0 2
+  .upvalue  "a"  ; 0
+  .const  10  ; 0
+  [1] loadk      0   0        ; 10
+  [2] setupval   0   0        ; a
+  [3] return     0   1      
+  ; end of function
+
+[1] closure    1   0        ; 1 upvalues
+[2] move       0   0      
+[3] setglobal  1   0        ; f
+[4] return     0   1      
+; end of function
+#+end_example
+
+对于外层函数，a 是 local 变量，而对应内层函数，a 为 upval 变量。
+
+基本过程同 global，不过 singlevaraux 搜索得到 VUPVAL，生成 setupval 指令。
+
+*** local
+
+#+begin_src lua -n 1
+local a = 1
+
+local b
+b = 1
+#+end_src
+
+line 1 为 local 赋值语句，而 line 4 为普通赋值语句，不过恰巧赋值给 local 变量。
+
+分析如下示例，
+
+#+begin_src lua
+local a, b
+
+b = 10
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.local  "a"  ; 0
+.local  "b"  ; 1
+.const  10  ; 0
+[1] loadk      1   0        ; 10
+[2] return     0   1      
+; end of function
+#+end_example
+
+分析过程与上相同，singlevaraux 确定为 VLOCAL，针对寄存器位置，直接生成 loadk。
 
 *** indexed
 
-a.b   a['b']
-是相同语义
+#+begin_src lua
+local t = {}
 
-a 必须是 table，语义才正确
+t['a'] = 10
+#+end_src
 
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.local  "t"  ; 0
+.const  "a"  ; 0
+.const  10  ; 1
+[1] newtable   0   0   0    ; array=0, hash=0
+[2] settable   0   256 257  ; "a" 10
+[3] return     0   1      
+; end of function
+#+end_example
 
-gettable 中，之所以使用 RK(C) 这种方法，是因为索引值未必是 constant，也可能是
-一个表，一个函数，等其它值，这种值只能由 寄存器 存储
+VINDEXED 的分析分为两部分，singlevar 分析 t 为 local 变量，
+同时在 primaryexp 中继续分析 'a' 为字符串值，存储在 k 表直接引用。
+最终使用 =luaK_indexed= 确定 expdesc 的类型及相关数据。
 
-同时，加上了 k，也可以节省临时寄存器的使用
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 621 :lines "621-625"
 
-如果超出了 k 表的范围，大于 256，需要临时先加载入 寄存器
+在最终赋值时，生成 gettable 指令。
+
+之所以使用 RK(C) 作为索引，是因为索引值未必是常数，也可能是一个表，一个函数等其它值，
+这里由 table 的特性决定的，这种通用的值只能由寄存器存储。
+
 
 ** function
 
