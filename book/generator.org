@@ -2012,45 +2012,141 @@ vm 在执行的时候，自然会理会其中的含义并做出相应处理。
 
 ** do
 
-- block vs chunk
-  - 整体文件按照 chunk 来解析，chunk 是入口
-  - block ::= chunk，但具体使用方式要根据语句的类型来分析
-    并非所有引用 chunk 的地方都会像 function 结构使用 chunk 会影响 fs 结构，
-    更多依赖 chunk 递归处理语句的便利
-- 分类
-  - loop 中
-  - 非 loop 中
+相信很多人都对 ebnf 描述中的 block 和 chunk 有疑问。
 
-blockCnt
-- previous
-- nactvar，进入 block 前 nactvar 的个数
-- isbreakable，是否用在循环中，从 bnf 中可看到
-- breaklist，chain of jump out of the loop，在 while 时深入
-- upval，bool，当前作用域中是否有 local var 作为 upval，在 for 时深入
+#+begin_src bnf
+stat         ::= dostat
+dostat       ::= DO block END
+	
+block        ::= chunk
+#+end_src
 
-明显的作用域分隔作用
+chunk 已经是分析的入口，为什么 block 又生成 chunk，这样看来 block
+不是应该在 chunk 上层吗？
 
-enterblock
-leaveblock
+其实这个问题可以这样看，chunk 可以看作是分析语句列表的方法，
+block 调用 chunk，是为了分析 block 中的语句列表，并不是要生成新的 FuncState。
 
-在进入时，nactvar 记录 active local var 的数量，
-block 内新的 local var 会在离开时，全部释放
-符合作用域的原则
-内部使用，销毁，不污染外部
+实际上，block 有其自己的一套逻辑。
 
-#+CAPTION: 24 do block
+do 语句是最纯粹调用 block 的语句。
 
-作用域记录在 fs 中，最终要体现到 f 中
-最终在 do 之外，使用 b，会顺着 a 0 的顺序向后，b 1
-说明前面的所有变量已回收
+#+begin_src lua
+local a
 
-虽然有多个 block 相隔，但是在最内层进行变量查找的时候，上层的所有 act local var 都
-属于同一个 fs，查找 a 的时候，a 的类型为 local，直接进行了修改
-a 并不是 upval，可见 upval 只针对 function 而言
+do
+   local b
+   local c
+   do
+      local d
 
-非 loop 只有 nactvar 起作用
+      a = 10
+   end
+end
+#+end_src
 
-loop 情况，到 while for 具体分析。
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 4 stacks
+.function  0 0 2 4
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+.local  "d"  ; 3
+.const  10  ; 0
+[1] loadk      0   0        ; 10
+[2] return     0   1      
+; end of function
+#+end_example
+
+从结果中，好像什么都看不到，和正常声明变量，进行赋值，是一样的效果。
+
+实际上，do 语句的作用主要在于描述块作用域。
+
+在 block() 方法中，
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 881 :lines "881-890"
+
+先后调用 enterblock 和 leaveblock 方法，操作 fs->bl。
+
+这里也说明了，虽然同样调用 chunk，但是在函数定义时，其使用 =open_func= =close_func= 来操作
+fs->prev 形成链状结构，所以 block() 的行为主要是由 enterblock leaveblock 决定的。
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 37 :lines "37-47"
+
+BlockCnt 的结构并不复杂，
+- =struct BlockCnt *previous= ，指向父 block
+- =int breaklist= ，在 while 章节讲解
+- =lu_byte nactvar= ，进入 block 前保存 nactvar
+- =lu_byte upval= ，当前块作用域中是否有 local 变量用作 upvalue，在 repeat 章节讲解
+- =lu_byte isbreakable= ，是否是一个循环语句块，在 while 章节讲解。
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 285 :lines "285-308"
+
+enterblock 新建 BlockCnt，指向父 block，并记录当前 nactvar。
+leaveblock 则相反，删除顶层 block，将 fs->freereg 重置回原来的 nactvar。
+
+明显地起到了作用域分隔的作用。
+
+#+CAPTION: do block
+#+begin_src dot :file generator-do-block.png
+digraph {
+	
+		b[shape=plain, label="fs->bl"];
+		n[shape=plain, label="NULL"];
+
+		node[shape=box];
+
+		b0[label="nactvar=1"];
+		b1[label="nactvar=3"];
+
+		b1 -> b0[label="previous"];
+		b0 -> n[label="previous"];
+
+		{rank=same; b; b1;}
+		
+		b -> b1;
+
+	actvar[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td align="right" border="0" bgcolor="white">5</td><td border="1"></td></tr>
+	        <tr><td align="right" border="0" bgcolor="white">4</td><td border="1">           </td></tr>
+	        <tr><td port="3" align="right" border="0" bgcolor="white">3</td><td border="1">d</td></tr>
+	        <tr><td align="right" border="0" bgcolor="white">2</td><td border="1">c</td></tr>
+	        <tr><td port="1" align="right" border="0" bgcolor="white">1</td><td border="1">b</td></tr>
+	        <tr><td align="right" border="0" bgcolor="white">0</td><td border="1">a</td></tr>
+	      </table>
+	     >, xlabel="fs->actvar"];
+
+
+	{rank=same; b1; actvar;}
+	
+	b0:e -> actvar:1[style=dashed];
+	b1:e -> actvar:3[style=dashed];
+
+	nodesep = .3;
+//	ranksep = 1;
+}
+#+end_src
+
+#+RESULTS:
+[[file:generator-do-block.png]]
+
+在第 1 次进入 do block 时，外部只定义了 local a，只有一个局部变量，
+此时保存 nactvar 为 1。
+
+第 2 次进入 do block 时，增加了定义 local b c，新的 BlockCnt 链接到父 block，
+保存 nactvar 为 3。
+
+在内部，修改 a = 10，这个 a 正是最外层的 local a 而不是 upvalue，因为 upvalue
+只作用于不同函数之间，目前 local a b c d 是属于一个函数作用域的。
+
+离开内层 do block 时，恢复 freereg 到 nactvar=3 且重置了 fs->nactvar，相当于回收了变量 d。
+
+至于 block 在循环中的作用，到循环语句章节再讲解。
 
 ** if
    :LOGBOOK:

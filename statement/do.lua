@@ -1,16 +1,14 @@
 -- do stat
 
-local a = 0
+local a
 
 do
-   local b = 1
-   local c = 2
+   local b
+   local c
    do
-      local d = 3
-      do
-	 a = 10
-      end
+      local d
+
+      a = 10
    end
 end
 
-local b = 11
