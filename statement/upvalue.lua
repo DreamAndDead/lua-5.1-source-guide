@@ -2,7 +2,12 @@
 
 local a
 
-function f()
-  a = 10
+local function f()
+   local b
+
+   local function g()
+      b = 20
+      a = 10
+   end
 end
 
