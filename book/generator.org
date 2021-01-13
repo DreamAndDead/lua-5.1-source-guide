@@ -90,7 +90,7 @@ lua 内部根据 function 定义的位置，来记录这种包含关系。
 #+begin_src dot :file generator-function-level.png
 digraph {
 	node[shape=box];
-	
+
 	subgraph cluster_0 {
 		label="chunk()";
 
@@ -370,10 +370,10 @@ digraph {
    :LOGBOOK:
    - Note taken on [2021-01-11 一 14:06] \\
      为什么 local var 和 active local var 存储在两个部分？
-     
+
      因为相应的索引，在生成 code 之后，相当于信息已经存储于 code 的参数中，不需要另行存储
      且 active 只记录一种状态而已，辅助生成正确的代码，在不同阶段是不同的。
-     
+
      因为 active 状态只能在 parse 过程分辨。
      离开作用域自然不是 active 的。
      而是否 active 对于 bytecode 并不重要。
@@ -436,13 +436,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fcode[shape=record, label="
 	      | | | | <n> | | |
 	      ", xlabel="f->code"];
 
 	fsizecode[label="f->sizecode", shape=plain];
-	
+
 	fspc[label="fs->pc", shape=plain];
 
 	fspc -> fcode:n;
@@ -457,13 +457,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fk[shape=record, label="
 	      | | | | <n> | | |
 	      ", xlabel="f->k"];
 
 	fsizek[label="f->sizek", shape=plain];
-	
+
 	fsnk[label="fs->nk", shape=plain];
 
 	fsnk -> fk:n;
@@ -478,13 +478,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fp[shape=record, label="
 	      | | | | <n> | | |
 	      ", xlabel="f->p"];
 
 	fsizep[label="f->sizep", shape=plain];
-	
+
 	fsnp[label="fs->np", shape=plain];
 
 	fsnp -> fp:n;
@@ -500,13 +500,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fupval[shape=record, label="
 	      | | | | <n> | | |
 	      ", xlabel="f->upvalues"];
 
 	fsizeupval[label="f->sizeupvalues", shape=plain];
-	
+
 	fnups[label="f->nups", shape=plain];
 
 	fnups -> fupval:n;
@@ -521,13 +521,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	flocvars[shape=record, label="
 	      | | | | <n> | | |
 	      ", xlabel="f->locvars"];
 
 	fsizelocvars[label="f->sizelocvars", shape=plain];
-	
+
 	fsnlocvars[label="fs->nlocvars", shape=plain];
 
 	fsnlocvars -> flocvars:n;
@@ -566,13 +566,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fsupval[shape=record, label="
 	      | | | | <n> | | |
 	      ", xlabel="fs->upvalues"];
 
 	fssizeupval[label="LUAI_MAXUPVALUES", shape=plain];
-	
+
 	fnups[label="f->nups", shape=plain];
 
 	fnups -> fsupval:n;
@@ -587,13 +587,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fsactvar[shape=record, label="
 	      | | | | <n> | | |
 	      ", xlabel="fs->actvar"];
 
 	fssizeactvar[label="LUAI_MAXVARS", shape=plain];
-	
+
 	fsnactvar[label="fs->nactvar", shape=plain];
 
 	fsnactvar -> fsactvar:n;
@@ -633,7 +633,7 @@ digraph  {
 * key concept
 
 在仔细探索代码生成之前，先明确几个在生成过程中的重点。
-  
+
 ** variable
 
 从作用域来看，lua 中的变量有 3 类，分别为 =local upvalue global= ，
@@ -681,7 +681,7 @@ end
 #+begin_src dot :file generator-active-local-scope.png
 digraph {
 	rankdir = LR;
-	
+
 	code[shape=none, label=<
 	      <table border="0" cellspacing="0">
 	        <tr><td align="left" border="1" bgcolor="white">local a</td></tr>
@@ -747,13 +747,13 @@ digraph {
 	      ", xlabel="fs->actvar"];
 
 	node[shape=plain];
-	
+
 	n[label="fs->nactvar = 3"];
 	nn[label="fs->nlocvars = 5"];
 
 	n -> actvar:n;
 	locvars:n -> nn[dir="back"];
-	
+
 	locvars[shape=record, label="
                |<n>  | <n3> \"e\" | <n2> \"d\" | \"c\" | \"b\" | <n1> \"a\"
 	      ", xlabel="f->locvars"];
@@ -804,7 +804,7 @@ local function outer()
    end
 
    inner()
-   
+
    return inner
 end
 
@@ -951,7 +951,7 @@ local a = 1
 .local  "a"  ; 0
 .const  1  ; 0
 [1] loadk      0   0        ; 1
-[2] return     0   1      
+[2] return     0   1
 ; end of function
 #+end_example
 
@@ -1018,7 +1018,7 @@ local a, b, c
 .local  "a"  ; 0
 .local  "b"  ; 1
 .local  "c"  ; 2
-[1] return     0   1      
+[1] return     0   1
 ; end of function
 #+end_example
 
@@ -1088,13 +1088,13 @@ digraph {
 	      ", xlabel="fs->actvar"];
 
 	node[shape=plain];
-	
+
 	n[label="fs->nactvar = 3"];
 	nn[label="fs->nlocvars = 3"];
 
 	n -> actvar:n;
 	locvars:n -> nn[dir="back"];
-	
+
 	locvars[shape=record, label="
                |<n>  | <n3> \"c\" | <n2> \"b\" | <n1> \"a\"
 	      ", xlabel="f->locvars"];
@@ -1117,7 +1117,7 @@ digraph {
 再来看 local 变量赋值的情况。
 
 分析示例代码，得到如下结果，
-    
+
 #+begin_src lua
 local a, b, c, d, e = 10, "second", nil, true, false
 #+end_src
@@ -1135,10 +1135,10 @@ local a, b, c, d, e = 10, "second", nil, true, false
 .const  "second"  ; 1
 [1] loadk      0   0        ; 10
 [2] loadk      1   1        ; "second"
-[3] loadnil    2   2      
+[3] loadnil    2   2
 [4] loadbool   3   1   0    ; true
 [5] loadbool   4   0   0    ; false
-[6] return     0   1      
+[6] return     0   1
 ; end of function
 #+end_example
 
@@ -1288,13 +1288,13 @@ freereg 就是用来记录栈顶的变量。
 #+begin_src dot :file generator-freereg-stack.png
 digraph {
 	rankdir = LR;
-	
+
 	fir[shape=record, label="
 	    ||||<n> | a
 	    ", xlabel="vm stack"];
 
 	node[shape=plain];
-	
+
 	n1[label="fs->freereg = 1"];
 
 	n1 -> fir:n;
@@ -1331,13 +1331,13 @@ digraph  {
 	nodesep = 1.0;
 	ranksep = .5;
 	rankdir = LR;
-	
+
 	fk[shape=record, label="
 	      | | | | <n> |10
 	      ", xlabel="f->k"];
 
 	fsizek[label="f->sizek", shape=plain];
-	
+
 	fsnk[label="fs->nk", shape=plain];
 
 	fsnk -> fk:n;
@@ -1363,13 +1363,13 @@ digraph  {
 	nodesep = 1.0;
 	ranksep = .5;
 	rankdir = LR;
-	
+
 	fk[shape=record, label="
 	      | | | <n>|\"second\" | 10
 	      ", xlabel="f->k"];
 
 	fsizek[label="f->sizek", shape=plain];
-	
+
 	fsnk[label="fs->nk", shape=plain];
 
 	fsnk -> fk:n;
@@ -1480,7 +1480,7 @@ a, b, c = 10, 20, 30
 [4] setglobal  2   2        ; c
 [5] setglobal  1   1        ; b
 [6] setglobal  0   0        ; a
-[7] return     0   1      
+[7] return     0   1
 ; end of function
 #+end_example
 
@@ -1549,13 +1549,13 @@ end
   .const  10  ; 0
   [1] loadk      0   0        ; 10
   [2] setupval   0   0        ; a
-  [3] return     0   1      
+  [3] return     0   1
   ; end of function
 
 [1] closure    1   0        ; 1 upvalues
-[2] move       0   0      
+[2] move       0   0
 [3] setglobal  1   0        ; f
-[4] return     0   1      
+[4] return     0   1
 ; end of function
 #+end_example
 
@@ -1590,7 +1590,7 @@ b = 10
 .local  "b"  ; 1
 .const  10  ; 0
 [1] loadk      1   0        ; 10
-[2] return     0   1      
+[2] return     0   1
 ; end of function
 #+end_example
 
@@ -1613,7 +1613,7 @@ t['a'] = 10
 .const  10  ; 1
 [1] newtable   0   0   0    ; array=0, hash=0
 [2] settable   0   256 257  ; "a" 10
-[3] return     0   1      
+[3] return     0   1
 ; end of function
 #+end_example
 
@@ -1684,11 +1684,11 @@ end
   .local  "a"  ; 0
   .local  "b"  ; 1
   .local  "arg"  ; 2
-  [1] return     0   1      
+  [1] return     0   1
   ; end of function
 
 [1] closure    0   0        ; 0 upvalues
-[2] return     0   1      
+[2] return     0   1
 ; end of function
 #+end_example
 
@@ -1782,18 +1782,18 @@ end
     [2] setupval   0   0        ; b
     [3] loadk      0   1        ; 10
     [4] setupval   0   1        ; a
-    [5] return     0   1      
+    [5] return     0   1
     ; end of function
 
   [1] closure    1   0        ; 2 upvalues
-  [2] move       0   0      
+  [2] move       0   0
   [3] getupval   0   0        ; a
-  [4] return     0   1      
+  [4] return     0   1
   ; end of function
 
 [1] closure    1   0        ; 1 upvalues
-[2] move       0   0      
-[3] return     0   1      
+[2] move       0   0
+[3] return     0   1
 ; end of function
 #+end_example
 
@@ -1855,13 +1855,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fupval[shape=record, label="
 	      \"b\"|<n> | | |  | | |
 	      ", xlabel="f->upvalues"];
 
 	fsizeupval[label="f->sizeupvalues", shape=plain];
-	
+
 	fnups[label="f->nups = 1", shape=plain];
 
 	fnups -> fupval:n;
@@ -1876,13 +1876,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fsupval[shape=record, label="
 	      {VLOCAL|0}|<n> | | |  | | |
 	      ", xlabel="fs->upvalues"];
 
 	fssizeupval[label="LUAI_MAXUPVALUES", shape=plain];
-	
+
 	fnups[label="f->nups = 1", shape=plain];
 
 	fnups -> fsupval:n;
@@ -1911,13 +1911,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fupval[shape=record, label="
 	      \"b\"|\"a\"|<n> | | |  | | |
 	      ", xlabel="f->upvalues"];
 
 	fsizeupval[label="f->sizeupvalues", shape=plain];
-	
+
 	fnups[label="f->nups = 2", shape=plain];
 
 	fnups -> fupval:n;
@@ -1933,13 +1933,13 @@ digraph  {
 	node[shape=box];
 	nodesep = 1.0;
 	ranksep = .5;
-	
+
 	fsupval[shape=record, label="
 	      {VLOCAL|0}|{VUPVAL|0}|<n> | | |  | | |
 	      ", xlabel="fs->upvalues"];
 
 	fssizeupval[label="LUAI_MAXUPVALUES", shape=plain];
-	
+
 	fnups[label="f->nups = 2", shape=plain];
 
 	fnups -> fsupval:n;
@@ -1994,7 +1994,7 @@ digraph {
 同时在 closure 指令之后，生成了额外的两条指令，按顺序表明当前 closure 的 upvalue 的类型和索引信息。
 
 #+begin_example
-  [2] move       0   0      
+  [2] move       0   0
   [3] getupval   0   0        ; a
 #+end_example
 
@@ -2003,7 +2003,7 @@ move 指令此时不表示普通的 move 含义，参数 A 无用，参数 B 指
 指向当前作用域索引为 0 的寄存器。
 
 getupval 指令同样，参数 A 无用，参数 B 表示上层 closure 中 upvalues 表中的序号。
-表示第 2 个 upvalue 是 VUPVAL 类型，指向上个作用域索引为 0 的 upvalue。 
+表示第 2 个 upvalue 是 VUPVAL 类型，指向上个作用域索引为 0 的 upvalue。
 
 使用这种方式，将 upvalue 的类型和索引存储到 code 中，
 所以 f->upvalues 只需要单纯记录变量名称就足够了。
@@ -2017,7 +2017,7 @@ vm 在执行的时候，自然会理会其中的含义并做出相应处理。
 #+begin_src bnf
 stat         ::= dostat
 dostat       ::= DO block END
-	
+
 block        ::= chunk
 #+end_src
 
@@ -2055,7 +2055,7 @@ end
 .local  "d"  ; 3
 .const  10  ; 0
 [1] loadk      0   0        ; 10
-[2] return     0   1      
+[2] return     0   1
 ; end of function
 #+end_example
 
@@ -2094,7 +2094,7 @@ leaveblock 则相反，删除顶层 block，将 fs->freereg 重置回原来的 n
 #+CAPTION: do block
 #+begin_src dot :file generator-do-block.png
 digraph {
-	
+
 		b[shape=plain, label="fs->bl"];
 		n[shape=plain, label="NULL"];
 
@@ -2107,7 +2107,7 @@ digraph {
 		b0 -> n[label="previous"];
 
 		{rank=same; b; b1;}
-		
+
 		b -> b1;
 
 	actvar[shape=none, label=<
@@ -2123,7 +2123,7 @@ digraph {
 
 
 	{rank=same; b1; actvar;}
-	
+
 	b0:e -> actvar:1[style=dashed];
 	b1:e -> actvar:3[style=dashed];
 
@@ -2149,11 +2149,9 @@ digraph {
 至于 block 在循环中的作用，到循环语句章节再讲解。
 
 ** if
-   :LOGBOOK:
-   - Note taken on [2021-01-08 五 13:51] \\
-     因为分析从左向右，从前至后的，所以对于一些结构需要特别的方法来处理
-     比如 if 分支的处理，回填 jmp 地址
-   :END:
+
+因为分析从左向右，从前至后的，所以对于一些结构需要特别的方法来处理
+比如 if 分支的处理，回填 jmp 地址
 
 顺序解析的难题之一
 分支
@@ -2181,6 +2179,38 @@ dischargejpc
 luaK_jump 时，使用 jpc 重置的技巧，防止在生成 jump 时，触发 dischargejpc
 
 *** if
+
+#+begin_src ditaa :file generator-if.png
+
+            +----------+
+            |1  test   +--------+
+            +-----+----+        |
+                  | F           | T
+                  v             |
+            +----------+        |
+            |2  jmp    |        |
+            +-----+----+        | 
+                  |             |
+     +------------+             |
+     |                          |
+     |            +-------------+
+     |            |
+     |            v
+     |      +----------+
+     |      |3  TRUE   |
+     |      +-----+----+
+     |            |
+     +----------+ |
+                | |
+                v v
+            +----------+
+            |4  return |
+            +----------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if.png]]
 
 dischargejpc
 负责从当前 pc 解析 jump chain
@@ -2223,10 +2253,10 @@ enterblock 自然生成 0 block
 *** break
 
 #+CAPTION: 30 break in while
-     
+
 ** repeat
 
-repeat    
+repeat
 
 #+CAPTION: 31 repeat
 
@@ -2447,4 +2477,3 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 ** constructor
 
 - setlist always consistent, diff with settable
-
