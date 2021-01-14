@@ -3346,6 +3346,48 @@ OP_TFORLOOP,/*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
 .local  "(for control)"  ; 3
 #+end_example
 
+** ret
+
+return 语句是非常直观的，
+
+#+begin_src bnf
+retstat      ::= RETURN [explist]
+#+end_src
+
+用于从当前 closure 中返回，
+
+#+begin_example
+OP_RETURN,/*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/
+#+end_example
+
+示例代码，
+
+#+begin_src lua
+local a, b
+
+return a, b
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 4 stacks
+.function  0 0 2 4
+.local  "a"  ; 0
+.local  "b"  ; 1
+[1] move       2   0      
+[2] move       3   1      
+[3] return     2   3      
+[4] return     0   1      
+; end of function
+#+end_example
+
+对应 retstat 过程，
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src C -n 1238 :lines "1238-1269"
+
+在 line 1267 生成 return 指令。
+
 ** function call
 
 #+begin_src bnf
@@ -3545,18 +3587,9 @@ OP_SELF,/*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/
 #+caption: lcode.c
 #+include: ../lua-5.1.5/src/lcode.c src C -n 503 :lines "503-514"
 
-** ret
-
-从当前 closure 中返回
-
-按语句含义返回值，至于有多少值被利用，则根据 opcode 生成过程中决定的
-
-opcode 容易理解
-
-retstat()
-lparser.c:1238
-
 *** tailcall
+   
+结合 return，存在种特殊形式的函数调用 tailcall。
 
 #+begin_src lua
 -- tail call
@@ -3565,36 +3598,28 @@ return f()
 return a, b, f()
 #+end_src
 
-ret 中只有单独的 function call
-
-进行栈优化
-
-lparser.c:1249
-
-tailcall 本身已经有了 return 的语义
-
+在 return 语句后，仅跟随单独的函数调用，这种形式称为尾调用，
+在 vm 中可以进行栈优化，到 vm 章节再详细解释。
 
 * practice
 
-理想的 vm
-独立，lua 实现对 vm 做了协同的妥协
+这个章节的内容虽然很长，但还远远没有将所有功能描述完全。
 
-** arithmetic
+其它值得研究的功能包括
+- binop，二元运算
+  - arithmetic，算术运算，如何优先级
+  - logic，逻辑运算，and or 短路逻辑
+- table 字面量
+- repeat 语句
+- close，修改 upvalue 状态
+- etc
 
-- 优先级
+希望读者可以自行结合代码示例探索。
 
-lua 在进行解析时，没有进行关系运算的实时解析，但是对 constant 算法运算有编译时执行
+| 文件      | 建议     |
+|-----------+----------|
+| lparser.h | 仔细阅读 |
+| lparser.c | 仔细阅读 |
+| lcode.h   | 仔细阅读 |
+| lcode.c   | 仔细阅读 |
 
-如 `local a = 5 > 2` 和 `local a = 1 + 2` 的区别
-
-前者需要生成 jmp 指令，但是后者，直接是 loadk 0 0 ; 3
-
-** logic
-
-- and or
-
-** constructor
-
-- setlist always consistent, diff with settable
-
-** repeat

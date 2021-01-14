@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-07 四 15:41 -->
+<!-- 2021-01-14 四 17:47 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>opcode</title>
@@ -191,8 +191,9 @@
   .org-svg { width: 90%; }
   /*]]>*/-->
 </style>
-<link rel="stylesheet" type="text/css" href="htmlize.css">
+<link id="theme" rel="stylesheet" type="text/css" href="htmlize.css">
 <link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript" src="main.js"></script>
 <script type="text/javascript">
 // @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
 <!--/*--><![CDATA[/*><!--*/
@@ -274,7 +275,7 @@ A B C Bx 是无符号数，而 sBx 是有符号数（s 即 signed）。
 </p>
 
 
-<div id="org2855568" class="figure">
+<div id="org89aa428" class="figure">
 <p><img src="opcode-format.png" alt="opcode-format.png">
 </p>
 </div>
@@ -390,7 +391,7 @@ lua 并不用反码补码的逻辑来理解 sBx，而只是将同样字节表示
 </p>
 
 
-<div id="org77e9764" class="figure">
+<div id="orgfc9b50d" class="figure">
 <p><img src="opcode-Bx-sBx.png" alt="opcode-Bx-sBx.png">
 </p>
 </div>
@@ -492,7 +493,7 @@ offset 就是 sBx 的最大值，所以 <code>1111 1..1 1111</code> 对于 sBx �
 </p>
 
 
-<div id="orgca7fb4a" class="figure">
+<div id="org34662f7" class="figure">
 <p><img src="opcode-model.png" alt="opcode-model.png">
 </p>
 </div>
@@ -581,7 +582,7 @@ Gbl 是全局表，以 table 结构来实现，对应 lua 语言中“全局”�
 </p>
 
 
-<div id="org68c6076" class="figure">
+<div id="org231b6db" class="figure">
 <p><img src="opcode-model-r.png" alt="opcode-model-r.png">
 </p>
 </div>
@@ -595,7 +596,7 @@ Gbl 是全局表，以 table 结构来实现，对应 lua 语言中“全局”�
 </p>
 
 
-<div id="org97928fd" class="figure">
+<div id="org5320893" class="figure">
 <p><img src="opcode-model-kst.png" alt="opcode-model-kst.png">
 </p>
 </div>
@@ -605,7 +606,7 @@ Gbl 是全局表，以 table 结构来实现，对应 lua 语言中“全局”�
 </p>
 
 
-<div id="orgcaa9a87" class="figure">
+<div id="org52a310d" class="figure">
 <p><img src="opcode-model-rk.png" alt="opcode-model-rk.png">
 </p>
 </div>
@@ -687,7 +688,7 @@ A B C 三个参数，长度分别为 8 9 9 bits。
 </p>
 
 
-<div id="orgf516431" class="figure">
+<div id="org83390a3" class="figure">
 <p><img src="opcode-model-gbl.png" alt="opcode-model-gbl.png">
 </p>
 </div>
@@ -698,7 +699,7 @@ A B C 三个参数，长度分别为 8 9 9 bits。
 </p>
 
 
-<div id="org1ef0516" class="figure">
+<div id="orgea9e3fc" class="figure">
 <p><img src="opcode-model-upval.png" alt="opcode-model-upval.png">
 </p>
 </div>
@@ -729,7 +730,7 @@ move 很容易理解，直接进行寄存器间的赋值。
 </p>
 
 
-<div id="org2658a65" class="figure">
+<div id="orga83cdbe" class="figure">
 <p><img src="opcode-model-move.png" alt="opcode-model-move.png">
 </p>
 </div>
@@ -749,7 +750,7 @@ Gbl 因为不使用整数索引，所以在引用其中元素时，需要 Kst �
 </p>
 
 
-<div id="orgecc4bab" class="figure">
+<div id="orgcc4c6c0" class="figure">
 <p><img src="opcode-model-getglobal.png" alt="opcode-model-getglobal.png">
 </p>
 </div>
@@ -769,7 +770,7 @@ add 是二元运算，其中使用 RK 来引用。
 </p>
 
 
-<div id="org20c65a5" class="figure">
+<div id="orgffeb2e5" class="figure">
 <p><img src="opcode-model-add.png" alt="opcode-model-add.png">
 </p>
 </div>
@@ -935,10 +936,11 @@ opcode 模块除了定义指令的类型和格式，同时也记录了指令的�
 </div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-07 四 15:41</p>
+<p>Updated: 2021-01-14 四 17:46</p>
 <p>Created: 2021-01-06 三 16:12</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+<script src="https://utteranc.es/client.js" repo="DreamAndDead/DreamAndDead.github.io" issue-term="pathname" label="Comment" theme="github-light" crossorigin="anonymous" async></script>
 </div>
 </body>
 </html>

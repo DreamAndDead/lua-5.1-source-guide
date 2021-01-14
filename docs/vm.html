@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2021-01-14 四 17:51 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vm</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="DreamAndDead">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link id="theme" rel="stylesheet" type="text/css" href="htmlize.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript" src="main.js"></script>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">vm</h1>
+<p>
+生成图纸之后，按图纸来执行
+</p>
+
+<p>
+完全是 proto 内部的东西
+</p>
+
+
+<div id="outline-container-org2c37c9f" class="outline-2">
+<h2 id="org2c37c9f"><span class="section-number-2">1</span> state</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+G
+L
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-keyword">struct</span> <span class="org-type">lua_State</span> {
+  CommonHeader;
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">status</span>;             <span class="org-comment-delimiter">// </span><span class="org-comment">&#29366;&#24577;&#65311;&#21487;&#33021;&#29992;&#20110;&#21327;&#31243;&#20013;</span>
+  <span class="org-type">StkId</span> <span class="org-variable-name">top</span>;                  <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#39030;&#25351;&#38024;&#65292;&#65288;&#31532;&#19968;&#20010;&#31354;&#30340;&#20301;&#32622;&#65289;</span>
+  <span class="org-type">StkId</span> <span class="org-variable-name">base</span>;                 <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#22522;&#25351;&#38024;</span>
+  <span class="org-type">global_State</span> *<span class="org-variable-name">l_G</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">&#25351;&#21521; global state</span>
+  <span class="org-type">CallInfo</span> *<span class="org-variable-name">ci</span>;               <span class="org-comment-delimiter">// </span><span class="org-comment">&#24403;&#21069;&#20989;&#25968;&#30340; callinfo</span>
+  <span class="org-keyword">const</span> <span class="org-type">Instruction</span> *<span class="org-variable-name">savedpc</span>; <span class="org-comment-delimiter">// </span><span class="org-comment">savedpc&#65311;</span>
+  <span class="org-type">StkId</span> <span class="org-variable-name">stack_last</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#30340;&#26368;&#21518;&#65311;</span>
+  <span class="org-type">StkId</span> <span class="org-variable-name">stack</span>;                <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#22522;&#65311;</span>
+  <span class="org-type">CallInfo</span> *<span class="org-variable-name">end_ci</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#25351;&#21521; callinfo &#25968;&#32452;&#30340;&#26368;&#21518;</span>
+  <span class="org-type">CallInfo</span> *<span class="org-variable-name">base_ci</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">callinfo &#25968;&#32452;&#30340;&#24320;&#22987;</span>
+  <span class="org-type">int</span> <span class="org-variable-name">stacksize</span>;              <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#22823;&#23567;</span>
+  <span class="org-type">int</span> <span class="org-variable-name">size_ci</span>;                <span class="org-comment-delimiter">// </span><span class="org-comment">callinfo &#25968;&#32452;&#22823;&#23567;</span>
+  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">nCcalls</span>;     <span class="org-comment-delimiter">// </span><span class="org-comment">&#23884;&#22871;&#20989;&#25968;&#35843;&#29992;&#30340;&#20010;&#25968;&#65311;&#65288;&#25511;&#21046; LL 1 &#36807;&#31243;&#20013;&#36882;&#24402;&#23618;&#25968;&#65292;enterlevel, leavelevel&#65289;</span>
+  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">baseCcalls</span>;  <span class="org-comment-delimiter">// </span><span class="org-comment">&#21327;&#31243; resume &#26102;&#65311;</span>
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">hookmask</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
+  <span class="org-type">lu_byte</span> <span class="org-variable-name">allowhook</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
+  <span class="org-type">int</span> <span class="org-variable-name">basehookcount</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
+  <span class="org-type">int</span> <span class="org-variable-name">hookcount</span>;              <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
+  <span class="org-type">lua_Hook</span> <span class="org-variable-name">hook</span>;              <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
+  <span class="org-type">TValue</span> <span class="org-variable-name">l_gt</span>;                <span class="org-comment-delimiter">// </span><span class="org-comment">&#20840;&#23616;&#34920;&#65311;</span>
+  <span class="org-type">TValue</span> <span class="org-variable-name">env</span>;                 <span class="org-comment-delimiter">// </span><span class="org-comment">&#20020;&#26102;&#23384;&#20648;&#29615;&#22659;&#65311;</span>
+  <span class="org-type">GCObject</span> *<span class="org-variable-name">openupval</span>;        <span class="org-comment-delimiter">// </span><span class="org-comment">upvalue &#30340;&#38142;&#34920;&#65311;</span>
+  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
+  <span class="org-keyword">struct</span> <span class="org-type">lua_longjmp</span> *<span class="org-variable-name">errorJmp</span>; <span class="org-comment-delimiter">// </span><span class="org-comment">&#38169;&#35823;&#22238;&#35843;&#65311;</span>
+  <span class="org-type">ptrdiff_t</span> <span class="org-variable-name">errfunc</span>;            <span class="org-comment-delimiter">// </span><span class="org-comment">&#29992;&#26632;&#32034;&#24341;&#34920;&#31034;&#30340; error handling &#20989;&#25968;&#65311;</span>
+};
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org00326c9" class="outline-2">
+<h2 id="org00326c9"><span class="section-number-2">2</span> model</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+virtual machine
+</p>
+
+<p>
+stack
+TValue &amp; StkId
+</p>
+
+<p>
+ldo.c:144
+</p>
+
+<p>
+stack
+stack<sub>last</sub>
+stacksize
+</p>
+
+<p>
+EXTRA<sub>STACK</sub>
+1
+</p>
+
+<p>
+relations
+</p>
+
+
+
+<p>
+pc
+</p>
+
+
+
+<p>
+ci
+</p>
+
+<p>
+base<sub>ci</sub>
+size<sub>ci</sub>
+end<sub>ci</sub>
+</p>
+
+<p>
+ldo.c:169 157
+</p>
+</div>
+</div>
+
+
+
+
+<div id="outline-container-org7585593" class="outline-2">
+<h2 id="org7585593"><span class="section-number-2">3</span> internal</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+lua 中各种机制的实现方式
+</p>
+
+<p>
+以示例代码的方式来探索
+</p>
+
+<p>
+多数在绘制图纸的时候，已经得到了解决，虚拟中和实际运行时差别不大
+</p>
+
+
+
+<p>
+continue 不作用于 switch 语句
+</p>
+</div>
+
+<div id="outline-container-org190d8a9" class="outline-3">
+<h3 id="org190d8a9"><span class="section-number-3">3.1</span> closure</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+store proto to closure
+</p>
+
+<p>
+and save to stack
+</p>
+</div>
+
+
+
+
+<div id="outline-container-orgc1d8408" class="outline-4">
+<h4 id="orgc1d8408"><span class="section-number-4">3.1.1</span> upval</h4>
+<div class="outline-text-4" id="text-3-1-1">
+<p>
+open and close
+</p>
+
+<p>
+getupval, just ref pointer
+</p>
+
+<p>
+move, using luaF<sub>findupval</sub> lfunc.c:53
+</p>
+
+<p>
+71 72 行太隐晦了
+</p>
+
+<p>
+pp 是 &amp;p-&gt;next
+pp 是指向 p 中 next 成员的指针
+</p>
+
+<p>
+所以 *pp = obj2gco(uv) 的时候，修改了 p next 成员的值
+</p>
+
+<p>
+在这里将 openupval 按 level 顺序链接起来！
+</p>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org34d3256" class="outline-3">
+<h3 id="org34d3256"><span class="section-number-3">3.2</span> call</h3>
+</div>
+
+<div id="outline-container-orge187d83" class="outline-3">
+<h3 id="orge187d83"><span class="section-number-3">3.3</span> return</h3>
+</div>
+
+<div id="outline-container-orgf9ae17b" class="outline-3">
+<h3 id="orgf9ae17b"><span class="section-number-3">3.4</span> tailcall</h3>
+</div>
+
+<div id="outline-container-org4d297fb" class="outline-3">
+<h3 id="org4d297fb"><span class="section-number-3">3.5</span> env global</h3>
+<div class="outline-text-3" id="text-3-5">
+<p>
+既然在 compile 的时候，已经进行了变量的查找
+</p>
+
+<p>
+env 又如何在运行时发挥作用呢？
+</p>
+
+
+<p>
+作用在 setglobal getglobal 两条指令上
+为 global 概念提供了空间
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-orga2cd2ee" class="outline-3">
+<h3 id="orga2cd2ee"><span class="section-number-3">3.6</span> args</h3>
+<div class="outline-text-3" id="text-3-6">
+<p>
+def and pass
+</p>
+
+<p>
+vararg
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org9ac197c" class="outline-3">
+<h3 id="org9ac197c"><span class="section-number-3">3.7</span> metatable</h3>
+</div>
+
+
+<div id="outline-container-org900f1c1" class="outline-3">
+<h3 id="org900f1c1"><span class="section-number-3">3.8</span> c closure?</h3>
+</div>
+</div>
+
+<div id="outline-container-org4f910c2" class="outline-2">
+<h2 id="org4f910c2"><span class="section-number-2">4</span> practice</h2>
+</div>
+</div>
+<div id="postamble" class="status">
+
+<p>Updated: 2021-01-14 四 17:51</p>
+<p>Created: 2021-01-14 四 17:50</p>
+<p>Author: DreamAndDead</p>
+<p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
+<script src="https://utteranc.es/client.js" repo="DreamAndDead/DreamAndDead.github.io" issue-term="pathname" label="Comment" theme="github-light" crossorigin="anonymous" async></script>
+</div>
+</body>
+</html>

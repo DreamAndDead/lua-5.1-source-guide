@@ -1,14 +1,15 @@
 #+SETUPFILE: setup.org
 
-* TODO vm
+#+TITLE: vm
+#+DATE: <2021-01-14 四 17:50>
+
 
 生成图纸之后，按图纸来执行
 
 完全是 proto 内部的东西
 
 
-
-** state
+* state
 
 G
 L
@@ -44,7 +45,7 @@ struct lua_State {
 };
 #+end_src
 
-** model
+* model
 
 virtual machine
 
@@ -79,7 +80,7 @@ ldo.c:169 157
 
 
 
-** internal
+* internal
 
 lua 中各种机制的实现方式
 
@@ -91,7 +92,7 @@ lua 中各种机制的实现方式
 
 continue 不作用于 switch 语句
 
-*** closure
+** closure
 
 store proto to closure
 
@@ -100,7 +101,7 @@ and save to stack
 
 
 
-**** upval
+*** upval
   
  open and close
 
@@ -121,13 +122,13 @@ pp 是指向 p 中 next 成员的指针
 #+CAPTION: 39 upval open and close
 
 
-*** call
+** call
 
-*** return
+** return
 
-*** tailcall
+** tailcall
     
-*** env global
+** env global
 
 既然在 compile 的时候，已经进行了变量的查找
 
@@ -138,15 +139,17 @@ env 又如何在运行时发挥作用呢？
 为 global 概念提供了空间
 
 
-*** TODO args
+** args
 
 def and pass
 
 vararg
     
    
-*** metatable
+** metatable
 
 
-*** TODO c closure?
+** c closure?
+
+* practice
 

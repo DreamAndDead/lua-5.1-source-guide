@@ -16,8 +16,8 @@
 | lexer          | 词法分析      |     100% | [[file:lexer.org][read]]    |
 | opcode         | 字节码        |     100% | [[file:opcode.org][read]]    |
 | parser         | 语法分析      |     100% | [[file:parser.org][read]]    |
-| generator      | 字节码生成    |      70% | [[file:generator.org][preview]] |
-| vm             | 虚拟机        |       0% |         |
+| generator      | 字节码生成    |      80% | [[file:generator.org][preview]] |
+| vm             | 虚拟机        |       5% | [[file:vm.org][preview]] |
 | c api          | 外部 api      |       0% |         |
 | lib            | 标准库        |       0% |         |
 | coroutine      | 协程结构      |       0% |         |
