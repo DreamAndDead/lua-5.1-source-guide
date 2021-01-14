@@ -2814,26 +2814,232 @@ elseif 结构是不限数量的，相比之下，if 和 else 只能有一个，
 
 嵌套的过程，读者可使用上述方法，自主探索，在此不再赘述。
 
-
 ** while
 
-#+CAPTION: 30 while pattern
+分支之后，来探索经典的 while 循环结构。
 
-block
+#+begin_src bnf
+whilestat    ::= WHILE cond DO block END
+#+end_src
 
-breakable  1
-这样其中才可以生成 break 语句
+分析如下简单的示例，
 
-breaklist
-用于记录 break 语句，chain 到 block 外的第一条语句
+#+begin_src lua
+local a, b
 
-enterblock 自然生成 0 block
+while b do
+   a = 1
+end
+#+end_src
 
-相当于有双层 block
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.local  "a"  ; 0
+.local  "b"  ; 1
+.const  1  ; 0
+[1] test       1       0    ; to [3] if true
+[2] jmp        2            ; to [5]
+[3] loadk      0   0        ; 1
+[4] jmp        -4           ; to [1]
+[5] return     0   1
+; end of function
+#+end_example
+
+#+CAPTION: while pattern
+#+begin_src ditaa :file generator-while-0.png
+
+                  +------------------------+
+                  |                        |
+                  v                        |
+            +-------------+                |
+            |1  test      +-----+          |
+            +-----+-------+     |          |
+                  | F           | T        |
+                  v             |          |
+            +-------------+     |          |
+            |2  jmp  2    |     |          |
+            +-----+-------+     |          |
+                  |             |          |
+     +------------+             |          |
+     |                          |          |
+     |            +-------------+          |
+     |            |                        |
+     |            v                        |
+     |      +-------------+                |
+     |      |3  TRUE cGRE |                |
+     |      +-----+-------+                |
+     |            |                        |
+     |            v                        |
+     |      +-------------+                |
+     |      |4  jmp  -4   |                |
+     |      +-----+-------+                |
+     |            |                        |
+     |            +------------------------+
+     |
+     +------------+
+                  |
+                  v
+            +-------------+
+            |5  return    +
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-while-0.png]]
+
+可以看出，while 结构生成字节码也是模式化的，cond 生成 test 和 jmp 指令，
+其后是循环体，最后的 jmp 指令用于跳转到循环开始，只有 test 为 false 的时候才会跳出循环体。
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 991 :lines "991-1008"
+
+生成的过程并不难理解，根据对 concat 和 patch 的理解，
+
+#+begin_src ditaa :file generator-while-1.png
+
+                  +------------------------+
+                  |                        |
+                  v                        |
+            +-------------+                |
+            |1  test      +-----+          |    <--- whileinit   <---------+
+            +-----+-------+     |          |                               |
+                  | F           | T        |                               |
+                  v             |          |                               |
+            +-------------+     |          |                               |
+            |2  jmp  2    |     |          |    <--- condexit    <---------+------+
+            +-----+-------+     |          |                               |      |
+                  |             |          |                               |      |
+     +------------+             |          |                               |      |
+     |                          |          |                               |      |
+     |            +-------------+          |                               |      |
+     |            |                        |                               |      |
+     |            v                        |                               |      |
+     |      +-------------+                |                               |      |
+     |      |3  TRUE cGRE |                |                               |      |
+     |      +-----+-------+                |                               |      |
+     |            |                        |                               |      |
+     |            v                        |                               |      |
+     |      +-------------+                |                               |      |
+     |      |4  jmp  -4   |                |         luaK_patchlist()  ----+      |
+     |      +-----+-------+                |                                      |
+     |            |                        |                                      |
+     |            +------------------------+                                      |
+     |                                                                            |
+     +------------+                                                               |
+                  |                                                               |
+                  v                                                               |
+            +-------------+                                                       |
+            |5  return    +                          luaK_patchtohere()  <--------+
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-while-1.png]]
 
 *** break
 
-#+CAPTION: 30 break in while
+因为 break 语句只能用于循环中，所以放在这里和 while 一起讲解。
+
+#+begin_src bnf
+breakstat    ::= BREAK
+#+end_src
+
+分析如下示例，
+
+#+begin_src lua
+local a, b
+
+while b do
+   a = 1
+   break
+end
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.local  "a"  ; 0
+.local  "b"  ; 1
+.const  1  ; 0
+[1] test       1       0    ; to [3] if true
+[2] jmp        3            ; to [6]
+[3] loadk      0   0        ; 1
+[4] jmp        1            ; to [6]
+[5] jmp        -5           ; to [1]
+[6] return     0   1
+; end of function
+#+end_example
+
+#+begin_src ditaa :file generator-break-0.png
+
+                  +------------------------+
+                  |                        |
+                  v                        |
+            +-------------+                |
+            |1  test      +-----+          |
+            +-----+-------+     |          |
+                  | F           | T        |
+                  v             |          |
+            +-------------+     |          |
+            |2  jmp  3    |     |          |
+            +-----+-------+     |          |
+                  |             |          |
+     +------------+             |          |
+     |                          |          |
+     |            +-------------+          |
+     |            |                        |
+     |            v                        |
+     |      +-------------+                |
+     |      |3  TRUE cGRE |                |
+     |      +-----+-------+                |
+     |            |                        |
+     |            v                        |
+     |      +-------------+                |
+     |      |4  jmp  1    |                |
+     |      +-----+-------+                |
+     |            |                        |
+     |            +---------------+        |
+     |                            |        |
+     |                            |        |
+     |      +-------------+       |        |
+     |      |5  jmp  -5   |       |        |
+     |      +-----+-------+       |        |
+     |            |               |        |
+     |            +---------------+--------+
+     |                            |
+     +------------+ +-------------+
+                  | |
+                  v v
+            +-------------+
+            |6  return    +
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-break-0.png]]
+
+可以看出，break 在循环体生成了 jmp 指令，跳转到循环外，这个过程由以下几点协同来实现。
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 975 :lines "975-1008"
+
+line 1000，调用 enterblock 新建了 ~breakable = 1~ 的 BlockCnt，
+
+line 979，break 语句不断向上层的 BlockCnt 检测是否存在 breakable 的 BlockCnt，
+不然就提示语法错误，no loop to break。（直到代码生成时，才检测出这个语法错误）
+
+找到相应的 BlockCnt 之后，line 987 将 break 生成的 jmp 指令链接到 bl->breaklist 上，
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 296 :lines "296-308"
+
+最终在 line 1005 leaveblock 的时候，line 306 将 bl->breaklist 上的 jmp 重定位。
 
 ** repeat
 
