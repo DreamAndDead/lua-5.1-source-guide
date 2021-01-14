@@ -2150,89 +2150,670 @@ digraph {
 
 ** if
 
-因为分析从左向右，从前至后的，所以对于一些结构需要特别的方法来处理
-比如 if 分支的处理，回填 jmp 地址
+本节来分析，在代码生成过程中是如何处理 if 语句的。
 
-顺序解析的难题之一
-分支
+#+begin_src bnf
+stat         ::= ifstat
 
-- jump chain resolve
+ifstat       ::= IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+cond         ::= expr
+block        ::= chunk
+#+end_src
 
-#+CAPTION: 25 if else code pattern
+前面已经提到过，整体的分析过程是从左至右，从前至后的，
+而 if 是分支结构，不同于分析过程的线性结构。
 
-
-concat
-
-patch
-
-patch to here, concat
-
-patch to list, discharge right now to target
-
-they are the same
-
-dischargejpc
-
-
-
-
-luaK_jump 时，使用 jpc 重置的技巧，防止在生成 jump 时，触发 dischargejpc
+lua 内部使用一种精巧的方式解决这个问题。
 
 *** if
 
+首先来看示例代码，
+
+#+begin_src lua
+local a, b
+
+if b then
+   a = 1
+end
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.local  "a"  ; 0
+.local  "b"  ; 1
+.const  1  ; 0
+[1] test       1       0    ; to [3] if true
+[2] jmp        1            ; to [4]
+[3] loadk      0   0        ; 1
+[4] return     0   1
+; end of function
+#+end_example
+
+整体流程的示意如下，TRUE 表示条件为真所执行的字节码，这里为 loadk。
+
+#+CAPTION: if chain
 #+begin_src ditaa :file generator-if.png
 
-            +----------+
-            |1  test   +--------+
-            +-----+----+        |
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
                   | F           | T
                   v             |
-            +----------+        |
-            |2  jmp    |        |
-            +-----+----+        | 
+            +-------------+     |
+            |2  jmp  1    |     |
+            +-----+-------+     |
                   |             |
      +------------+             |
      |                          |
      |            +-------------+
      |            |
      |            v
-     |      +----------+
-     |      |3  TRUE   |
-     |      +-----+----+
+     |      +-------------+
+     |      |3  TRUE cGRE |
+     |      +-----+-------+
      |            |
      +----------+ |
                 | |
                 v v
-            +----------+
-            |4  return |
-            +----------+
+            +-------------+
+            |4  return    |
+            +-------------+
 
 #+end_src
 
 #+RESULTS:
 [[file:generator-if.png]]
 
-dischargejpc
-负责从当前 pc 解析 jump chain
+在分支结构中扮演重要角色的是两种指令，test 和 jmp。
 
-隐藏在 luaK_code 中
+在 vm 的执行过程中，pc 问题默认自增的，即执行完当前指令后，pc++，
+对于 test 和 jmp 也不例外。
+
+jmp 指令有一个参数，即跳转的距离，可正可负，意味着可以向前跳转，也可以向后。
+
+根据 pc++ 的原则，
+- 指令 =jmp -1= 表示循环执行当前的 jmp 指令，因为 jmp 跳转到自身
+- 指令 =jmp 0=  表示跳转到下一条指令，即正常执行
+- 指令 =jmp 1=  表示略过下一条指令，跳转到下下一条指令
+
+jmp 是无条件跳转，而 test 指令不同，需要针对 True 和 False 跳转到不同的地方。
+lua 使用了一种简洁的模式来安排。
+
+（假设参数 ~C = 0~ ）test 指令之后固定接着一条 jmp 指令，用于执行 False 跳转。
+jmp 指令之后紧接着 True 语句块。
+
+在这种安排下，
+- 如果为 False，正常执行下一条指令，下一条 jmp 跳转到 False 语句块
+- 如果为 True，vm 执行 pc++ ++，跳过 test 后的 jmp 指令，执行 True 语句块
+
+这样就不用使得 test 指令过于复杂。
 
 
-问题添加 return 0 1 的原因
+对照示例代码，内部使用 ifstat() 来分析 if 语句。
 
-#+CAPTION: 26 if chain
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 1130 :lines "1130-1163"
+
+使用 =test_then_block()= 分析 =IF cond THEN block= 的部分，
+使用 cond() 分析条件部分，
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 965 :lines "965-973"
+
+进入 =luaK_goiftrue()= ，调用 =jumponcond= 和 =condjump= ，生成了 test 指令和 jmp 指令，
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 524 :lines "524-561"
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 74 :lines "74-78"
+
+最终 =cond()= 返回 jmp 指令的索引，在 ifstat() 中由 flist 保存。
+
+
+下面就是关键的地方，lua 如何确定跳转的位置，其中有几个关键的过程，concat，patch 和 dischargejpc。
+
+在 =test_then_block()= 之后，解析了 cond 和 true block，并保留了 jmp 指令的索引。
+
+#+begin_src ditaa :file generator-if-test-then-block.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  -1   |     |  <---- flist
+            +-----+-------+     |
+                                |
+                                |
+                  +-------------+
+                  |
+                  v
+            +-------------+
+            |3  TRUE cGRE |
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-test-then-block.png]]
+
+因为其后没有 else/elseif 语句，直接执行 line 1159，
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 185 :lines "185-197"
+
+将 flist 链接到 escapelist 上，
+
+#+begin_src ditaa :file generator-if-test-then-block-1.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  -1   |     |  <---- flist  escapelist
+            +-----+-------+     |
+                                |
+                                |
+                  +-------------+
+                  |
+                  v
+            +-------------+
+            |3  TRUE cGRE |
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-test-then-block-1.png]]
+
+其后执行 line 1160，执行 patch 过程，
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 179 :lines "179-183"
+
+将 escapelist 链接到 fs->jpc 上，
+
+#+begin_src ditaa :file generator-if-test-then-block-2.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  -1   |     |  <---- flist  escapelist  jpc
+            +-----+-------+     |
+                                |
+                                |
+                  +-------------+
+                  |
+                  v
+            +-------------+
+            |3  TRUE cGRE |
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-test-then-block-2.png]]
+
+最终在生成 TRUE 之后的语句时，执行 dischargejpc 过程，
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 789 :lines "789-802"
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 150 :lines "150-167"
+
+#+begin_src ditaa :file generator-if-3.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  1    |     |    <---- jpc
+            +-----+-------+     |
+                  |             |
+     +------------+             |
+     |                          |
+     |            +-------------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |3  TRUE cGRE |
+     |      +-----+-------+
+     |            |
+     +----------+ |
+                | |
+                v v
+            +-------------+
+            |4  return    |         dischargejpc
+            +-------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-3.png]]
+
+此时已经在 TRUE 语句块之外，也明确当前的指令索引和 jmp 指令索引，
+直接计算距离的差值，修改 jmp 指令的参数，跳转到此位置。
+
+综合来看，concat 将需要重新定位的 jmp 指令链接起来，最终链接到 jpc 上，
+由 dischargejpc 过程，调整所有链接的 jmp 指令，使其跳转到当前位置。
+
+单纯的 if 语句比较简单，读者或许还体会不到这种方法的作用，下面来看更复杂的语句。
 
 *** if else
 
-#+CAPTION: 27 if else chain
+#+begin_src lua
+local a, b
+
+if b then
+   a = 1
+else
+   a = 0
+end
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 2 stacks
+.function  0 0 2 2
+.local  "a"  ; 0
+.local  "b"  ; 1
+.const  1  ; 0
+.const  0  ; 1
+[1] test       1       0    ; to [3] if true
+[2] jmp        2            ; to [5]
+[3] loadk      0   0        ; 1
+[4] jmp        1            ; to [6]
+[5] loadk      0   1        ; 0
+[6] return     0   1
+; end of function
+#+end_example
+
+#+CAPTION: if else chain
+#+begin_src ditaa :file generator-if-else-0.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  2    |     |
+            +-----+-------+     |
+                  |             |
+     +------------+             |
+     |                          |
+     |            +-------------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |3  TRUE cGRE |
+     |      +-----+-------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |4  jmp  1    |
+     |      +-----+-------+
+     |            |
+     |            +-------------+
+     |                          |
+     +------------+             |
+                  |             |
+                  v             |
+            +-------------+     |
+            |5  FALSE cRED|     |
+            +-----+-------+     |
+                  |             |
+                  | +-----------+
+                  | |
+                  v v
+            +-------------+
+            |6  return    |
+            +-------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-else-0.png]]
+
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 1141 :lines "1141-1163"
+
+在 if else 语句中，解析 cond 和 true block 之后，要继续解析 else false block 部分。
+
+false block 生成字节码也遵循一定的模式，先生成 jmp 指令，用于跳出 true block，
+其次再生成 false block。
+
+其中将这个 jmp 链接到 escapelist 上，因为分析到 false block 的起始位置，
+所以重定向 test 部分的 jmp 到这个位置。
+
+#+begin_src ditaa :file generator-if-else-1.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp 2 cBLK|     |  <--- flist                     jpc
+            +-----+-------+     |                                  ^
+                  |             |                                  |
+     +------------+             |                                  |
+     |                          |                                  |
+     |            +-------------+                                  |
+     |            |                                                |
+     |            v                                                |
+     |      +-------------+                                        |
+     |      |3  TRUE cGRE |                                        |
+     |      +-----+-------+                                        |
+     |            |                                                |
+     |            v                                                |
+     |      +-------------+                                        |
+     |      |4  jmp  -1   |        <--- escapelist                 |
+     |      +-----+-------+                                        |
+     |                                                             |
+     +------------+                                                |
+                  |                                                |
+                  v                                                |
+            +-------------+                                        |
+            |5  FALSE cRED|        dischargejpc() -----------------+
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-else-1.png]]
+
+
+最终将 escapelist 链接到 jpc 上，进行 dischargejpc 操作。
+
+#+begin_src ditaa :file generator-if-else-2.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  2    |     |
+            +-----+-------+     |
+                  |             |
+     +------------+             |
+     |                          |
+     |            +-------------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |3  TRUE cGRE |
+     |      +-----+-------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |4  jmp 1 cBLK|       <--- escapelist              jpc
+     |      +-----+-------+                                     ^
+     |            |                                             |
+     |            +-------------+                               |
+     |                          |                               |
+     +------------+             |                               |
+                  |             |                               |
+                  v             |                               |
+            +-------------+     |                               |
+            |5  FALSE cRED|     |                               |
+            +-----+-------+     |                               |
+                  |             |                               |
+                  | +-----------+                               |
+                  | |                                           |
+                  v v                                           |
+            +-------------+                                     |
+            |6  return    |         dischargejpc() -------------+
+            +-------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-else-2.png]]
+
+由这种模式可以看出，flist 表示 false list，escapelist 表示跳出 true list。
+
+discharge 的过程就是先将目标链接到 fs->jpc 上，然后从 fs->jpc 开始，重新定位所有 jmp 的目标位置。
 
 *** if elseif
 
-#+CAPTION: 28 if elseif chain
+#+begin_src lua
+local a, b, c
+
+if b then
+   a = 1
+elseif c then
+   a = 2
+end
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.local  "a"  ; 0
+.local  "b"  ; 1
+.local  "c"  ; 2
+.const  1  ; 0
+.const  2  ; 1
+[1] test       1       0    ; to [3] if true
+[2] jmp        2            ; to [5]
+[3] loadk      0   0        ; 1
+[4] jmp        3            ; to [8]
+[5] test       2       0    ; to [7] if true
+[6] jmp        1            ; to [8]
+[7] loadk      0   1        ; 2
+[8] return     0   1
+; end of function
+#+end_example
+
+#+begin_src ditaa :file generator-if-else-if-0.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  2    |     |
+            +-----+-------+     |
+                  |             |
+     +------------+             |
+     |                          |
+     |            +-------------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |3  TRUE cGRE |
+     |      +-----+-------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |4  jmp  3    |
+     |      +-----+-------+
+     |            |
+     |            +-------------+-----------+
+     |                                      |
+     +------------+                         |
+                  |                         |
+                  v                         |
+            +-------------+                 |
+            |5  test      +-----+           |
+            +-----+-------+     |           |
+                  | F           | T         |
+                  v             |           |
+            +-------------+     |           |
+            |6  jmp  2    |     |           |
+            +-----+-------+     |           |
+                  |             |           |
+     +------------+             |           |
+     |                          |           |
+     |            +-------------+           |
+     |            |                         |
+     |            v                         |
+     |      +-------------+                 |
+     |      |7  TRUE cGRE |                 |
+     |      +-----+-------+                 |
+     |            |                         |
+     |            |                         |
+     |            |                         |
+     |            |                         |
+     +----------+ | +-----------+-----------+
+                | | |
+                v v v
+            +-------------+
+            |8  return    |
+            +-------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-else-if-0.png]]
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src c -n 1141 :lines "1141-1163"
+
+elseif 结构是不限数量的，相比之下，if 和 else 只能有一个，
+所以这里用 while 循环来重复检测所有 elseif 块。
+
+对于一个 elseif 块，先生成 jmp 指令，再重新调用 =test_then_block= ，当做一个 if 块来处理。
+
+示例代码中只有一个 elseif 块，所以在执行到 line 1151 时，生成字节码如下，
+
+#+begin_src ditaa :file generator-if-else-if-1.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  2    |     |
+            +-----+-------+     |
+                  |             |
+     +------------+             |
+     |                          |
+     |            +-------------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |3  TRUE cGRE |
+     |      +-----+-------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |4  jmp  -1   |          <--- escapelist
+     |      +-----+-------+
+     |
+     |
+     |
+     +------------+
+                  |
+                  v
+            +-------------+
+            |5  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |6  jmp  -1   |     |    <--- flist
+            +-----+-------+     |
+                                |
+                                |
+                                |
+                  +-------------+
+                  |
+                  v
+            +-------------+
+            |7  TRUE cGRE |
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-else-if-1.png]]
+
+在生成最终的 return 之前，在 line 1159 将 flist 链接到 escapelist 上，因为它们有同样的终点。
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src c -n 185 :lines "185-197"
+
+其中将 4 jmp 指令，跳转到 6 jmp，相当于将 jmp 链接起来，以 escapelist 为索引链的开始。
+
+#+begin_src ditaa :file generator-if-else-if-2.png
+
+            +-------------+
+            |1  test      +-----+
+            +-----+-------+     |
+                  | F           | T
+                  v             |
+            +-------------+     |
+            |2  jmp  2    |     |
+            +-----+-------+     |
+                  |             |
+     +------------+             |
+     |                          |
+     |            +-------------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |3  TRUE cGRE |
+     |      +-----+-------+
+     |            |
+     |            v
+     |      +-------------+
+     |      |4  jmp 1 cBLK|          <--- escapelist
+     |      +-----+-------+                  |
+     |                                       |
+     |                                       |
+     |                                       |
+     +------------+                          |
+                  |                          |
+                  v                          | concat
+            +-------------+                  |
+            |5  test      +-----+            |
+            +-----+-------+     |            |
+                  | F           | T          |
+                  v             |            |
+            +-------------+     |            v
+            |6  jmp  -1   |     |    <--- flist
+            +-----+-------+     |
+                                |
+                                |
+                                |
+                  +-------------+
+                  |
+                  v
+            +-------------+
+            |7  TRUE cGRE |
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-if-else-if-2.png]]
+
+最终在 discharge 的时候，只需要顺着 escapelist 往下，就可以访问到所有需要重定位的 jmp 指令，
+并进行相应参数的修改。
 
 *** if elseif else
 
-#+CAPTION: 29 if elseif else chain
+嵌套的过程，读者可使用上述方法，自主探索，在此不再赘述。
+
 
 ** while
 
