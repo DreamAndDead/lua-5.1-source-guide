@@ -3041,181 +3041,513 @@ line 979，break 语句不断向上层的 BlockCnt 检测是否存在 breakable 
 
 最终在 line 1005 leaveblock 的时候，line 306 将 bl->breaklist 上的 jmp 重定位。
 
-** repeat
-
-repeat
-
-#+CAPTION: 31 repeat
-
-break 同 while 时的表现相同
-
-
-不过对于 upval，有自己的处理方式
-
-
-因为 while 在 cond 中不能定义新的 local var
-而 repeat 的 block 中可能先定义 local var
-再被其中的 func 引用，而 i 在不断变化，就需要及时 close
-
-
-
-
-#+begin_src lua :results output
-local t = {}
-
-local c = 0
-
-repeat
-   c = c + 1
-
-   local i = c
-
-   t[i] = function ()
-      return i
-   end
-until i > 10
-
-for i, f in ipairs(t) do
-   print(f())
-end
-#+end_src
-
-#+RESULTS:
-#+begin_example
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-#+end_example
-
-进行 upval 判断的原因
-
-每个 func 记录的都是 i，但是每次 loop 结束都进行了 close，
-
-
-#+CAPTION: 31 repeat upval
-
-
 ** for
 
-for loop 特别开发了底层指令来处理，而 repeat 和 while 则没有相应的指令。
-依然是通过 jmp 来实现的。
+repeat 循环和 while 循环非常相似，主要是通过 jmp 来实现的。
+而 for 循环很特殊，用专门的指令来实现。
 
-分为两种
+#+begin_src bnf
+forstat      ::= FOR (fornum | forlist) END
+fornum       ::= NAME = expr `,' expr [`,' expr] forbody
+forlist      ::= NAME {`,' NAME} IN explist forbody
+forbody      ::= DO block
+#+end_src
 
-数字迭代 fornum
+for 语句分为两种，一种只用于数字迭代的 fornum，
 
 #+begin_src lua
 for i = 1, 10, 2 do
-  print(i)
+
 end
 #+end_src
 
-通用迭代 forlist
+另一种通用迭代 forlist，
 
 #+begin_src lua
 for k, v in pairs(t) do
-  print(k, v)
+
 end
 #+end_src
+
+两种用法在底层使用不同的指令来实现。
 
 *** fornum
 
-隐式生成的变量，用 ( 来标识，是不会与正常 lua 代码中分析得到的 NAME 冲突的
-因为 lex 规则的限定
+#+begin_src bnf
+fornum       ::= NAME = expr `,' expr [`,' expr] forbody
+forbody      ::= DO block
+#+end_src
 
-#+begin_example
-.local  "(for generator)"  ; 0
-.local  "(for state)"  ; 1
-.local  "(for control)"  ; 2
-#+end_example
+~=~ 后的 3 个表达式对应循环变量的初始值，目标值和间隔值，间隔值默认为 1。
 
-#+CAPTION: 32 for and upval
+分析如下代码，
 
-*** forlist
+#+begin_src lua
+local a = 0
 
-#+begin_src lua :results output
-local g, s = pairs({1,2,3})
-
-for k, v in g, s, nil do
-  print(k, v)
+for i = 1, 10, 2 do
+   a = a + 1
 end
 #+end_src
 
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
+.function  0 0 2 5
+.local  "a"  ; 0
+.local  "(for index)"  ; 1
+.local  "(for limit)"  ; 2
+.local  "(for step)"  ; 3
+.local  "i"  ; 4
+.const  0  ; 0
+.const  1  ; 1
+.const  10  ; 2
+.const  2  ; 3
+[1] loadk      0   0        ; 0
+[2] loadk      1   1        ; 1
+[3] loadk      2   2        ; 10
+[4] loadk      3   3        ; 2
+[5] forprep    1   1        ; to [7]
+[6] add        0   0   257  ; 1
+[7] forloop    1   -2       ; to [6] if loop
+[8] return     0   1
+; end of function
+#+end_example
+
+#+begin_src ditaa :file generator-fornum-0.png
+
+            +-------------+
+            |1   loadk    +
+            +-----+-------+
+            |2   loadk    +
+            +-----+-------+
+            |3   loadk    +
+            +-----+-------+
+            |4   loadk    +
+            +-----+-------+
+                  |
+                  v
+            +-------------+
+            |5  forprep 1 |
+            +-----+-------+
+                  |
+      +-----------+
+      |
+      |           +--------------+
+      |           |              |
+      |           v              |
+      |     +-------------+      |
+      |     |6  TRUE cGRE |      |
+      |     +-----+-------+      |
+      |           |              |
+      +---------+ |              |
+                | |              |
+                v v              |
+            +-------------+      |
+            |7  forloop -2+------+
+            +-----+-------+  T
+                  | F
+                  v
+            +-------------+
+            |8  return    |
+            +-----+-------+
+
+#+end_src
+
 #+RESULTS:
-: 1	1
-: 2	2
-: 3	3
+[[file:generator-fornum-0.png]]
 
-#+CAPTION: 33 for and upval
 
-upvalue 同 fornum
+其中的生成模式也明确，先生成 forprep 做准备工作，跳转到 forloop，
+之后分析 forbody，最终生成 fooloop，用于跳转到循环开始/结束循环。
+
+
+
+根据 opcode 描述的语义，
+
+#+begin_example
+OP_FORPREP,/*	A sBx	R(A)-=R(A+2); pc+=sBx				*/
+
+OP_FORLOOP,/*	A sBx	R(A)+=R(A+2);
+			if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/
+#+end_example
+
+forprep 先将循环变量减去间隔值，再跳转到 forloop。
+
+而 forloop 将循环值加上间隔值，再和结束值对比，判断是否要跳出循环，
+如果继续循环，则将循环值赋给循环变量；否则跳出循环。
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src C -n 1046 :lines "1046-1087"
+
+生成的过程并不难理解，值得关注的是变量部分。
+
+在 local 表中隐式生成了 3 个变量，
+
+#+begin_example
+.local  "(for index)"  ; 1
+.local  "(for limit)"  ; 2
+.local  "(for step)"  ; 3
+#+end_example
+
+分别对应初始值，结束值和间隔值，变量都加了 ()，所以不会和 lua 代码中分析得到的变量名冲突。
+
+在 fornum 语句整体分析的过程中，生成了 3 层 BlockCnt，
+
+#+begin_src ditaa :file generator-fornum-3-blocks.png
+
+        +--------------------------+
+        |  (for index)             |
+        |  (for limit)             |
+        |  (for step)              |
+        |                          |
+        |  +--------------------+  |
+        |  | i                  |  |
+        |  |                    |  |
+        |  | +----------------+ |  |
+        |  | | forbody        | |  |
+        |  | |                | |  |
+        |  | |                | |  |
+        |  | |                | |  |
+        |  | |                | |  |
+        |  | +----------------+ |  |
+        |  +--------------------+  |
+        +--------------------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-fornum-3-blocks.png]]
+
+最外层 block 是在 forstat 中生成的， ~breakable = 1~ ，用于 break；
+
+中间层 block 将隐式生成的变量 (for index) 之类和循环变量 i 分开；
+
+最内层 block 用于 forbody block。
+
+*** forlist
+
+#+begin_src bnf
+forlist      ::= NAME {`,' NAME} IN explist forbody
+forbody      ::= DO block
+#+end_src
+
+forlist 用于迭代器循环，最常见的就是用 pairs 循环遍历 table。
+
+分析如下示例，
+
+#+begin_src lua
+local a = 0
+
+for k, v in pairs({}) do
+   a = a + 1
+end
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 7 stacks
+.function  0 0 2 7
+.local  "a"  ; 0
+.local  "(for generator)"  ; 1
+.local  "(for state)"  ; 2
+.local  "(for control)"  ; 3
+.local  "k"  ; 4
+.local  "v"  ; 5
+.const  0  ; 0
+.const  "pairs"  ; 1
+.const  1  ; 2
+[1] loadk      0   0        ; 0
+[2] getglobal  1   1        ; pairs
+[3] newtable   2   0   0    ; array=0, hash=0
+[4] call       1   2   4
+[5] jmp        1            ; to [7]
+[6] add        0   0   258  ; 1
+[7] tforloop   1       2    ; to [9] if exit
+[8] jmp        -3           ; to [6]
+[9] return     0   1
+; end of function
+#+end_example
+
+#+begin_src ditaa :file generator-forlist-0.png
+
+            +-------------+
+            |1   loadk    +
+            +-----+-------+
+            |2   getglobal+
+            +-----+-------+
+            |3   newtable +
+            +-----+-------+
+            |4   call     +
+            +-----+-------+
+                  |
+                  v
+            +-------------+
+            |5  jmp     1 |
+            +-----+-------+
+                  |
+      +-----------+
+      |            +----------------+
+      |            |                |
+      |            v                |
+      |     +-------------+         |
+      |     |6  TRUE cGRE |         |
+      |     +-----++------+         |
+      |            |                |
+      |            |                |
+      +----------+ |                |
+                 | |                |
+                 v v                |
+            +-------------+         |
+            |7  tforloop  +----+    |
+            +-----++------+ F  |    |
+                   |           |    |
+                   | T         |    |
+                   |           |    |
+                   v           |    |
+            +-------------+    |    |
+            |8  jmp  -3   +----+----+
+            +-----+-------+    |
+                               |
+                   +-----------+
+                   |
+                   v
+            +-------------+
+            |9  return    |
+            +-----+-------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-forlist-0.png]]
+
+forlist 的生成模式有些不同，先生成 jmp 跳转到 tforloop 指令，
+而 tforloop 根据 opcode 的语义，
+
+#+begin_example
+OP_TFORLOOP,/*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
+                        if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++	*/
+#+end_example
+
+判断为 true 时，正常执行下一条指令；为 false 时，执行 pc++，跳过下一条指令。
+而下一条指令固定是 jmp，用于定位到 forbody 的开始。
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src C -n 1089 :lines "1089-1110"
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src C -n 1046 :lines "1046-1065"
+
+其中同样隐式声明了 3 个变量，用于控制循环状态，
+
+#+begin_example
+.local  "(for generator)"  ; 1
+.local  "(for state)"  ; 2
+.local  "(for control)"  ; 3
+#+end_example
 
 ** function call
 
-function call
+#+begin_src bnf
+funccallstat ::= prefixexp primaryexp (`:' NAME funcargs | funcargs)
+funcargs     ::= `(' [ explist ] `)' | constructor | STRING
+#+end_src
 
-func 在栈的底部，参数向上累加
+函数调用和函数定义不同。
 
-调用结果，返回值，从栈的 func 处开始向上覆盖
+假如函数定义接收 2 个参数，返回 1 个值，
+而在函数调用时，可传递 3 个参数，不使用返回值。
 
-#+CAPTION: 34 func call
+至于多/少的参数/返回值怎么处理，取决于 vm，在 lua 中，如果多了则废弃，少了则补 nil。
 
-funcargs()
-lparser.c:609
+比如如下示例，
 
-并不复杂
+#+begin_src lua
+local function f()
+   return 1
+end
+
+f(1, 2, 3)
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
+.function  0 0 2 5
+.local  "f"  ; 0
+.const  1  ; 0
+.const  2  ; 1
+.const  3  ; 2
+
+  ; function [0] definition (level 2)
+  ; 0 upvalues, 0 params, 0 is_vararg, 2 stacks
+  .function  0 0 0 2
+  .const  1  ; 0
+  [1] loadk      0   0        ; 1
+  [2] return     0   2
+  [3] return     0   1
+  ; end of function
+
+[1] closure    0   0        ; 0 upvalues
+[2] move       1   0
+[3] loadk      2   0        ; 1
+[4] loadk      3   1        ; 2
+[5] loadk      4   2        ; 3
+[6] call       1   4   1
+[7] return     0   1
+; end of function
+#+end_example
+
+哪怕函数定义不接收参数，返回 1 个值，在调用时，只根据调用语句的意愿，
+传入 3 个参数，不要返回值。
+
+#+begin_src ditaa :file generator-func-call.png
+
+
+     +-------------------+
+     |  3           cGRE |
+     +-------------------+
+     |  2           cGRE |
+     +-------------------+
+     |  1           cGRE |
+     +-------------------+
+     |  f closure   cGRE |  call 1 4 1, pass 3 parameters
+     +-------------------+
+     |  f closure        |
+     +-------------------+
+
+
+
+     +-------------------+
+     |                   |
+     +-------------------+
+     |                   |
+     +-------------------+
+     |                   |
+     +-------------------+
+     |                   |  need 0 return value
+     +-------------------+
+     |  f closure        |
+     +-------------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-func-call.png]]
+
+根据 opcode 的语义，
+
+#+begin_example
+OP_CALL,/*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */
+#+end_example
+
+在调用前，先将函数压栈，其次紧随着传入的参数值；
+调用后，将所有返回值，从调用函数处，向上覆盖。
+
+示例因为不需要返回值，所以调用后，原来的函数加参数位置置为空。
+
+call 指令生成过程参考 funcargs，
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src C -n 609 :lines "609-656"
+
+计算参数的个数，line 651 生成 call 指令，返回值暂时用 1，根据上下文再进行后续的修正。
 
 *** self
 
-#+begin_src lua :results output
+使用 ~:~ 的函数定义和调用方式，更多是出于一种便利，
+作用就是将调用对象本身，默认当作第 1 个参数。
+
+如下两种定义方式就是同义的，
+
+#+begin_src lua :results output :exports both
 local o = {}
 
 function o.f(self)
   print(self)
 end
 
-function o:f()
+function o:g()
   print(self)
 end
 
 o.f(o)
 
-o:f()
+o:g()
 #+end_src
 
 #+RESULTS:
-: table: 0x55bb5b89d270
-: table: 0x55bb5b89d270
+: table: 0x562a8a4a11c0
+: table: 0x562a8a4a11c0
 
-self 指令，只是一种优化方式
+分析示例，
 
+#+begin_src lua
+local o = {}
 
+function o:f()
+end
 
-luaK_self()
+o:f()
+#+end_src
 
-lcode.c:503
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 3 stacks
+.function  0 0 2 3
+.local  "o"  ; 0
+.const  "f"  ; 0
 
-结合 op self 的语义，并不复杂
+; function [0] definition (level 2)
+; 0 upvalues, 1 params, 0 is_vararg, 2 stacks
+.function  0 1 0 2
+.local  "self"  ; 0
+[1] return     0   1
+; end of function
 
-#+CAPTION: 35 self
+[1] newtable   0   0   0    ; array=0, hash=0
+[2] closure    1   0        ; 0 upvalues
+[3] settable   0   256 1    ; "f"
+[4] self       1   0   256  ; "f"
+[5] call       1   2   1
+[6] return     0   1
+; end of function
+#+end_example
 
-self 只是为 call 做准备，将对象提前放到相应位置
+self 指令生成在 call 指令之前，结合 self 指令的语义，
 
+#+begin_example
+OP_SELF,/*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/
+#+end_example
+
+结合示例字节码，self 相当于在栈中布置了 o 和 f，方便 call 进行调用，
+
+#+begin_src ditaa :file generator-self.png
+
+     +----------------------+
+   2 | table o        cGRE  |
+     +----------------------+
+   1 | closure f      cGRE  |
+     +----------------------+
+   0 | table o              |
+     +----------------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:generator-self.png]]
+
+内部在 primaryexp 中调用 =luaK_self= 生成 self 指令，
+
+#+caption: lparser.c
+#+include: ../lua-5.1.5/src/lparser.c src C -n 690 :lines "690-725"
+
+#+caption: lcode.c
+#+include: ../lua-5.1.5/src/lcode.c src C -n 503 :lines "503-514"
 
 ** ret
 
-return 在 chunk 中发挥作用
 从当前 closure 中返回
-
-return 必须是 chunk 的最后一个语句
 
 按语句含义返回值，至于有多少值被利用，则根据 opcode 生成过程中决定的
 
@@ -3264,3 +3596,5 @@ lua 在进行解析时，没有进行关系运算的实时解析，但是对 con
 ** constructor
 
 - setlist always consistent, diff with settable
+
+** repeat

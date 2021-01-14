@@ -1,9 +1,8 @@
 -- for list stat
 
-local a, t = 0, {1, 2, 3}
-local g, s = pairs(t)
+local a = 0
 
-for k, v in g, s, nil do
+for k, v in pairs({}) do
    a = a + 1
 end
 
