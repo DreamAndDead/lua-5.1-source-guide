@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-14 四 17:51 -->
+<!-- 2021-01-15 五 10:54 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>vm</title>
@@ -221,139 +221,332 @@
 <div id="content">
 <h1 class="title">vm</h1>
 <p>
-生成图纸之后，按图纸来执行
+代码生成完成之后，整个文件分析成为一个单独的 Proto，交由 vm 来执行。
 </p>
 
 <p>
-完全是 proto 内部的东西
+和 parser 相比，vm 更容易琢磨，因为它只会从 Proto 中取出字节码，
+并按照指令的含义一行一行来执行。
 </p>
 
+<p>
+所以各种指令的执行过程不是本章的重点，只需要参考 opcode 相应的注释就不难理解，
+本章更关注 vm 内部各个组件的协同过程。
+</p>
 
-<div id="outline-container-org2c37c9f" class="outline-2">
-<h2 id="org2c37c9f"><span class="section-number-2">1</span> state</h2>
+<div id="outline-container-org00326c9" class="outline-2">
+<h2 id="org00326c9"><span class="section-number-2">1</span> model</h2>
 <div class="outline-text-2" id="text-1">
 <p>
-G
-L
+之前在 opcode 章节简单提到了 vm 内部的模型，这里来详细讨论各个部分。
+</p>
+
+
+<div id="org9000012" class="figure">
+<p><img src="vm-model.png" alt="vm-model.png">
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgd7c4d6c" class="outline-3">
+<h3 id="orgd7c4d6c"><span class="section-number-3">1.1</span> code</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+vm 所执行的代码来自 parser，即存储在 Proto 中。
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="org-keyword">struct</span> <span class="org-type">lua_State</span> {
-  CommonHeader;
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">status</span>;             <span class="org-comment-delimiter">// </span><span class="org-comment">&#29366;&#24577;&#65311;&#21487;&#33021;&#29992;&#20110;&#21327;&#31243;&#20013;</span>
-  <span class="org-type">StkId</span> <span class="org-variable-name">top</span>;                  <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#39030;&#25351;&#38024;&#65292;&#65288;&#31532;&#19968;&#20010;&#31354;&#30340;&#20301;&#32622;&#65289;</span>
-  <span class="org-type">StkId</span> <span class="org-variable-name">base</span>;                 <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#22522;&#25351;&#38024;</span>
-  <span class="org-type">global_State</span> *<span class="org-variable-name">l_G</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">&#25351;&#21521; global state</span>
-  <span class="org-type">CallInfo</span> *<span class="org-variable-name">ci</span>;               <span class="org-comment-delimiter">// </span><span class="org-comment">&#24403;&#21069;&#20989;&#25968;&#30340; callinfo</span>
-  <span class="org-keyword">const</span> <span class="org-type">Instruction</span> *<span class="org-variable-name">savedpc</span>; <span class="org-comment-delimiter">// </span><span class="org-comment">savedpc&#65311;</span>
-  <span class="org-type">StkId</span> <span class="org-variable-name">stack_last</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#30340;&#26368;&#21518;&#65311;</span>
-  <span class="org-type">StkId</span> <span class="org-variable-name">stack</span>;                <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#22522;&#65311;</span>
-  <span class="org-type">CallInfo</span> *<span class="org-variable-name">end_ci</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#25351;&#21521; callinfo &#25968;&#32452;&#30340;&#26368;&#21518;</span>
-  <span class="org-type">CallInfo</span> *<span class="org-variable-name">base_ci</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">callinfo &#25968;&#32452;&#30340;&#24320;&#22987;</span>
-  <span class="org-type">int</span> <span class="org-variable-name">stacksize</span>;              <span class="org-comment-delimiter">// </span><span class="org-comment">&#26632;&#22823;&#23567;</span>
-  <span class="org-type">int</span> <span class="org-variable-name">size_ci</span>;                <span class="org-comment-delimiter">// </span><span class="org-comment">callinfo &#25968;&#32452;&#22823;&#23567;</span>
-  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">nCcalls</span>;     <span class="org-comment-delimiter">// </span><span class="org-comment">&#23884;&#22871;&#20989;&#25968;&#35843;&#29992;&#30340;&#20010;&#25968;&#65311;&#65288;&#25511;&#21046; LL 1 &#36807;&#31243;&#20013;&#36882;&#24402;&#23618;&#25968;&#65292;enterlevel, leavelevel&#65289;</span>
-  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">baseCcalls</span>;  <span class="org-comment-delimiter">// </span><span class="org-comment">&#21327;&#31243; resume &#26102;&#65311;</span>
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">hookmask</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
-  <span class="org-type">lu_byte</span> <span class="org-variable-name">allowhook</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
-  <span class="org-type">int</span> <span class="org-variable-name">basehookcount</span>;          <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
-  <span class="org-type">int</span> <span class="org-variable-name">hookcount</span>;              <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
-  <span class="org-type">lua_Hook</span> <span class="org-variable-name">hook</span>;              <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
-  <span class="org-type">TValue</span> <span class="org-variable-name">l_gt</span>;                <span class="org-comment-delimiter">// </span><span class="org-comment">&#20840;&#23616;&#34920;&#65311;</span>
-  <span class="org-type">TValue</span> <span class="org-variable-name">env</span>;                 <span class="org-comment-delimiter">// </span><span class="org-comment">&#20020;&#26102;&#23384;&#20648;&#29615;&#22659;&#65311;</span>
-  <span class="org-type">GCObject</span> *<span class="org-variable-name">openupval</span>;        <span class="org-comment-delimiter">// </span><span class="org-comment">upvalue &#30340;&#38142;&#34920;&#65311;</span>
-  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;           <span class="org-comment-delimiter">// </span><span class="org-comment">&#65311;</span>
-  <span class="org-keyword">struct</span> <span class="org-type">lua_longjmp</span> *<span class="org-variable-name">errorJmp</span>; <span class="org-comment-delimiter">// </span><span class="org-comment">&#38169;&#35823;&#22238;&#35843;&#65311;</span>
-  <span class="org-type">ptrdiff_t</span> <span class="org-variable-name">errfunc</span>;            <span class="org-comment-delimiter">// </span><span class="org-comment">&#29992;&#26632;&#32034;&#24341;&#34920;&#31034;&#30340; error handling &#20989;&#25968;&#65311;</span>
-};
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>lobject.h</label><pre class="src src-C"><span class="linenr">228: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">229: </span><span class="org-comment">** Function Prototypes</span>
+<span class="linenr">230: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">231: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">Proto</span> {
+<span class="linenr">232: </span>  CommonHeader;
+<span class="linenr">233: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">k</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">constants used by the function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">234: </span>  <span class="org-type">Instruction</span> *<span class="org-variable-name">code</span>;
+<span class="linenr">235: </span>  <span class="org-keyword">struct</span> <span class="org-type">Proto</span> **<span class="org-variable-name">p</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">functions defined inside the function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">236: </span>  <span class="org-type">int</span> *<span class="org-variable-name">lineinfo</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">map from opcodes to source lines</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">237: </span>  <span class="org-keyword">struct</span> <span class="org-type">LocVar</span> *<span class="org-variable-name">locvars</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">information about local variables</span><span class="org-comment-delimiter"> */</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>llimits.h</label><pre class="src src-C"><span class="linenr">84: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">85: </span><span class="org-comment">** type for virtual-machine instructions</span>
+<span class="linenr">86: </span><span class="org-comment">** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h)</span>
+<span class="linenr">87: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">88: </span><span class="org-keyword">typedef</span> <span class="org-type">lu_int32</span> <span class="org-type">Instruction</span>;
+</pre>
+</div>
+
+<p>
+Proto.code 是指令数组，索引从 0 开始，存储了所有生成的指令。
+</p>
+
+<p>
+vm 在执行的时候，内部存在一个 pc 指针，指向当前要执行指令。
+</p>
+
+<p>
+这个 pc 和代码生成阶段的 pc 是完全不同的，代码生成阶段的 pc 用来标识生成指令的下一个索引，
+而 vm 在运行阶段的 pc 是一个指针。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lvm.c</label><pre class="src src-C"><span class="linenr">377: </span><span class="org-type">void</span> <span class="org-function-name">luaV_execute</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nexeccalls</span>) {
+<span class="linenr">378: </span>  <span class="org-type">LClosure</span> *<span class="org-variable-name">cl</span>;
+<span class="linenr">379: </span>  <span class="org-type">StkId</span> <span class="org-variable-name">base</span>;
+<span class="linenr">380: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">k</span>;
+<span class="linenr">381: </span>  <span class="org-keyword">const</span> <span class="org-type">Instruction</span> *<span class="org-variable-name">pc</span>;
 </pre>
 </div>
 </div>
 </div>
 
-<div id="outline-container-org00326c9" class="outline-2">
-<h2 id="org00326c9"><span class="section-number-2">2</span> model</h2>
-<div class="outline-text-2" id="text-2">
+<div id="outline-container-org2247622" class="outline-3">
+<h3 id="org2247622"><span class="section-number-3">1.2</span> kst</h3>
+<div class="outline-text-3" id="text-1-2">
 <p>
-virtual machine
+k 表在分析阶段，收集了所有常量，并提供索引供指令使用。
 </p>
 
 <p>
-stack
-TValue &amp; StkId
+所以在执行指令的时候，需要 k 表的配合来引用常量，vm 中直接用 <code>TValue *k</code> 引用 Proto 中的 k 表。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lvm.c</label><pre class="src src-C"><span class="linenr">377: </span><span class="org-type">void</span> <span class="org-function-name">luaV_execute</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nexeccalls</span>) {
+<span class="linenr">378: </span>  <span class="org-type">LClosure</span> *<span class="org-variable-name">cl</span>;
+<span class="linenr">379: </span>  <span class="org-type">StkId</span> <span class="org-variable-name">base</span>;
+<span class="linenr">380: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">k</span>;
+<span class="linenr">381: </span>  <span class="org-keyword">const</span> <span class="org-type">Instruction</span> *<span class="org-variable-name">pc</span>;
+<span class="linenr">382: </span> <span class="org-constant">reentry</span>:  <span class="org-comment-delimiter">/* </span><span class="org-comment">entry point</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">383: </span>  lua_assert(isLua(L-&gt;ci));
+<span class="linenr">384: </span>  pc = L-&gt;savedpc;
+<span class="linenr">385: </span>  cl = &amp;clvalue(L-&gt;ci-&gt;func)-&gt;l;
+<span class="linenr">386: </span>  base = L-&gt;base;
+<span class="linenr">387: </span>  k = cl-&gt;p-&gt;k;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgefd1b24" class="outline-3">
+<h3 id="orgefd1b24"><span class="section-number-3">1.3</span> stack</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+在代码生成阶段，parser 只能操作一个“想象”中的栈，而在 vm 中则是具体实现了它。
 </p>
 
 <p>
-ldo.c:144
+stack 的本质是一个 TValue 数组，通过 StkId 引用栈中元素。
 </p>
 
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>lobject.h</label><pre class="src src-C"><span class="linenr">193: </span><span class="org-keyword">typedef</span> <span class="org-type">TValue</span> *<span class="org-type">StkId</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">index to stack elements</span><span class="org-comment-delimiter"> */</span>
+</pre>
+</div>
+
 <p>
-stack
-stack<sub>last</sub>
-stacksize
+栈及栈的相应状态，存储在 <code>lua_State</code> 中，同 FuncState LexState 一样，
+<code>lua_State</code> 也是用于记录状态的结构，具体的说，就是用来记录线程运行时的状态。
 </p>
 
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>lstate.h</label><pre class="src src-C"><span class="linenr"> 97: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr"> 98: </span><span class="org-comment">** `per thread' state</span>
+<span class="linenr"> 99: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">100: </span><span class="org-keyword">struct</span> <span class="org-type">lua_State</span> {
+<span class="linenr">101: </span>  CommonHeader;
+<span class="linenr">102: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">status</span>;
+<span class="linenr">103: </span>  <span class="org-type">StkId</span> <span class="org-variable-name">top</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">first free slot in the stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">104: </span>  <span class="org-type">StkId</span> <span class="org-variable-name">base</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">base of current function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">105: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">l_G</span>;
+<span class="linenr">106: </span>  <span class="org-type">CallInfo</span> *<span class="org-variable-name">ci</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">call info for current function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">107: </span>  <span class="org-keyword">const</span> <span class="org-type">Instruction</span> *<span class="org-variable-name">savedpc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">`savedpc' of current function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">108: </span>  <span class="org-type">StkId</span> <span class="org-variable-name">stack_last</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">last free slot in the stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">109: </span>  <span class="org-type">StkId</span> <span class="org-variable-name">stack</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">stack base</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">110: </span>  <span class="org-type">CallInfo</span> *<span class="org-variable-name">end_ci</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">points after end of ci array</span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">111: </span>  <span class="org-type">CallInfo</span> *<span class="org-variable-name">base_ci</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">array of CallInfo's</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">112: </span>  <span class="org-type">int</span> <span class="org-variable-name">stacksize</span>;
+<span class="linenr">113: </span>  <span class="org-type">int</span> <span class="org-variable-name">size_ci</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">size of array `base_ci'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">114: </span>  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">nCcalls</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">number of nested C calls</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">115: </span>  <span class="org-type">unsigned</span> <span class="org-type">short</span> <span class="org-variable-name">baseCcalls</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">nested C calls when resuming coroutine</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">116: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">hookmask</span>;
+<span class="linenr">117: </span>  <span class="org-type">lu_byte</span> <span class="org-variable-name">allowhook</span>;
+<span class="linenr">118: </span>  <span class="org-type">int</span> <span class="org-variable-name">basehookcount</span>;
+<span class="linenr">119: </span>  <span class="org-type">int</span> <span class="org-variable-name">hookcount</span>;
+<span class="linenr">120: </span>  <span class="org-type">lua_Hook</span> <span class="org-variable-name">hook</span>;
+<span class="linenr">121: </span>  <span class="org-type">TValue</span> <span class="org-variable-name">l_gt</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">table of globals</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">122: </span>  <span class="org-type">TValue</span> <span class="org-variable-name">env</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">temporary place for environments</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">123: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">openupval</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">list of open upvalues in this stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">124: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">gclist</span>;
+<span class="linenr">125: </span>  <span class="org-keyword">struct</span> <span class="org-type">lua_longjmp</span> *<span class="org-variable-name">errorJmp</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current error recover point</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">126: </span>  <span class="org-type">ptrdiff_t</span> <span class="org-variable-name">errfunc</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current error handling function (stack index)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">127: </span>};
+</pre>
+</div>
+
 <p>
-EXTRA<sub>STACK</sub>
-1
+其中
 </p>
+<ul class="org-ul">
+<li><code>lu_byte status</code> ，线程状态</li>
+<li><code>StkId top</code> ，函数调用时的栈顶指针</li>
+<li><code>StkId base</code> ，函数调用时的栈基指针</li>
+<li><code>global_State *l_G</code> ，指向 global state</li>
+<li><code>CallInfo *ci</code> ，当前 CallInfo</li>
+<li><code>const Instruction *savedpc</code> ，暂存指令位置</li>
+<li><code>StkId stack_last</code> ，栈空间的最后</li>
+<li><code>StkId stack</code> ，栈指针</li>
+<li><code>CallInfo *end_ci</code> ，CallInfo 数组的最后</li>
+<li><code>CallInfo *base_ci</code> ，CallInfo 数组的开始</li>
+<li><code>int statcksize</code> ，栈空间大小</li>
+<li><code>int size_ci</code> ，CallInfo 数组的大小</li>
+<li><code>TValue l_gt</code> ，Gbl 表</li>
+<li><code>TValue env</code> ，临时存储环境</li>
+</ul>
 
 <p>
-relations
-</p>
-
-
-
-<p>
-pc
-</p>
-
-
-
-<p>
-ci
-</p>
-
-<p>
-base<sub>ci</sub>
-size<sub>ci</sub>
-end<sub>ci</sub>
-</p>
-
-<p>
-ldo.c:169 157
+至于 CallInfo，在后续函数调用章节再讲解。
 </p>
 </div>
 </div>
 
+<div id="outline-container-org5804ecf" class="outline-3">
+<h3 id="org5804ecf"><span class="section-number-3">1.4</span> gbl</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+Gbl 表用于记录 lua 线程的全局变量，存储在 <code>lua_State.l_gt</code> 中，
+是一个 table 结构。
+</p>
 
+<p>
+setglobal/getglobal 指令就作用于这里。
+</p>
+</div>
+</div>
 
+<div id="outline-container-org82b8429" class="outline-3">
+<h3 id="org82b8429"><span class="section-number-3">1.5</span> upvalue</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+upvalue 是一个数组，元素为 <code>UpVal *</code> ，存在于每一个 closure 中。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>lobject.h</label><pre class="src src-C"><span class="linenr">302: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">LClosure</span> {
+<span class="linenr">303: </span>  ClosureHeader;
+<span class="linenr">304: </span>  <span class="org-keyword">struct</span> <span class="org-type">Proto</span> *<span class="org-variable-name">p</span>;
+<span class="linenr">305: </span>  <span class="org-type">UpVal</span> *<span class="org-variable-name">upvals</span>[1];
+<span class="linenr">306: </span>} <span class="org-type">LClosure</span>;
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>lobject.h</label><pre class="src src-C"><span class="linenr">270: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">271: </span><span class="org-comment">** Upvalues</span>
+<span class="linenr">272: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">273: </span>
+<span class="linenr">274: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">UpVal</span> {
+<span class="linenr">275: </span>  CommonHeader;
+<span class="linenr">276: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">v</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">points to stack or to its own value</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">277: </span>  <span class="org-keyword">union</span> {
+<span class="linenr">278: </span>    <span class="org-type">TValue</span> <span class="org-variable-name">value</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">the value (when closed)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">279: </span>    <span class="org-keyword">struct</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">double linked list (when open)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">280: </span>      <span class="org-keyword">struct</span> <span class="org-type">UpVal</span> *<span class="org-variable-name">prev</span>;
+<span class="linenr">281: </span>      <span class="org-keyword">struct</span> <span class="org-type">UpVal</span> *<span class="org-variable-name">next</span>;
+<span class="linenr">282: </span>    } <span class="org-variable-name">l</span>;
+<span class="linenr">283: </span>  } <span class="org-variable-name">u</span>;
+<span class="linenr">284: </span>} <span class="org-type">UpVal</span>;
+</pre>
+</div>
+
+<p>
+对于每一个 Proto，在执行前都会封装为 closure，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span>lvm.c</label><pre class="src src-C"><span class="linenr">723: </span><span class="org-keyword">case</span> OP_CLOSURE: {
+<span class="linenr">724: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">p</span>;
+<span class="linenr">725: </span>  <span class="org-type">Closure</span> *<span class="org-variable-name">ncl</span>;
+<span class="linenr">726: </span>  <span class="org-type">int</span> <span class="org-variable-name">nup</span>, <span class="org-variable-name">j</span>;
+<span class="linenr">727: </span>  p = cl-&gt;p-&gt;p[GETARG_Bx(i)];
+<span class="linenr">728: </span>  nup = p-&gt;nups;
+<span class="linenr">729: </span>  ncl = luaF_newLclosure(L, nup, cl-&gt;env);
+<span class="linenr">730: </span>  ncl-&gt;l.p = p;
+<span class="linenr">731: </span>  <span class="org-keyword">for</span> (j=0; j&lt;nup; j++, pc++) {
+<span class="linenr">732: </span>    <span class="org-keyword">if</span> (GET_OPCODE(*pc) == OP_GETUPVAL)
+<span class="linenr">733: </span>      ncl-&gt;l.upvals[j] = cl-&gt;upvals[GETARG_B(*pc)];
+<span class="linenr">734: </span>    <span class="org-keyword">else</span> {
+<span class="linenr">735: </span>      lua_assert(GET_OPCODE(*pc) == OP_MOVE);
+<span class="linenr">736: </span>      ncl-&gt;l.upvals[j] = luaF_findupval(L, base + GETARG_B(*pc));
+<span class="linenr">737: </span>    }
+<span class="linenr">738: </span>  }
+<span class="linenr">739: </span>  setclvalue(L, ra, ncl);
+<span class="linenr">740: </span>  Protect(luaC_checkGC(L));
+<span class="linenr">741: </span>  <span class="org-keyword">continue</span>;
+</pre>
+</div>
+
+<p>
+其中调用 <code>luaF_newLclosure</code> 来执行，其中为 upvalue 数组开辟了空间，
+数组元素是 <code>UpVal *</code> 指针类型，具体指向在运行时确定。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span>lfunc.c</label><pre class="src src-C"><span class="linenr">33: </span><span class="org-type">Closure</span> *<span class="org-function-name">luaF_newLclosure</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nelems</span>, <span class="org-type">Table</span> *<span class="org-variable-name">e</span>) {
+<span class="linenr">34: </span>  <span class="org-type">Closure</span> *<span class="org-variable-name">c</span> = cast(<span class="org-type">Closure</span> *, luaM_malloc(L, sizeLclosure(nelems)));
+<span class="linenr">35: </span>  luaC_link(L, obj2gco(c), LUA_TFUNCTION);
+<span class="linenr">36: </span>  c-&gt;l.isC = 0;
+<span class="linenr">37: </span>  c-&gt;l.env = e;
+<span class="linenr">38: </span>  c-&gt;l.nupvalues = cast_byte(nelems);
+<span class="linenr">39: </span>  <span class="org-keyword">while</span> (nelems--) c-&gt;l.upvals[nelems] = <span class="org-constant">NULL</span>;
+<span class="linenr">40: </span>  <span class="org-keyword">return</span> c;
+<span class="linenr">41: </span>}
+</pre>
+</div>
+
+<p>
+前面提到，整个文件作为一个匿名函数来分析，最终得到 Proto 交由 vm 执行，
+同样的原则，这个 Proto 在执行之前，需要封装为 closure，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 11: </span>ldo.c</label><pre class="src src-C"><span class="linenr">491: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">f_parser</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">void</span> *<span class="org-variable-name">ud</span>) {
+<span class="linenr">492: </span>  <span class="org-type">int</span> <span class="org-variable-name">i</span>;
+<span class="linenr">493: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">tf</span>;
+<span class="linenr">494: </span>  <span class="org-type">Closure</span> *<span class="org-variable-name">cl</span>;
+<span class="linenr">495: </span>  <span class="org-keyword">struct</span> <span class="org-type">SParser</span> *<span class="org-variable-name">p</span> = cast(<span class="org-keyword">struct</span> <span class="org-type">SParser</span> *, ud);
+<span class="linenr">496: </span>  <span class="org-type">int</span> <span class="org-variable-name">c</span> = luaZ_lookahead(p-&gt;z);
+<span class="linenr">497: </span>  luaC_checkGC(L);
+<span class="linenr">498: </span>  tf = ((c == LUA_SIGNATURE[0]) ? luaU_undump : luaY_parser)(L, p-&gt;z,
+<span class="linenr">499: </span>                                                             &amp;p-&gt;buff, p-&gt;name);
+<span class="linenr">500: </span>  cl = luaF_newLclosure(L, tf-&gt;nups, hvalue(gt(L)));
+<span class="linenr">501: </span>  cl-&gt;l.p = tf;
+<span class="linenr">502: </span>  <span class="org-keyword">for</span> (i = 0; i &lt; tf-&gt;nups; i++)  <span class="org-comment-delimiter">/* </span><span class="org-comment">initialize eventual upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">503: </span>    cl-&gt;l.upvals[i] = luaF_newupval(L);
+<span class="linenr">504: </span>  setclvalue(L, L-&gt;top, cl);
+<span class="linenr">505: </span>  incr_top(L);
+<span class="linenr">506: </span>}
+</pre>
+</div>
+</div>
+</div>
+</div>
 
 <div id="outline-container-org7585593" class="outline-2">
-<h2 id="org7585593"><span class="section-number-2">3</span> internal</h2>
-<div class="outline-text-2" id="text-3">
-<p>
-lua 中各种机制的实现方式
-</p>
-
-<p>
-以示例代码的方式来探索
-</p>
-
-<p>
-多数在绘制图纸的时候，已经得到了解决，虚拟中和实际运行时差别不大
-</p>
-
-
-
-<p>
-continue 不作用于 switch 语句
-</p>
+<h2 id="org7585593"><span class="section-number-2">2</span> internal</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-orgb4cc1ad" class="outline-3">
+<h3 id="orgb4cc1ad"><span class="section-number-3">2.1</span> the loop</h3>
 </div>
 
+
+
 <div id="outline-container-org190d8a9" class="outline-3">
-<h3 id="org190d8a9"><span class="section-number-3">3.1</span> closure</h3>
-<div class="outline-text-3" id="text-3-1">
+<h3 id="org190d8a9"><span class="section-number-3">2.2</span> closure</h3>
+<div class="outline-text-3" id="text-2-2">
 <p>
 store proto to closure
 </p>
@@ -367,8 +560,8 @@ and save to stack
 
 
 <div id="outline-container-orgc1d8408" class="outline-4">
-<h4 id="orgc1d8408"><span class="section-number-4">3.1.1</span> upval</h4>
-<div class="outline-text-4" id="text-3-1-1">
+<h4 id="orgc1d8408"><span class="section-number-4">2.2.1</span> upval</h4>
+<div class="outline-text-4" id="text-2-2-1">
 <p>
 open and close
 </p>
@@ -403,20 +596,20 @@ pp 是指向 p 中 next 成员的指针
 
 
 <div id="outline-container-org34d3256" class="outline-3">
-<h3 id="org34d3256"><span class="section-number-3">3.2</span> call</h3>
+<h3 id="org34d3256"><span class="section-number-3">2.3</span> call</h3>
 </div>
 
 <div id="outline-container-orge187d83" class="outline-3">
-<h3 id="orge187d83"><span class="section-number-3">3.3</span> return</h3>
+<h3 id="orge187d83"><span class="section-number-3">2.4</span> return</h3>
 </div>
 
 <div id="outline-container-orgf9ae17b" class="outline-3">
-<h3 id="orgf9ae17b"><span class="section-number-3">3.4</span> tailcall</h3>
+<h3 id="orgf9ae17b"><span class="section-number-3">2.5</span> tailcall</h3>
 </div>
 
 <div id="outline-container-org4d297fb" class="outline-3">
-<h3 id="org4d297fb"><span class="section-number-3">3.5</span> env global</h3>
-<div class="outline-text-3" id="text-3-5">
+<h3 id="org4d297fb"><span class="section-number-3">2.6</span> env global</h3>
+<div class="outline-text-3" id="text-2-6">
 <p>
 既然在 compile 的时候，已经进行了变量的查找
 </p>
@@ -435,8 +628,8 @@ env 又如何在运行时发挥作用呢？
 
 
 <div id="outline-container-orga2cd2ee" class="outline-3">
-<h3 id="orga2cd2ee"><span class="section-number-3">3.6</span> args</h3>
-<div class="outline-text-3" id="text-3-6">
+<h3 id="orga2cd2ee"><span class="section-number-3">2.7</span> args</h3>
+<div class="outline-text-3" id="text-2-7">
 <p>
 def and pass
 </p>
@@ -449,22 +642,23 @@ vararg
 
 
 <div id="outline-container-org9ac197c" class="outline-3">
-<h3 id="org9ac197c"><span class="section-number-3">3.7</span> metatable</h3>
+<h3 id="org9ac197c"><span class="section-number-3">2.8</span> metatable</h3>
 </div>
 
 
 <div id="outline-container-org900f1c1" class="outline-3">
-<h3 id="org900f1c1"><span class="section-number-3">3.8</span> c closure?</h3>
+<h3 id="org900f1c1"><span class="section-number-3">2.9</span> c closure?</h3>
 </div>
 </div>
 
+
 <div id="outline-container-org4f910c2" class="outline-2">
-<h2 id="org4f910c2"><span class="section-number-2">4</span> practice</h2>
+<h2 id="org4f910c2"><span class="section-number-2">3</span> practice</h2>
 </div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-14 四 17:51</p>
+<p>Updated: 2021-01-15 五 10:54</p>
 <p>Created: 2021-01-14 四 17:50</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

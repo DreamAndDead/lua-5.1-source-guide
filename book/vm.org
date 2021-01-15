@@ -3,94 +3,254 @@
 #+TITLE: vm
 #+DATE: <2021-01-14 四 17:50>
 
+代码生成完成之后，整个文件分析成为一个单独的 Proto，交由 vm 来执行。
 
-生成图纸之后，按图纸来执行
+和 parser 相比，vm 更容易琢磨，因为它只会从 Proto 中取出字节码，
+并按照指令的含义一行一行来执行。
 
-完全是 proto 内部的东西
-
-
-* state
-
-G
-L
-
-#+begin_src c
-struct lua_State {
-  CommonHeader;
-  lu_byte status;             // 状态？可能用于协程中
-  StkId top;                  // 栈顶指针，（第一个空的位置）
-  StkId base;                 // 栈基指针
-  global_State *l_G;          // 指向 global state
-  CallInfo *ci;               // 当前函数的 callinfo
-  const Instruction *savedpc; // savedpc？
-  StkId stack_last;           // 栈的最后？
-  StkId stack;                // 栈基？
-  CallInfo *end_ci;           // 指向 callinfo 数组的最后
-  CallInfo *base_ci;          // callinfo 数组的开始
-  int stacksize;              // 栈大小
-  int size_ci;                // callinfo 数组大小
-  unsigned short nCcalls;     // 嵌套函数调用的个数？（控制 LL 1 过程中递归层数，enterlevel, leavelevel）
-  unsigned short baseCcalls;  // 协程 resume 时？
-  lu_byte hookmask;           // ？
-  lu_byte allowhook;          // ？
-  int basehookcount;          // ？
-  int hookcount;              // ？
-  lua_Hook hook;              // ？
-  TValue l_gt;                // 全局表？
-  TValue env;                 // 临时存储环境？
-  GCObject *openupval;        // upvalue 的链表？
-  GCObject *gclist;           // ？
-  struct lua_longjmp *errorJmp; // 错误回调？
-  ptrdiff_t errfunc;            // 用栈索引表示的 error handling 函数？
-};
-#+end_src
+所以各种指令的执行过程不是本章的重点，只需要参考 opcode 相应的注释就不难理解，
+本章更关注 vm 内部各个组件的协同过程。
 
 * model
 
-virtual machine
+之前在 opcode 章节简单提到了 vm 内部的模型，这里来详细讨论各个部分。
 
-stack
-TValue & StkId
+#+begin_src dot :file vm-model.png
+digraph {
+	code[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">pc 1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-ldo.c:144
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-stack
-stack_last
-stacksize
+	k[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-EXTRA_STACK
-1
+	gbl[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="white">                 </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">        </td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
-relations
+	upval[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="0" bgcolor="white">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white">0</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+              </table>
+	      >, shape=none];
 
+	subgraph cluster_0 {
+		code;
+		label="Code";
+	}
+	subgraph cluster_1 {
+		stack;
+		label="Stack";
+	}
+	subgraph cluster_2 {
+		k;
+		label="Kst";
+	}
+	subgraph cluster_3 {
+		gbl;
+		label="Gbl";
+	}
+	subgraph cluster_4 {
+		upval;
+		label="UpValue";
+	}
 
+	
+}
+#+end_src
 
-pc
+#+RESULTS:
+[[file:vm-model.png]]
 
+** code
 
+vm 所执行的代码来自 parser，即存储在 Proto 中。
 
-ci
+#+caption: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-238"
 
-base_ci
-size_ci
-end_ci
+#+caption: llimits.h
+#+include: ../lua-5.1.5/src/llimits.h src C -n 84 :lines "84-89"
 
-ldo.c:169 157
+Proto.code 是指令数组，索引从 0 开始，存储了所有生成的指令。
 
+vm 在执行的时候，内部存在一个 pc 指针，指向当前要执行指令。
 
+这个 pc 和代码生成阶段的 pc 是完全不同的，代码生成阶段的 pc 用来标识生成指令的下一个索引，
+而 vm 在运行阶段的 pc 是一个指针。
 
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 377 :lines "377-382"
+
+** kst
+
+k 表在分析阶段，收集了所有常量，并提供索引供指令使用。
+
+所以在执行指令的时候，需要 k 表的配合来引用常量，vm 中直接用 =TValue *k= 引用 Proto 中的 k 表。
+
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 377 :lines "377-388"
+   
+** stack
+
+在代码生成阶段，parser 只能操作一个“想象”中的栈，而在 vm 中则是具体实现了它。
+
+stack 的本质是一个 TValue 数组，通过 StkId 引用栈中元素。
+
+#+caption: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src C -n 193 :lines "193-194"
+
+栈及栈的相应状态，存储在 =lua_State= 中，同 FuncState LexState 一样，
+=lua_State= 也是用于记录状态的结构，具体的说，就是用来记录线程运行时的状态。
+
+#+caption: lstate.h
+#+include: ../lua-5.1.5/src/lstate.h src C -n 97 :lines "97-128"
+
+其中
+- =lu_byte status= ，线程状态
+- =StkId top= ，函数调用时的栈顶指针
+- =StkId base= ，函数调用时的栈基指针
+- =global_State *l_G= ，指向 global state
+- =CallInfo *ci= ，当前 CallInfo
+- =const Instruction *savedpc= ，暂存指令位置
+- =StkId stack_last= ，栈空间的最后
+- =StkId stack= ，栈指针
+- =CallInfo *end_ci= ，CallInfo 数组的最后
+- =CallInfo *base_ci= ，CallInfo 数组的开始
+- =int statcksize= ，栈空间大小
+- =int size_ci= ，CallInfo 数组的大小
+- =TValue l_gt= ，Gbl 表
+- =TValue env= ，临时存储环境
+
+至于 CallInfo，在后续函数调用章节再讲解。
+
+** gbl
+
+Gbl 表用于记录 lua 线程的全局变量，存储在 =lua_State.l_gt= 中，
+是一个 table 结构。
+
+setglobal/getglobal 指令就作用于这里。
+
+** upvalue
+
+upvalue 是一个数组，元素为 =UpVal *= ，存在于每一个 closure 中。
+
+#+caption: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src C -n 302 :lines "302-307"
+
+#+caption: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src C -n 270 :lines "270-285"
+
+对于每一个 Proto，在执行前都会封装为 closure，
+
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 723 :lines "723-742"
+
+其中调用 =luaF_newLclosure= 来执行，其中为 upvalue 数组开辟了空间，
+数组元素是 =UpVal *= 指针类型，具体指向在运行时确定。
+
+#+caption: lfunc.c
+#+include: ../lua-5.1.5/src/lfunc.c src C -n 33 :lines "33-42"
+
+前面提到，整个文件作为一个匿名函数来分析，最终得到 Proto 交由 vm 执行，
+同样的原则，这个 Proto 在执行之前，需要封装为 closure，
+
+#+caption: ldo.c
+#+include: ../lua-5.1.5/src/ldo.c src C -n 491 :lines "491-507"
 
 * internal
 
-lua 中各种机制的实现方式
-
-以示例代码的方式来探索
-
-多数在绘制图纸的时候，已经得到了解决，虚拟中和实际运行时差别不大
+** the loop
 
 
-
-continue 不作用于 switch 语句
 
 ** closure
 
@@ -150,6 +310,7 @@ vararg
 
 
 ** c closure?
+
 
 * practice
 
