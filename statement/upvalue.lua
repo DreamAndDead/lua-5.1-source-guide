@@ -9,5 +9,13 @@ local function f()
       b = 20
       a = 10
    end
+
+   g()
+
+   return g
 end
+
+local h = f()
+
+h()
 

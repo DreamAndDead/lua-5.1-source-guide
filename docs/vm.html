@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-15 五 15:50 -->
+<!-- 2021-01-15 五 17:49 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>vm</title>
@@ -242,7 +242,7 @@
 </p>
 
 
-<div id="org9b6c309" class="figure">
+<div id="org7db8762" class="figure">
 <p><img src="vm-model.png" alt="vm-model.png">
 </p>
 </div>
@@ -770,7 +770,7 @@ f(1, 2, 3)
 </pre>
 </div>
 
-<pre class="example" id="orgdca51fd">
+<pre class="example" id="org071066d">
 ; function [0] definition (level 1)
 ; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
 .function  0 0 2 5
@@ -804,7 +804,7 @@ f(1, 2, 3)
 </p>
 
 
-<div id="org857f720" class="figure">
+<div id="orgaa6dd79" class="figure">
 <p><img src="vm-stack-call.png" alt="vm-stack-call.png">
 </p>
 </div>
@@ -828,7 +828,7 @@ L-&gt;base L-&gt;top 指定的区域。
 </p>
 
 
-<div id="orge6f1c1c" class="figure">
+<div id="org85755c7" class="figure">
 <p><img src="vm-stack-call-1.png" alt="vm-stack-call-1.png">
 </p>
 </div>
@@ -927,7 +927,7 @@ return 的过程和 call 相反，收集相应的返回值，并将值从 ci-&gt
 </p>
 
 
-<div id="org7500acd" class="figure">
+<div id="orgdf9a695" class="figure">
 <p><img src="vm-stack-call-2.png" alt="vm-stack-call-2.png">
 </p>
 </div>
@@ -988,68 +988,265 @@ ci 回退到上层，不收集返回值。
 </div>
 </div>
 
-<div id="outline-container-orgf9ae17b" class="outline-3">
-<h3 id="orgf9ae17b"><span class="section-number-3">3.4</span> tailcall</h3>
-</div>
-
-<div id="outline-container-orgca311ff" class="outline-3">
-<h3 id="orgca311ff"><span class="section-number-3">3.5</span> env</h3>
-<div class="outline-text-3" id="text-3-5">
-<p>
-作用在 setglobal getglobal 两条指令上
-为 global 概念提供了空间
-</p>
-</div>
-</div>
-
-
 <div id="outline-container-orgc1d8408" class="outline-3">
-<h3 id="orgc1d8408"><span class="section-number-3">3.6</span> upval</h3>
-<div class="outline-text-3" id="text-3-6">
+<h3 id="orgc1d8408"><span class="section-number-3">3.4</span> upval</h3>
+<div class="outline-text-3" id="text-3-4">
 <p>
-open and close
+之前已经零碎的提到 upvalue 的几个方面，
+本节来详细讨论 vm 中是如何实现 upvalue 的。
 </p>
 
 <p>
-getupval, just ref pointer
+先来看一段示例，
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">a</span>
+
+<span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">f</span>()
+   <span class="org-keyword">local</span> <span class="org-variable-name">b</span>
+
+   <span class="org-keyword">local</span> <span class="org-keyword">function</span> <span class="org-function-name">g</span>()
+      b = 20
+      a = 10
+   <span class="org-keyword">end</span>
+
+   g()
+
+   <span class="org-keyword">return</span> g
+<span class="org-keyword">end</span>
+
+<span class="org-keyword">local</span> <span class="org-variable-name">h</span> = f()
+
+h()
+</pre>
+</div>
+
+<p>
+a 和 b 都是函数 g 的 upval。
 </p>
 
 <p>
-move, using luaF<sub>findupval</sub> lfunc.c:53
+当函数 g 在 f 内部第一次调用时，修改了 a 和 b 值，此时 a 和 b 在栈上都是存活的，
+因为 a 是 chunk 的局部变量，b 是 f 的局部变量。
 </p>
 
 <p>
-71 72 行太隐晦了
+当调用 f，将 g 赋值与 h 时，此时调用 h，a 依然是存活的，但是由于离开了 f，b 在栈上已经被回收。
 </p>
 
 <p>
-pp 是 &amp;p-&gt;next
-pp 是指向 p 中 next 成员的指针
+此时 g 如何访问到 upvalue b 呢？
 </p>
 
 <p>
-所以 *pp = obj2gco(uv) 的时候，修改了 p next 成员的值
+lua 用一种灵巧的方法来解决这个问题。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 20: </span>lobject.h</label><pre class="src src-C"><span class="linenr">270: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">271: </span><span class="org-comment">** Upvalues</span>
+<span class="linenr">272: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">273: </span>
+<span class="linenr">274: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">UpVal</span> {
+<span class="linenr">275: </span>  CommonHeader;
+<span class="linenr">276: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">v</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">points to stack or to its own value</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">277: </span>  <span class="org-keyword">union</span> {
+<span class="linenr">278: </span>    <span class="org-type">TValue</span> <span class="org-variable-name">value</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">the value (when closed)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">279: </span>    <span class="org-keyword">struct</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">double linked list (when open)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">280: </span>      <span class="org-keyword">struct</span> <span class="org-type">UpVal</span> *<span class="org-variable-name">prev</span>;
+<span class="linenr">281: </span>      <span class="org-keyword">struct</span> <span class="org-type">UpVal</span> *<span class="org-variable-name">next</span>;
+<span class="linenr">282: </span>    } <span class="org-variable-name">l</span>;
+<span class="linenr">283: </span>  } <span class="org-variable-name">u</span>;
+<span class="linenr">284: </span>} <span class="org-type">UpVal</span>;
+</pre>
+</div>
+
+<p>
+从注释中可以看到，upval 有两种状态，open 和 closed。
 </p>
 
 <p>
-在这里将 openupval 按 level 顺序链接起来！
+其中 v 指向 upval 所引用的值，当状态为 closed 时，指向自身的 u.value；
+当状态为 open 时，指向栈中元素。
 </p>
+
+
+<p>
+比如上面的示例代码，当在函数 f 中调用 g 时，a 和 b 在栈上都是存活的，
+相应的 upval 处于 open 状态，分别指向栈中对应的地址。
+</p>
+
+
+<div id="org4d7bb82" class="figure">
+<p><img src="vm-upval-open.png" alt="vm-upval-open.png">
+</p>
+</div>
+
+<p>
+当离开函数 f 调用 h 时，已经离开了函数 f 的作用域，b 不再于栈上存活，
+于是进行 close 操作，将 b 的值拷贝到 u.value，并修改 v 的指向。
+</p>
+
+<p>
+这里的操作对于 l-&gt;upvals 是完全透明的，因为其只通过 v 来访问 upval 的值。
+</p>
+
+
+<div id="org4b5d7de" class="figure">
+<p><img src="vm-upval-close.png" alt="vm-upval-close.png">
+</p>
+</div>
+
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 21: </span>lvm.c</label><pre class="src src-C"><span class="linenr">723: </span><span class="org-keyword">case</span> OP_CLOSURE: {
+<span class="linenr">724: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">p</span>;
+<span class="linenr">725: </span>  <span class="org-type">Closure</span> *<span class="org-variable-name">ncl</span>;
+<span class="linenr">726: </span>  <span class="org-type">int</span> <span class="org-variable-name">nup</span>, <span class="org-variable-name">j</span>;
+<span class="linenr">727: </span>  p = cl-&gt;p-&gt;p[GETARG_Bx(i)];
+<span class="linenr">728: </span>  nup = p-&gt;nups;
+<span class="linenr">729: </span>  ncl = luaF_newLclosure(L, nup, cl-&gt;env);
+<span class="linenr">730: </span>  ncl-&gt;l.p = p;
+<span class="linenr">731: </span>  <span class="org-keyword">for</span> (j=0; j&lt;nup; j++, pc++) {
+<span class="linenr">732: </span>    <span class="org-keyword">if</span> (GET_OPCODE(*pc) == OP_GETUPVAL)
+<span class="linenr">733: </span>      ncl-&gt;l.upvals[j] = cl-&gt;upvals[GETARG_B(*pc)];
+<span class="linenr">734: </span>    <span class="org-keyword">else</span> {
+<span class="linenr">735: </span>      lua_assert(GET_OPCODE(*pc) == OP_MOVE);
+<span class="linenr">736: </span>      ncl-&gt;l.upvals[j] = luaF_findupval(L, base + GETARG_B(*pc));
+<span class="linenr">737: </span>    }
+<span class="linenr">738: </span>  }
+<span class="linenr">739: </span>  setclvalue(L, ra, ncl);
+<span class="linenr">740: </span>  Protect(luaC_checkGC(L));
+<span class="linenr">741: </span>  <span class="org-keyword">continue</span>;
+<span class="linenr">742: </span>}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 22: </span>lfunc.c</label><pre class="src src-C"><span class="linenr">53: </span><span class="org-type">UpVal</span> *<span class="org-function-name">luaF_findupval</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">StkId</span> <span class="org-variable-name">level</span>) {
+<span class="linenr">54: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr">55: </span>  <span class="org-type">GCObject</span> **<span class="org-variable-name">pp</span> = &amp;L-&gt;openupval;
+<span class="linenr">56: </span>  <span class="org-type">UpVal</span> *<span class="org-variable-name">p</span>;
+<span class="linenr">57: </span>  <span class="org-type">UpVal</span> *<span class="org-variable-name">uv</span>;
+<span class="linenr">58: </span>  <span class="org-keyword">while</span> (*pp != <span class="org-constant">NULL</span> &amp;&amp; (p = ngcotouv(*pp))-&gt;v &gt;= level) {
+<span class="linenr">59: </span>    lua_assert(p-&gt;v != &amp;p-&gt;u.value);
+<span class="linenr">60: </span>    <span class="org-keyword">if</span> (p-&gt;v == level) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">found a corresponding upvalue?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">61: </span>      <span class="org-keyword">if</span> (isdead(g, obj2gco(p)))  <span class="org-comment-delimiter">/* </span><span class="org-comment">is it dead?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">62: </span>        changewhite(obj2gco(p));  <span class="org-comment-delimiter">/* </span><span class="org-comment">ressurect it</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">63: </span>      <span class="org-keyword">return</span> p;
+<span class="linenr">64: </span>    }
+<span class="linenr">65: </span>    pp = &amp;p-&gt;next;
+<span class="linenr">66: </span>  }
+<span class="linenr">67: </span>  uv = luaM_new(L, UpVal);  <span class="org-comment-delimiter">/* </span><span class="org-comment">not found: create a new one</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">68: </span>  uv-&gt;tt = LUA_TUPVAL;
+<span class="linenr">69: </span>  uv-&gt;marked = luaC_white(g);
+<span class="linenr">70: </span>  uv-&gt;v = level;  <span class="org-comment-delimiter">/* </span><span class="org-comment">current value lives in the stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">71: </span>  uv-&gt;next = *pp;  <span class="org-comment-delimiter">/* </span><span class="org-comment">chain it in the proper position</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">72: </span>  *pp = obj2gco(uv);
+<span class="linenr">73: </span>  uv-&gt;u.l.prev = &amp;g-&gt;uvhead;  <span class="org-comment-delimiter">/* </span><span class="org-comment">double link it in `uvhead' list</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">74: </span>  uv-&gt;u.l.next = g-&gt;uvhead.u.l.next;
+<span class="linenr">75: </span>  uv-&gt;u.l.next-&gt;u.l.prev = uv;
+<span class="linenr">76: </span>  g-&gt;uvhead.u.l.next = uv;
+<span class="linenr">77: </span>  lua_assert(uv-&gt;u.l.next-&gt;u.l.prev == uv &amp;&amp; uv-&gt;u.l.prev-&gt;u.l.next == uv);
+<span class="linenr">78: </span>  <span class="org-keyword">return</span> uv;
+<span class="linenr">79: </span>}
+</pre>
+</div>
+
+<p>
+其中 closure 之后的 move 指令，意味着 upval 处于 open 状态，upvale 需要去链接到栈。
+而 getupval 指令，就直接引用上层 closure 相应的 upval 指向的地址就好。
+</p>
+
+<p>
+L-&gt;openupval 是一个单向链表，其中链接着所有 open 状态的 upval，按栈的高地址到低地址的顺序排列。
+</p>
+
+<p>
+注意 line 71 72，pp 是 &amp;p-&gt;next，当 <code>*pp = obj2gco(uv)</code>  的时候，修改了 next 指针的值，
+得以将新的 upval 插入到链表中。
+</p>
+
+<p>
+至于 close 操作也不难理解， <code>luaF_close</code> 将所有高于 level 栈地址的 open upval 全部变成 close 状态，
+即修改 v 指针指向自身，并从 L-&gt;openupval 中脱离。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 23: </span>lfunc.c</label><pre class="src src-C"><span class="linenr"> 96: </span><span class="org-type">void</span> <span class="org-function-name">luaF_close</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">StkId</span> <span class="org-variable-name">level</span>) {
+<span class="linenr"> 97: </span>  <span class="org-type">UpVal</span> *<span class="org-variable-name">uv</span>;
+<span class="linenr"> 98: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr"> 99: </span>  <span class="org-keyword">while</span> (L-&gt;openupval != <span class="org-constant">NULL</span> &amp;&amp; (uv = ngcotouv(L-&gt;openupval))-&gt;v &gt;= level) {
+<span class="linenr">100: </span>    <span class="org-type">GCObject</span> *<span class="org-variable-name">o</span> = obj2gco(uv);
+<span class="linenr">101: </span>    lua_assert(<span class="org-negation-char">!</span>isblack(o) &amp;&amp; uv-&gt;v != &amp;uv-&gt;u.value);
+<span class="linenr">102: </span>    L-&gt;openupval = uv-&gt;next;  <span class="org-comment-delimiter">/* </span><span class="org-comment">remove from `open' list</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">103: </span>    <span class="org-keyword">if</span> (isdead(g, o))
+<span class="linenr">104: </span>      luaF_freeupval(L, uv);  <span class="org-comment-delimiter">/* </span><span class="org-comment">free upvalue</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">105: </span>    <span class="org-keyword">else</span> {
+<span class="linenr">106: </span>      unlinkupval(uv);
+<span class="linenr">107: </span>      setobj(L, &amp;uv-&gt;u.value, uv-&gt;v);
+<span class="linenr">108: </span>      uv-&gt;v = &amp;uv-&gt;u.value;  <span class="org-comment-delimiter">/* </span><span class="org-comment">now current value lives here</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">109: </span>      luaC_linkupval(L, uv);  <span class="org-comment-delimiter">/* </span><span class="org-comment">link upvalue into `gcroot' list</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">110: </span>    }
+<span class="linenr">111: </span>  }
+<span class="linenr">112: </span>}
+</pre>
 </div>
 </div>
 </div>
-
-<div id="outline-container-org4f910c2" class="outline-2">
-<h2 id="org4f910c2"><span class="section-number-2">4</span> practice</h2>
 </div>
-
 
 <div id="outline-container-org0e73d33" class="outline-2">
-<h2 id="org0e73d33"><span class="section-number-2">5</span> practice</h2>
+<h2 id="org0e73d33"><span class="section-number-2">4</span> practice</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+上面只提到了和 closure 相关的字节码逻辑，读者可以自行输入其它 lua 代码示例，
+探索其它字节码的实现。
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">lvm.h</td>
+<td class="org-left">仔细阅读</td>
+</tr>
+
+<tr>
+<td class="org-left">lvm.h</td>
+<td class="org-left">仔细阅读</td>
+</tr>
+
+<tr>
+<td class="org-left">lfunc.h</td>
+<td class="org-left">仔细阅读</td>
+</tr>
+
+<tr>
+<td class="org-left">lfunc.c</td>
+<td class="org-left">仔细阅读</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 </div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-15 五 15:50</p>
+<p>Updated: 2021-01-15 五 17:48</p>
 <p>Created: 2021-01-14 四 17:50</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

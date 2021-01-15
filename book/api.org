@@ -1,6 +1,7 @@
 #+SETUPFILE: setup.org
 
-* c api
+#+TITLE: c api
+#+DATE: <2021-01-15 五 17:48>
 
 c api 和 vm 是一样的
 
@@ -50,7 +51,7 @@ getupvalue
 只了解 api.c 和 stack 相关的内容
 
 
-** category
+* category
 
 lua.h:117
 
@@ -108,7 +109,7 @@ typedef int (*lua_CFunction) (lua_State *L);
 
 c closure protocol
 
-** index
+* index
 
 idx2addr
 
@@ -128,16 +129,16 @@ lua.h:33
 
 
 
-** api list
+* api list
 
 [[http://www.lua.org/manual/5.1/manual.html#3][lua 5.1 ref]]
 
 
-** c closure?
+* c closure?
 
    
 
-** how to connect c with lua
+* how to connect c with lua
 
 - compile with lua
   - lua as lib

@@ -17,8 +17,8 @@
 | opcode         | 字节码        |     100% | [[file:opcode.org][read]]    |
 | parser         | 语法分析      |     100% | [[file:parser.org][read]]    |
 | generator      | 字节码生成    |      80% | [[file:generator.org][preview]] |
-| vm             | 虚拟机        |       5% | [[file:vm.org][preview]] |
-| c api          | 外部 api      |       0% |         |
+| vm             | 虚拟机        |      80% | [[file:vm.org][preview]] |
+| c api          | 外部 api      |       5% | [[file:api.org][preview]] |
 | lib            | 标准库        |       0% |         |
 | coroutine      | 协程结构      |       0% |         |
 | debug          | debug 模块    |       0% |         |

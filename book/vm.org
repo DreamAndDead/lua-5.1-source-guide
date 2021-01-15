@@ -627,29 +627,281 @@ ci 回退到上层，不收集返回值。
 ** TODO tailcall
     
 ** upval
-  
-open and close
 
-getupval, just ref pointer
+之前已经零碎的提到 upvalue 的几个方面，
+本节来详细讨论 vm 中是如何实现 upvalue 的。
 
-move, using luaF_findupval lfunc.c:53
+先来看一段示例，
 
-71 72 行太隐晦了
+#+begin_src lua
+local a
 
-pp 是 &p->next
-pp 是指向 p 中 next 成员的指针
+local function f()
+   local b
 
-所以 *pp = obj2gco(uv) 的时候，修改了 p next 成员的值
+   local function g()
+      b = 20
+      a = 10
+   end
 
-在这里将 openupval 按 level 顺序链接起来！
+   g()
+
+   return g
+end
+
+local h = f()
+
+h()
+#+end_src
+
+a 和 b 都是函数 g 的 upval。
+
+当函数 g 在 f 内部第一次调用时，修改了 a 和 b 值，此时 a 和 b 在栈上都是存活的，
+因为 a 是 chunk 的局部变量，b 是 f 的局部变量。
+
+当调用 f，将 g 赋值与 h 时，此时调用 h，a 依然是存活的，但是由于离开了 f，b 在栈上已经被回收。
+
+此时 g 如何访问到 upvalue b 呢？
+
+lua 用一种灵巧的方法来解决这个问题。
+
+#+caption: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src C -n 270 :lines "270-285"
+
+从注释中可以看到，upval 有两种状态，open 和 closed。
+
+其中 v 指向 upval 所引用的值，当状态为 closed 时，指向自身的 u.value；
+当状态为 open 时，指向栈中元素。
 
 
-#+CAPTION: 39 upval open and close
+比如上面的示例代码，当在函数 f 中调用 g 时，a 和 b 在栈上都是存活的，
+相应的 upval 处于 open 状态，分别指向栈中对应的地址。
 
+#+begin_src dot :file vm-upval-open.png
+digraph {
+	s[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="top">10</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>9</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>8</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>7</td><td port="b" align="middle" border="1" bgcolor="white">b</td></tr>
+	        <tr><td>6</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="base">5</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>4</td><td port="a" align="middle" border="1" bgcolor="white">a</td></tr>
+	        <tr><td>3</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>2</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>1</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="stack">0</td><td align="middle" border="1" bgcolor="white">             </td></tr>
+	      </table>
+	      >];
+	
+	u1[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="v" align="middle" border="1" bgcolor="white">v</td>
+		  <td port="u" align="middle" border="1" bgcolor="white">u.value</td>
+		  <td port="n" align="middle" border="1" bgcolor="white">next</td>
+		</tr>
+	      </table>
+	      >];
+	
+	u2[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="v" align="middle" border="1" bgcolor="white">v</td>
+		  <td port="u" align="middle" border="1" bgcolor="white">u.value</td>
+		  <td port="n" align="middle" border="1" bgcolor="white">next</td>
+		</tr>
+	      </table>
+	      >];
+
+	g[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="0" align="middle" border="1" bgcolor="white">   </td>
+		  <td align="middle" border="0" bgcolor="white">0</td>
+		</tr>
+	        <tr>
+		  <td port="1" align="middle" border="1" bgcolor="white">   </td>
+		  <td align="middle" border="0" bgcolor="white">1</td>
+		</tr>
+	      </table>
+	      >];
+
+	f[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="0" align="middle" border="1" bgcolor="white">   </td>
+		  <td align="middle" border="0" bgcolor="white">0</td>
+		</tr>
+	      </table>
+	      >];
+
+	rankdir = LR;
+
+	{rank=same; u1; u2; o;}
+	{rank=same; g; c; f; fc;}
+
+	s:b -> u1:v[dir=back];
+	s:a -> u2:v[dir=back];
+
+	u1:n -> u2:n;
+	
+	o[label="L->openupval", shape=plain];
+
+	o -> u1:n;
+
+	c[label="l->upvals(closure g)", shape=plain];
+
+	c -> g;
+
+	u1:n -> g:0[dir=back];
+	u2:n -> g:1[dir=back];
+
+	fc[label="l->upvals(closure f)", shape=plain];
+
+	fc -> f;
+
+	u2:n -> f:0[dir=back];
+	
+}
+#+end_src
+
+#+RESULTS:
+[[file:vm-upval-open.png]]
+
+当离开函数 f 调用 h 时，已经离开了函数 f 的作用域，b 不再于栈上存活，
+于是进行 close 操作，将 b 的值拷贝到 u.value，并修改 v 的指向。
+
+这里的操作对于 l->upvals 是完全透明的，因为其只通过 v 来访问 upval 的值。
+
+#+begin_src dot :file vm-upval-close.png
+digraph {
+	s[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="top">10</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>9</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>8</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>7</td><td port="b" align="middle" border="1" bgcolor="white">b</td></tr>
+	        <tr><td>6</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="base">5</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>4</td><td port="a" align="middle" border="1" bgcolor="white">a</td></tr>
+	        <tr><td>3</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>2</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>1</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="stack">0</td><td align="middle" border="1" bgcolor="white">             </td></tr>
+	      </table>
+	      >];
+	
+	u1[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="v" align="middle" border="1" bgcolor="white">v</td>
+		  <td port="u" align="middle" border="1" bgcolor="white">u.value</td>
+		  <td port="n" align="middle" border="1" bgcolor="white">next</td>
+		</tr>
+	      </table>
+	      >];
+	
+	u2[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="v" align="middle" border="1" bgcolor="white">v</td>
+		  <td port="u" align="middle" border="1" bgcolor="white">u.value</td>
+		  <td port="n" align="middle" border="1" bgcolor="white">next</td>
+		</tr>
+	      </table>
+	      >];
+
+
+	g[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="0" align="middle" border="1" bgcolor="white">   </td>
+		  <td align="middle" border="0" bgcolor="white">0</td>
+		</tr>
+	        <tr>
+		  <td port="1" align="middle" border="1" bgcolor="white">   </td>
+		  <td align="middle" border="0" bgcolor="white">1</td>
+		</tr>
+	      </table>
+	      >];
+
+	f[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="0" align="middle" border="1" bgcolor="white">   </td>
+		  <td align="middle" border="0" bgcolor="white">0</td>
+		</tr>
+	      </table>
+	      >];
+
+	rankdir = LR;
+
+	{rank=same; u1; u2; o;}
+	{rank=same; g; c; f; fc;}
+
+	c[label="l->upvals(closure g)", shape=plain];
+
+	c -> g;
+
+	u1:n -> g:0[dir=back];
+	u2:n -> g:1[dir=back];
+
+
+	u1:v -> u1:u:s;
+
+	s:a -> u2:v[dir=back];
+
+	o[label="L->openupval", shape=plain];
+
+	o -> u2:n;
+
+	fc[label="l->upvals(closure f)", shape=plain];
+
+	fc -> f;
+
+	u2:n -> f:0[dir=back];
+}
+#+end_src
+
+#+RESULTS:
+[[file:vm-upval-close.png]]
+
+
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 723 :lines "723-743"
+
+#+caption: lfunc.c
+#+include: ../lua-5.1.5/src/lfunc.c src C -n 53 :lines "53-80"
+
+其中 closure 之后的 move 指令，意味着 upval 处于 open 状态，upvale 需要去链接到栈。
+而 getupval 指令，就直接引用上层 closure 相应的 upval 指向的地址就好。
+
+L->openupval 是一个单向链表，其中链接着所有 open 状态的 upval，按栈的高地址到低地址的顺序排列。
+
+注意 line 71 72，pp 是 &p->next，当 ~*pp = obj2gco(uv)~  的时候，修改了 next 指针的值，
+得以将新的 upval 插入到链表中。
+
+至于 close 操作也不难理解， =luaF_close= 将所有高于 level 栈地址的 open upval 全部变成 close 状态，
+即修改 v 指针指向自身，并从 L->openupval 中脱离。
+
+#+caption: lfunc.c
+#+include: ../lua-5.1.5/src/lfunc.c src C -n 96 :lines "96-113"
 
 ** TODO metatable
 
 ** TODO c closure
 
 * practice
+
+上面只提到了和 closure 相关的字节码逻辑，读者可以自行输入其它 lua 代码示例，
+探索其它字节码的实现。
+  
+| 文件    | 建议     |
+|---------+----------|
+| lvm.h   | 仔细阅读 |
+| lvm.h   | 仔细阅读 |
+| lfunc.h | 仔细阅读 |
+| lfunc.c | 仔细阅读 |
 
