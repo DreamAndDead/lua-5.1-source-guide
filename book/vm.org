@@ -246,24 +246,389 @@ upvalue 是一个数组，元素为 =UpVal *= ，存在于每一个 closure 中�
 #+caption: ldo.c
 #+include: ../lua-5.1.5/src/ldo.c src C -n 491 :lines "491-507"
 
-* internal
+* the loop
 
-** the loop
+vm 执行 closure 的入口为 =luaV_execute= ，
+
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 377 :lines "377-414"
+
+- line 389，内部是一个死循环
+- line 390，默认自增 pc，从中取出指令
+- line 406，根据指令的类型，执行对应的操作
+
+大部分指令的操作都非常简单，对应 opcode 的语义注释就可以理解。
+
+下面只针对重要的部分，vm 是如何运行 closure 的。
+
+* closure
+
+在编译时，并没有涉及到 closure 结构，作为 8 种基础类型之一，closure 结构在运行时发挥作用。
+
+#+caption: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src C -n 287 :lines "287-317"
+
+Closure 是 union 类型，容纳 C Closure 和 Lua Closure 两种类型，C Closure 之后再讲解，
+这里只看 Lua Closure。
+
+- =lu_byte isC= ，标识 Closure 是 C 还是 Lua
+- =lu_byte nupvalues= ，拥有 upvalue 的数量
+- =struct Table *env= ，函数运行环境，等同于 gbl 表
+- =struct Proto *p= ，指向 parser 生成的 Proto
+- =Upval *upvals[1]= ，为 upvalue 分配的空间
+
+** def
+
+回忆 parser 中 function 的定义过程，解析 function 定义的过程是递归，
+生成相应的 Proto 并链接到上层 Proto.p 中。
+
+所以在 vm 中和 function 定义相关的功能，只有使用 closure 指令进行封装这一步。
+
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 723 :lines "723-743"
+
+line 729 为 closure 结构分配空间。
+
+line 731 - 738 是比较有意思的地方，还记得指令生成时，对 upvalue 的约定吗？
+
+VLOCAL 使用 move 指令，VUPVAL 使用 getupval 指令，这里根据 upvalue 的数量，
+向下读取相应数量的指令，初始化 upvalue。
+
+详细到下面的 upval 小节解析。
+
+line 739 将封装生成的 closure 赋值给变量。
+
+** call
+
+介绍函数调用之前，先来了解一下 CallInfo 结构。
+
+整个线程的栈记录着计算的状态，函数调用具有天生的栈特性，
+调用前入栈，调用后出栈。
+
+CallInfo 就是用来记录函数调用对应栈的位置的。
+
+#+caption: lstate.h
+#+include: ../lua-5.1.5/src/lstate.h src C -n 45 :lines "45-56"
+
+- func，指向调用的函数本身
+- base，指向调用函数对应的栈基地址
+- top，指向调用函数对应的栈顶地址
+
+=lua_State= 中，存在着一个 CallInfo 数组，索引从 0 开始，记录着函数调用的层次。
+
+=base_ci= 指向索引 0， =end_ci= 指向最后， =ci= 指向当前的函数调用层次。
+每当遇到新的函数调用，ci 自增；调用结束，ci 自减。
+
+具体来看一个示例，
+
+#+begin_src lua
+local function f()
+end
+
+f(1, 2, 3)
+#+end_src
+
+#+begin_example
+; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
+.function  0 0 2 5
+.local  "f"  ; 0
+.const  1  ; 0
+.const  2  ; 1
+.const  3  ; 2
+
+  ; function [0] definition (level 2)
+  ; 0 upvalues, 0 params, 0 is_vararg, 2 stacks
+  .function  0 0 0 2
+  [1] return     0   1      
+  ; end of function
+
+[1] closure    0   0        ; 0 upvalues
+[2] move       1   0      
+[3] loadk      2   0        ; 1
+[4] loadk      3   1        ; 2
+[5] loadk      4   2        ; 3
+[6] call       1   4   1  
+[7] return     0   1      
+; end of function
+#+end_example
+
+定义一个函数 f，并以参数 1 2 3 来调用它。
+
+在调用 call 指令之前，整体的栈状态如下，
+
+#+begin_src dot :file vm-stack-call.png
+digraph {
+	rankdir = LR;
+	
+	s[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="last">14</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>13</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>12</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>11</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="top">10</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>9</td><td align="middle" border="1" bgcolor="white">3</td></tr>
+	        <tr><td>8</td><td align="middle" border="1" bgcolor="white">2</td></tr>
+	        <tr><td>7</td><td align="middle" border="1" bgcolor="white">1</td></tr>
+	        <tr><td>6</td><td align="middle" border="1" bgcolor="white">function f</td></tr>
+	        <tr><td port="base">5</td><td align="middle" border="1" bgcolor="white">function f</td></tr>
+	        <tr><td port="func">4</td><td align="middle" border="1" bgcolor="white">function chunk</td></tr>
+	        <tr><td>3</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>2</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>1</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="stack">0</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	      </table>
+	      >];
+
+	ci[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="end">4</td><td port="ci4top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci4base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci4func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td>3</td><td port="ci3top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci3base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci3func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td port="cur">2</td><td port="ci2top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci2base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci2func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td>1</td><td port="ci1top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci1base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci1func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td port="base">0</td><td port="ci0top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci0base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci0func" align="middle" border="1" bgcolor="white">func</td></tr>
+	      </table>
+	      >];
 
 
+	node[shape=plain];
 
-** closure
+	stack[label="L->stack"];
+	last[label="L->stack_last"];
 
-store proto to closure
+	lbase[label="L->base"];
+	ltop[label="L->top"];
 
-and save to stack
+	curci[label="L->ci"];
+	baseci[label="L->base_ci"];
+	endci[label="L->end_ci"];
+	
+	stack -> s:stack;
+	last -> s:last;
+
+	lbase -> s:base;
+	ltop -> s:top;
+
+	ci:ci2func -> s:func;
+	ci:ci2base -> lbase;
+	ci:ci2top -> ltop;
+
+	curci -> ci:cur;
+	baseci -> ci:base;
+	endci -> ci:end;
+}
+#+end_src
+
+#+RESULTS:
+[[file:vm-stack-call.png]]
+
+被调用的函数，先入栈，其后再压入传入的参数，在调用时，新增 CallInfo 结构，
+ci->func 指向被调用的函数，ci->base 指向第一个参数，ci->top 指向取决于被调用的函数分配的空间大小。
+
+上图指的是 vm 调用函数 chunk 对应的栈状态。
+
+L->base L->top 永远指向当前正在被调用的函数的栈区域，代码生成过程中“想象”中的栈，就是由
+L->base L->top 指定的区域。
+
+调用 call 指令之后，栈状态如下，
+
+#+begin_src dot :file vm-stack-call-1.png
+digraph {
+	rankdir = LR;
+	
+	s[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="last">14</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>13</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>12</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>11</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="10">10</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="9">9</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>8</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="7">7</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="6">6</td><td align="middle" border="1" bgcolor="white">function f</td></tr>
+	        <tr><td port="5">5</td><td align="middle" border="1" bgcolor="white">function f</td></tr>
+	        <tr><td port="4">4</td><td align="middle" border="1" bgcolor="white">function chunk</td></tr>
+	        <tr><td>3</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>2</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>1</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="stack">0</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	      </table>
+	      >];
+
+	ci[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="end">4</td><td port="ci4top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci4base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci4func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td port="cur">3</td><td port="ci3top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci3base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci3func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td>2</td><td port="ci2top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci2base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci2func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td>1</td><td port="ci1top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci1base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci1func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td port="base">0</td><td port="ci0top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci0base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci0func" align="middle" border="1" bgcolor="white">func</td></tr>
+	      </table>
+	      >];
+
+	node[shape=plain];
+
+	stack[label="L->stack"];
+	last[label="L->stack_last"];
+
+	lbase[label="L->base"];
+	ltop[label="L->top"];
+
+	curci[label="L->ci"];
+	baseci[label="L->base_ci"];
+	endci[label="L->end_ci"];
+	
+	stack -> s:stack;
+	last -> s:last;
+
+	ci:ci2func -> s:4;
+	ci:ci2base -> s:5;
+	ci:ci2top -> s:10;
+
+	ci:ci3func -> s:6;
+	ci:ci3base -> lbase -> s:7;
+	ci:ci3top -> ltop -> s:9;
+
+	curci -> ci:cur;
+	baseci -> ci:base;
+	endci -> ci:end;
+}
+#+end_src
+
+#+RESULTS:
+[[file:vm-stack-call-1.png]]
+
+新增 ci，用于管理 chunk 调用函数 f 对应的状态，原则和上面相同。
+
+相应代码具体描述了对应的过程，
+
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 586 :lines "586-607"
+
+#+caption: ldo.c
+#+include: ../lua-5.1.5/src/ldo.c src C -n 265 :lines "265-307"
+
+** return
+
+return 的过程和 call 相反，收集相应的返回值，并将值从 ci->func 开始覆盖，
+销毁当前 ci，返回到上层 ci。
+
+上层 ci 从调用函数的位置收集相应的返回值。
+
+#+begin_src dot :file vm-stack-call-2.png
+digraph {
+	rankdir = LR;
+	
+	s[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="last">14</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>13</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>12</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>11</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="top">10</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>9</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>8</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>7</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>6</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="base">5</td><td align="middle" border="1" bgcolor="white">function f</td></tr>
+	        <tr><td port="func">4</td><td align="middle" border="1" bgcolor="white">function chunk</td></tr>
+	        <tr><td>3</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>2</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td>1</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	        <tr><td port="stack">0</td><td align="middle" border="1" bgcolor="white"></td></tr>
+	      </table>
+	      >];
+
+	ci[shape=none, label=<
+	      <table border="0" cellspacing="0">
+	        <tr><td port="end">4</td><td port="ci4top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci4base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci4func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td>3</td><td port="ci3top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci3base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci3func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td port="cur">2</td><td port="ci2top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci2base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci2func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td>1</td><td port="ci1top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci1base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci1func" align="middle" border="1" bgcolor="white">func</td></tr>
+	        <tr><td port="base">0</td><td port="ci0top" align="middle" border="1" bgcolor="white">top</td></tr>
+	        <tr><td></td><td port="ci0base" align="middle" border="1" bgcolor="white">base</td></tr>
+	        <tr><td></td><td port="ci0func" align="middle" border="1" bgcolor="white">func</td></tr>
+	      </table>
+	      >];
 
 
+	node[shape=plain];
 
+	stack[label="L->stack"];
+	last[label="L->stack_last"];
 
-*** upval
+	lbase[label="L->base"];
+	ltop[label="L->top"];
+
+	curci[label="L->ci"];
+	baseci[label="L->base_ci"];
+	endci[label="L->end_ci"];
+	
+	stack -> s:stack;
+	last -> s:last;
+
+	lbase -> s:base;
+	ltop -> s:top;
+
+	ci:ci2func -> s:func;
+	ci:ci2base -> lbase;
+	ci:ci2top -> ltop;
+
+	curci -> ci:cur;
+	baseci -> ci:base;
+	endci -> ci:end;
+}
+#+end_src
+
+#+RESULTS:
+[[file:vm-stack-call-2.png]]
+
+还是上面的示例，调用 f 返回之后，没有返回值。
+
+ci 回退到上层，不收集返回值。
+
+相应实现的代码如下，
+
+#+caption: lvm.c
+#+include: ../lua-5.1.5/src/lvm.c src C -n 639 :lines "639-654"
+
+#+caption: ldo.c
+#+include: ../lua-5.1.5/src/ldo.c src C -n 343 :lines "343-362"
+
+** TODO tailcall
+    
+** upval
   
- open and close
+open and close
 
 getupval, just ref pointer
 
@@ -282,35 +647,9 @@ pp 是指向 p 中 next 成员的指针
 #+CAPTION: 39 upval open and close
 
 
-** call
+** TODO metatable
 
-** return
-
-** tailcall
-    
-** env global
-
-既然在 compile 的时候，已经进行了变量的查找
-
-env 又如何在运行时发挥作用呢？
-
-
-作用在 setglobal getglobal 两条指令上
-为 global 概念提供了空间
-
-
-** args
-
-def and pass
-
-vararg
-    
-   
-** metatable
-
-
-** c closure?
-
+** TODO c closure
 
 * practice
 
