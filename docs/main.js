@@ -1,10 +1,8 @@
 // swith theme
 
 var themes = [
-    "gruvbox-dark.css",
-    "gruvbox-light.css",
-    "doom-one-dark.css",
-    "doom-one-light.css",
+    "tomorrow-light.css",
+    "tomorrow-dark.css",
 ];
 
 var theme_num = themes.length;
