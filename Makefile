@@ -5,6 +5,8 @@ example:
 	gcc -m32 -g -I$(CURDIR)/install/include -I$(CURDIR)/install/lib -ldl -lm -o example/lclosure.out example/lclosure.c $(CURDIR)/install/lib/liblua.a
 	(cd example;./lclosure.out lclosure.lua;cd ..)
 
+	(cd ./example; ../install/bin/lua ./registry.lua; cd ..)
+
 spy:
 	$(CURDIR)/install/bin/lua $(CURDIR)/tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --interact
 

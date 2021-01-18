@@ -2,7 +2,7 @@
 
 ; https://stackoverflow.com/questions/9742836/how-do-i-format-the-postamble-in-html-export-with-org-mode
 (setq org-html-postamble "
-<p>Updated: %C</p>
+<p>Revised: %C</p>
 <p>Created: %d</p>
 <p>Author: %a</p>
 <p>Email: %e</p>

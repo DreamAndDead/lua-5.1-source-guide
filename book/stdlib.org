@@ -3,64 +3,51 @@
 #+TITLE: std lib
 #+DATE: <2021-01-18 一 16:08>
 
-luaL_openlibs 进行注册
+在 lex 章节提到，require next 之类不是关键字而是函数，
+在 api 章节提到 api 也用于内部作用，
+它们描述的都是 lua 标准库。
 
-使用 c api，对所有模块进行注册
+本章节就来讲解 lua 内部是如何处理标准库的。
 
 * register
 
-linit.c, luaL_openlibs
+标准库可以说是多种功能函数的集合，在被使用之前，必须先被注册。
 
-lualib.h
+#+caption: lualib.h
+#+include: ../lua-5.1.5/src/lualib.h src C -n 18 :lines "18-45"
 
-根据注册的约定，各个模块分别注册
+#+caption: linit.c
+#+include: ../lua-5.1.5/src/linit.c src C -n 17 :lines "17-38"
 
-| file       | module  | desc |
-|------------+---------+------|
-| lbaselib.c |         |      |
-| lmathlib.c | math    |      |
-| lstrlib.c  | string  |      |
-| ltablib.c  | table   |      |
-| liolib.c   | io      |      |
-| loslib.c   | os      |      |
-| ldblib.c   | debug   |      |
-| loadlib.c  | package |      |
+各个模块实现了各自的功能，分别注册到不同的模块名中。
+同时每个模块各自实现注册方法，由 =luaL_openlibs= 统一调用。
 
+| file       | module      |
+|------------+-------------|
+| lbaselib.c | (coroutine) |
+| lmathlib.c | math        |
+| lstrlib.c  | string      |
+| ltablib.c  | table       |
+| liolib.c   | io          |
+| loslib.c   | os          |
+| ldblib.c   | debug       |
+| loadlib.c  | package     |
 
-
-
-REGISTRYINDEX . _LOADED 判断是否已经加载
-
-register 是 L->l_G->l_register
-
-luaL_findtable，对 a.b.c 进行 . 分开搜索
-
-找不到则新建 {}，一直向下，最终将相应结果放在栈顶
-
-
-
-
-
-register['_LOADED']['_G'] = global
-
-记录加载情况
-
-
-
-
-GLOBALSINDEX 存储了 global 域，在 index2adr 中可以发现，
-对应 gt(L)  L->l_gt  lua_State 中的 global table （不是 global state）
 
 在完全运行前，这个环境需要加载，所以当前是动态的
-
 
 base_open
 lbaselib.c:628 629
 设置 _G 为 global table 自身
 
 
+注册的过程
 
+加入全局表
 
+加入注册表
+
+* module
 
 ** base
 
@@ -108,6 +95,20 @@ in debug chapter
 
 ** dynamic load
 
+REGISTRYINDEX . _LOADED 判断是否已经加载
+
+register 是 L->l_G->l_register
+
+luaL_findtable，对 a.b.c 进行 . 分开搜索
+
+找不到则新建 {}，一直向下，最终将相应结果放在栈顶
+
+
+register['_LOADED']['_G'] = global
+
+记录加载情况
+
+
 require function
 
 load diff file type
@@ -121,6 +122,5 @@ load diff file type
 - require
 
 * practice
-
 
 
