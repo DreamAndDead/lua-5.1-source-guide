@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-15 五 17:49 -->
+<!-- 2021-01-18 一 16:09 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>c api</title>
@@ -221,249 +221,476 @@
 <div id="content">
 <h1 class="title">c api</h1>
 <p>
-c api 和 vm 是一样的
+Lua 的一个杰出的特性是，非常易于与 C 程序集成。
 </p>
 
 <p>
-都是在操作 lua<sub>State</sub>
+一个原因是 Lua 本身是用 C 语言实现的，
+另一个原因则是 Lua 内部在 vm 层面设计提供了相应的 api。
 </p>
 
-<p>
-不过一个是 opcode interface，一个是 c func 接口
-</p>
-
-<p>
-这样就保证了和谐的与 c 语言集成的状态。
-</p>
-
-<p>
-lua 代码不过是 c api 的一种符号表示
-</p>
-
-
-<p>
-不仅外部使用，也提供给内部使用
-</p>
-
-
-
-
-
-<p>
-c api 是一个宽广的范畴
-</p>
-
-<p>
-getallocf
-</p>
-
-<p>
-dump  load
-</p>
-
-<p>
-call pcall error
-</p>
-
-<p>
-gc
-</p>
-
-<p>
-metatable
-</p>
-
-
-<p>
-fenv
-</p>
-
-<p>
-newstate
-</p>
-
-
-<p>
-newthread resume xmove yield status
-</p>
-
-
-<p>
-getupvalue
-</p>
-
-
-<p>
-和各个模块相关，api 只是一层接口
-</p>
-
-
-
-<p>
-只了解 api.c 和 stack 相关的内容
-</p>
-
-
-<div id="outline-container-org1fde561" class="outline-2">
-<h2 id="org1fde561"><span class="section-number-2">1</span> category</h2>
+<div id="outline-container-org4e8cbdf" class="outline-2">
+<h2 id="org4e8cbdf"><span class="section-number-2">1</span> design</h2>
 <div class="outline-text-2" id="text-1">
 <p>
-lua.h:117
+从之前的视角来看，代码编译为 Proto，vm 开启线程，封装为 Closure 并按指令执行。
 </p>
 
 <p>
-lauxlib.c
-</p>
-
-
-<p>
-func and macro
-</p>
-
-
-<p>
-basic mani
-</p>
-
-<ul class="org-ul">
-<li>xmove, in coroutine</li>
-</ul>
-
-<p>
-access stack -&gt; C
-</p>
-
-
-
-
-<p>
-push C -&gt; stack
-</p>
-
-
-
-
-<p>
-get lua -&gt; stack
+从另一个角度来看 Lua 代码的运行过程。
 </p>
 
 <p>
-set stack -&gt; lua
-</p>
-
-
-
-
-
-<p>
-lua &lt;-&gt; stack
+如果反过来看，vm 本身是静态不动的，程序的运行由输入的 Proto 而驱动。
+之所以产生这样的视角，是因为 vm 必须有指令输入，告诉其应该执行什么，
+否则 vm 本身也只是空转而已。
 </p>
 
 <p>
-stack internal manipulation
-</p>
-
-
-
-
-
-
-
-
-
-
-<p>
-lua call c means
+api 层提供的功能就是如此，控制 vm 应该如何执行。
 </p>
 
 <p>
-a cclosure in lua stack and lua<sub>precall</sub> call it
-</p>
-
-<p>
-how cclosure mani L stack and return value is what
-base on the rules
+如此来看，Lua 代码和 api 都是在操作 <code>lua_State</code> ，vm 的运行时状态。
+只不过一个是编译为 opcode 由 vm 主动执行，一个是通过 c 函数接口来直接控制。
 </p>
 
 
+<div id="orgd0d251d" class="figure">
+<p><img src="api-design.png" alt="api-design.png">
+</p>
+</div>
 
 <p>
-typedef int (*lua<sub>CFunction</sub>) (lua<sub>State</sub> *L);
+值得注意的时，api 不仅提供与语言外部使用，也在内部发挥着重要作用。
 </p>
 
 <p>
-c closure protocol
+api 在外部使用，可以将 Lua 作为 C lib 来使用；
+同时 api 在内部，实现了诸多 Lua 语言标准库的功能。
 </p>
 </div>
 </div>
 
-<div id="outline-container-org34dc9db" class="outline-2">
-<h2 id="org34dc9db"><span class="section-number-2">2</span> index</h2>
+<div id="outline-container-orgb794200" class="outline-2">
+<h2 id="orgb794200"><span class="section-number-2">2</span> stack</h2>
 <div class="outline-text-2" id="text-2">
 <p>
-idx2addr
+说到 vm 运行时状态，最重要的部分就是栈。
 </p>
+
+<p>
+实际上，几乎全部 api 都是对栈的操作。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>lua.h</label><pre class="src src-C"><span class="linenr">107: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">108: </span><span class="org-comment">** state manipulation</span>
+<span class="linenr">109: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">110: </span>LUA_API <span class="org-type">lua_State</span> *(<span class="org-function-name">lua_newstate</span>) (<span class="org-type">lua_Alloc</span> <span class="org-variable-name">f</span>, <span class="org-type">void</span> *<span class="org-variable-name">ud</span>);
+<span class="linenr">111: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>       (lua_close) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">112: </span><span class="org-type">LUA_API</span> <span class="org-type">lua_State</span> *(<span class="org-function-name">lua_newthread</span>) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">113: </span>
+<span class="linenr">114: </span><span class="org-type">LUA_API</span> <span class="org-function-name">lua_CFunction</span> (lua_atpanic) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_CFunction</span> <span class="org-variable-name">panicf</span>);
+<span class="linenr">115: </span>
+<span class="linenr">116: </span>
+<span class="linenr">117: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">118: </span><span class="org-comment">** basic stack manipulation</span>
+<span class="linenr">119: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">120: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_gettop) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">121: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_settop) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">122: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushvalue) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">123: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_remove) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">124: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_insert) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">125: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_replace) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">126: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_checkstack) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">sz</span>);
+<span class="linenr">127: </span>
+<span class="linenr">128: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_xmove) (<span class="org-type">lua_State</span> *<span class="org-variable-name">from</span>, <span class="org-type">lua_State</span> *<span class="org-variable-name">to</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>);
+<span class="linenr">129: </span>
+<span class="linenr">130: </span>
+<span class="linenr">131: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">132: </span><span class="org-comment">** access functions (stack -&gt; C)</span>
+<span class="linenr">133: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">134: </span>
+<span class="linenr">135: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>             (lua_isnumber) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">136: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>             (lua_isstring) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">137: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>             (lua_iscfunction) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">138: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>             (lua_isuserdata) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">139: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>             (lua_type) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">140: </span><span class="org-type">LUA_API</span> <span class="org-keyword">const</span> <span class="org-type">char</span>     *(lua_typename) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">tp</span>);
+<span class="linenr">141: </span>
+<span class="linenr">142: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>            (lua_equal) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx1</span>, <span class="org-type">int</span> <span class="org-variable-name">idx2</span>);
+<span class="linenr">143: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>            (lua_rawequal) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx1</span>, <span class="org-type">int</span> <span class="org-variable-name">idx2</span>);
+<span class="linenr">144: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>            (lua_lessthan) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx1</span>, <span class="org-type">int</span> <span class="org-variable-name">idx2</span>);
+<span class="linenr">145: </span>
+<span class="linenr">146: </span><span class="org-type">LUA_API</span> <span class="org-function-name">lua_Number</span>      (lua_tonumber) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">147: </span><span class="org-type">LUA_API</span> <span class="org-function-name">lua_Integer</span>     (lua_tointeger) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">148: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>             (lua_toboolean) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">149: </span><span class="org-type">LUA_API</span> <span class="org-keyword">const</span> <span class="org-type">char</span>     *(lua_tolstring) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>, <span class="org-type">size_t</span> *<span class="org-variable-name">len</span>);
+<span class="linenr">150: </span><span class="org-type">LUA_API</span> <span class="org-function-name">size_t</span>          (lua_objlen) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">151: </span><span class="org-type">LUA_API</span> <span class="org-function-name">lua_CFunction</span>   (lua_tocfunction) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">152: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>           *(<span class="org-function-name">lua_touserdata</span>) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">153: </span><span class="org-type">LUA_API</span> <span class="org-type">lua_State</span>      *(<span class="org-function-name">lua_tothread</span>) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">154: </span><span class="org-type">LUA_API</span> <span class="org-keyword">const</span> <span class="org-type">void</span>     *(lua_topointer) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">155: </span>
+<span class="linenr">156: </span>
+<span class="linenr">157: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">158: </span><span class="org-comment">** push functions (C -&gt; stack)</span>
+<span class="linenr">159: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">160: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushnil) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">161: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushnumber) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_Number</span> <span class="org-variable-name">n</span>);
+<span class="linenr">162: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushinteger) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_Integer</span> <span class="org-variable-name">n</span>);
+<span class="linenr">163: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushlstring) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">s</span>, <span class="org-type">size_t</span> <span class="org-variable-name">l</span>);
+<span class="linenr">164: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushstring) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">s</span>);
+<span class="linenr">165: </span><span class="org-type">LUA_API</span> <span class="org-keyword">const</span> <span class="org-type">char</span> *(lua_pushvfstring) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">fmt</span>,
+<span class="linenr">166: </span>                                                      <span class="org-type">va_list</span> <span class="org-variable-name">argp</span>);
+<span class="linenr">167: </span><span class="org-type">LUA_API</span> <span class="org-keyword">const</span> <span class="org-type">char</span> *(lua_pushfstring) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">fmt</span>, ...);
+<span class="linenr">168: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushcclosure) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_CFunction</span> <span class="org-variable-name">fn</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>);
+<span class="linenr">169: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushboolean) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">b</span>);
+<span class="linenr">170: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_pushlightuserdata) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">void</span> *<span class="org-variable-name">p</span>);
+<span class="linenr">171: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_pushthread) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">172: </span>
+<span class="linenr">173: </span>
+<span class="linenr">174: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">175: </span><span class="org-comment">** get functions (Lua -&gt; stack)</span>
+<span class="linenr">176: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">177: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_gettable) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">178: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_getfield) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">k</span>);
+<span class="linenr">179: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_rawget) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">180: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_rawgeti) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>);
+<span class="linenr">181: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_createtable) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">narr</span>, <span class="org-type">int</span> <span class="org-variable-name">nrec</span>);
+<span class="linenr">182: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span> *(<span class="org-function-name">lua_newuserdata</span>) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">size_t</span> <span class="org-variable-name">sz</span>);
+<span class="linenr">183: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_getmetatable) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">objindex</span>);
+<span class="linenr">184: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_getfenv) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">185: </span>
+<span class="linenr">186: </span>
+<span class="linenr">187: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">188: </span><span class="org-comment">** set functions (stack -&gt; Lua)</span>
+<span class="linenr">189: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">190: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_settable) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">191: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_setfield) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">k</span>);
+<span class="linenr">192: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_rawset) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">193: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_rawseti) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>);
+<span class="linenr">194: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_setmetatable) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">objindex</span>);
+<span class="linenr">195: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_setfenv) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>);
+<span class="linenr">196: </span>
+<span class="linenr">197: </span>
+<span class="linenr">198: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">199: </span><span class="org-comment">** `load' and `call' functions (load and run Lua code)</span>
+<span class="linenr">200: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">201: </span><span class="org-type">LUA_API</span> <span class="org-type">void</span>  (lua_call) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nargs</span>, <span class="org-type">int</span> <span class="org-variable-name">nresults</span>);
+<span class="linenr">202: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_pcall) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nargs</span>, <span class="org-type">int</span> <span class="org-variable-name">nresults</span>, <span class="org-type">int</span> <span class="org-variable-name">errfunc</span>);
+<span class="linenr">203: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_cpcall) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_CFunction</span> <span class="org-variable-name">func</span>, <span class="org-type">void</span> *<span class="org-variable-name">ud</span>);
+<span class="linenr">204: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>   (lua_load) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_Reader</span> <span class="org-variable-name">reader</span>, <span class="org-type">void</span> *<span class="org-variable-name">dt</span>,
+<span class="linenr">205: </span>                                        <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">chunkname</span>);
+<span class="linenr">206: </span>
+<span class="linenr">207: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span> (lua_dump) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_Writer</span> <span class="org-variable-name">writer</span>, <span class="org-type">void</span> *<span class="org-variable-name">data</span>);
+<span class="linenr">208: </span>
+<span class="linenr">209: </span>
+<span class="linenr">210: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">211: </span><span class="org-comment">** coroutine functions</span>
+<span class="linenr">212: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">213: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>  (lua_yield) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nresults</span>);
+<span class="linenr">214: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>  (lua_resume) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">narg</span>);
+<span class="linenr">215: </span><span class="org-type">LUA_API</span> <span class="org-type">int</span>  (lua_status) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+</pre>
+</div>
+
+<p>
+在官方文档<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>中，有对所有 api 功能的绝佳描述。
+</p>
+
+<p>
+结合之前 opcode 的实现过程以及一些基本的栈操作理解，相应的 api 实现并不难理解。
+</p>
+
+
+<p>
+其中值得注意的是栈的索引。
+</p>
+
+<p>
+在对栈进行操作之前，必须先索引到其中的元素。
+</p>
+
+<p>
+api 内部使用一种自定义的映射关系，将整数映射到元素的栈位置。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>lapi.c</label><pre class="src src-C"><span class="linenr">49: </span><span class="org-keyword">static</span> <span class="org-type">TValue</span> *<span class="org-function-name">index2adr</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">idx</span>) {
+<span class="linenr">50: </span>  <span class="org-keyword">if</span> (idx &gt; 0) {
+<span class="linenr">51: </span>    <span class="org-type">TValue</span> *<span class="org-variable-name">o</span> = L-&gt;base + (idx - 1);
+<span class="linenr">52: </span>    api_check(L, idx &lt;= L-&gt;ci-&gt;top - L-&gt;base);
+<span class="linenr">53: </span>    <span class="org-keyword">if</span> (o &gt;= L-&gt;top) <span class="org-keyword">return</span> cast(<span class="org-type">TValue</span> *, luaO_nilobject);
+<span class="linenr">54: </span>    <span class="org-keyword">else</span> <span class="org-keyword">return</span> o;
+<span class="linenr">55: </span>  }
+<span class="linenr">56: </span>  <span class="org-keyword">else</span> <span class="org-keyword">if</span> (idx &gt; LUA_REGISTRYINDEX) {
+<span class="linenr">57: </span>    api_check(L, idx != 0 &amp;&amp; -idx &lt;= L-&gt;top - L-&gt;base);
+<span class="linenr">58: </span>    <span class="org-keyword">return</span> L-&gt;top + idx;
+<span class="linenr">59: </span>  }
+<span class="linenr">60: </span>  <span class="org-keyword">else</span> <span class="org-keyword">switch</span> (idx) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">pseudo-indices</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">61: </span>    <span class="org-keyword">case</span> LUA_REGISTRYINDEX: <span class="org-keyword">return</span> registry(L);
+<span class="linenr">62: </span>    <span class="org-keyword">case</span> LUA_ENVIRONINDEX: {
+<span class="linenr">63: </span>      <span class="org-type">Closure</span> *<span class="org-variable-name">func</span> = curr_func(L);
+<span class="linenr">64: </span>      sethvalue(L, &amp;L-&gt;env, func-&gt;c.env);
+<span class="linenr">65: </span>      <span class="org-keyword">return</span> &amp;L-&gt;env;
+<span class="linenr">66: </span>    }
+<span class="linenr">67: </span>    <span class="org-keyword">case</span> LUA_GLOBALSINDEX: <span class="org-keyword">return</span> gt(L);
+<span class="linenr">68: </span>    <span class="org-keyword">default</span>: {
+<span class="linenr">69: </span>      <span class="org-type">Closure</span> *<span class="org-variable-name">func</span> = curr_func(L);
+<span class="linenr">70: </span>      idx = LUA_GLOBALSINDEX - idx;
+<span class="linenr">71: </span>      <span class="org-keyword">return</span> (idx &lt;= func-&gt;c.nupvalues)
+<span class="linenr">72: </span>                ? &amp;func-&gt;c.upvalue[idx-1]
+<span class="linenr">73: </span>                : cast(<span class="org-type">TValue</span> *, luaO_nilobject);
+<span class="linenr">74: </span>    }
+<span class="linenr">75: </span>  }
+<span class="linenr">76: </span>}
+</pre>
+</div>
+
+
+<div id="orgb40181e" class="figure">
+<p><img src="api-index2addr.png" alt="api-index2addr.png">
+</p>
+</div>
+
+<p>
+其中 <code>L-&gt;base</code> 和 <code>L-&gt;top</code> 标识了栈底和栈顶。
+</p>
+
+<p>
+正整数索引从 1 开始，索引 1 指向 <code>L-&gt;base</code> ，递增向上。
+</p>
+
+<p>
+负整数索引从 -1 开始，索引 <code>L-&gt;top</code> 之下的元素，递减向下。
+</p>
+
+<p>
+0 不作为索引来使用。
+</p>
+
+<p>
+在上面的规则之外，api 内部使用几个特别定义的索引值，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lua.h</label><pre class="src src-C"><span class="linenr">33: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">34: </span><span class="org-comment">** pseudo-indices</span>
+<span class="linenr">35: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">36: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_REGISTRYINDEX</span>       (-10000)
+<span class="linenr">37: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_ENVIRONINDEX</span>        (-10001)
+<span class="linenr">38: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_GLOBALSINDEX</span>        (-10002)
+<span class="linenr">39: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">lua_upvalueindex</span>(<span class="org-variable-name">i</span>)     (LUA_GLOBALSINDEX-(i))
+</pre>
+</div>
 
 <ul class="org-ul">
-<li>-</li>
+<li><code>LUA_REGISTRYINDEX</code> 索引全局状态的 <code>l_registry</code></li>
+<li><code>LUA_ENVIRONINDEX</code> 索引当前 closure 的环境</li>
+<li><code>LUA_GLOBALSINDEX</code> 索引当前 <code>lua_State</code> 的全局表</li>
+<li>更小的负数，依次索引当前 closure 的 upvalue</li>
 </ul>
-
-
-<p>
-Pseudo-Indices??
-</p>
-
-
-<p>
-The thread environment (where global variables live) is always at pseudo-index LUA<sub>GLOBALSINDEX</sub>. The environment of the running C function is always at pseudo-index LUA<sub>ENVIRONINDEX</sub>. 
-</p>
-
-
-<p>
-regisTRYINDEX??
-</p>
-
-
-<p>
-lua.h:33
-</p>
 </div>
 </div>
 
-
-
-<div id="outline-container-orgce9ed95" class="outline-2">
-<h2 id="orgce9ed95"><span class="section-number-2">3</span> api list</h2>
+<div id="outline-container-orga6a14f2" class="outline-2">
+<h2 id="orga6a14f2"><span class="section-number-2">3</span> c closure</h2>
 <div class="outline-text-2" id="text-3">
 <p>
-<a href="http://www.lua.org/manual/5.1/manual.html#3">lua 5.1 ref</a>
+在 vm 章节提到过，closure 有两种类型，CClosure 和 LClosure。
+</p>
+
+<p>
+LClosure 即从 Lua 代码编译得到的函数，而 CClosure 是通过 C api 实现的函数。
+</p>
+
+<p>
+因为 CClosure 要和 Lua 交互，所以要遵循一定的约定<sup><a id="fnr.2" class="footref" href="#fn.2">2</a></sup>。
+</p>
+
+<p>
+首先，CClosure 在 C 语言中需要定义为 <code>lua_CFunction</code> 类型，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lua.h</label><pre class="src src-C"><span class="linenr">52: </span><span class="org-keyword">typedef</span> <span class="org-type">int</span> (*<span class="org-type">lua_CFunction</span>) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+</pre>
+</div>
+
+<p>
+其中，在调用时，从 base 到 top 都是 CClosure 的参数，
+</p>
+
+<p>
+最终，将返回值按顺序压栈，并返回参数个数。
+</p>
+
+<p>
+这个传参，调用，返回值的约定和 vm 内部解析 LClosure 是一样的。
+</p>
+
+<p>
+官方文档<sup><a id="fnr.2.100" class="footref" href="#fn.2">2</a></sup>提供了一段示例代码，
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C"><span class="org-preprocessor">#include</span> <span class="org-string">&lt;stdio.h&gt;</span>                        
+
+<span class="org-preprocessor">#include</span> <span class="org-string">&lt;lua.h&gt;</span>
+<span class="org-preprocessor">#include</span> <span class="org-string">&lt;lualib.h&gt;</span>
+<span class="org-preprocessor">#include</span> <span class="org-string">&lt;lauxlib.h&gt;</span>
+
+<span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">foo</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+  <span class="org-type">int</span> <span class="org-variable-name">n</span> = lua_gettop(L);    <span class="org-comment-delimiter">/* </span><span class="org-comment">number of arguments</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">lua_Number</span> <span class="org-variable-name">sum</span> = 0;
+  <span class="org-type">int</span> <span class="org-variable-name">i</span>;
+  <span class="org-keyword">for</span> (i = 1; i &lt;= n; i++) {
+    <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>lua_isnumber(L, i)) {
+      lua_pushstring(L, <span class="org-string">"incorrect argument"</span>);
+      lua_error(L);
+    }
+    sum += lua_tonumber(L, i);
+  }
+  lua_pushnumber(L, sum/n);        <span class="org-comment-delimiter">/* </span><span class="org-comment">first result</span><span class="org-comment-delimiter"> */</span>
+  lua_pushnumber(L, sum);         <span class="org-comment-delimiter">/* </span><span class="org-comment">second result</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">return</span> 2;                   <span class="org-comment-delimiter">/* </span><span class="org-comment">number of results</span><span class="org-comment-delimiter"> */</span>
+}
+
+<span class="org-type">int</span> <span class="org-function-name">main</span>(<span class="org-type">int</span> <span class="org-variable-name">argc</span>, <span class="org-type">char</span>* <span class="org-variable-name">argv</span>[])
+{
+    <span class="org-type">char</span>* <span class="org-variable-name">file</span> = <span class="org-constant">NULL</span>;
+    file = argv[1];
+
+    <span class="org-type">lua_State</span>* <span class="org-variable-name">L</span> = luaL_newstate();
+
+    luaL_openlibs(L);
+
+    lua_pushcfunction(L, foo);
+
+    lua_setfield(L, LUA_GLOBALSINDEX, <span class="org-string">"foo"</span>);
+
+    luaL_dofile(L, file);
+
+    <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-lua">avg, sum = foo(1, 2, 3)
+
+<span class="org-builtin">print</span>(avg, sum)
+</pre>
+</div>
+
+<p>
+通过
+</p>
+
+<pre class="example" id="org5260cc2">
+$ make -s example
+</pre>
+
+<p>
+可以编译运行上述示例。
+</p>
+
+<p>
+其中先注册了 CClosure 为全局变量 foo，再在 lua 代码中调用，
+打印出所有参数的平均值和总和。
+</p>
+
+<p>
+其中栈的变化情况如下，
+</p>
+
+
+<div id="org9d98d36" class="figure">
+<p><img src="api-closure-call.png" alt="api-closure-call.png">
 </p>
 </div>
 </div>
-
-
-<div id="outline-container-org4b042dd" class="outline-2">
-<h2 id="org4b042dd"><span class="section-number-2">4</span> c closure?</h2>
 </div>
 
 
+<div id="outline-container-org595eb19" class="outline-2">
+<h2 id="org595eb19"><span class="section-number-2">4</span> practice</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+在 <code>example/</code> 目录下，实现了两种 foo 的实现方式。
+</p>
 
-<div id="outline-container-orged5b58b" class="outline-2">
-<h2 id="orged5b58b"><span class="section-number-2">5</span> how to connect c with lua</h2>
-<div class="outline-text-2" id="text-5">
-<ul class="org-ul">
-<li>compile with lua
-<ul class="org-ul">
-<li>lua as lib</li>
-<li>c as lib，maybe registry</li>
-</ul></li>
-</ul>
+<p>
+cclosure 小节在 C 语言层面，定义 foo 并注册到全局表中，而在 Lua 层面调用；
+<code>example/lclosure.c</code> <code>example/lclosure.lua</code> 将 foo 在 Lua 代码中定义为全局变量，
+而在 C 语言层面调用。
+</p>
+
+<p>
+读者可通过
+</p>
+
+<pre class="example" id="org955ea9c">
+$ make -s example
+</pre>
+
+<p>
+来对比这两种协同方式。
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">章节涉及文件</th>
+<th scope="col" class="org-left">建议了解程度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">lua.h</td>
+<td class="org-left">★ ★ ★ ★ ★</td>
+</tr>
+
+<tr>
+<td class="org-left">lapi.h</td>
+<td class="org-left">★ ☆ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">lapi.c</td>
+<td class="org-left">★ ★ ★ ★ ★</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://www.lua.org/manual/5.1/manual.html#3">http://www.lua.org/manual/5.1/manual.html#3</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.2" class="footnum" href="#fnr.2">2</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://www.lua.org/manual/5.1/manual.html#lua_CFunction">http://www.lua.org/manual/5.1/manual.html#lua_CFunction</a>
+</p></div></div>
+
+
 </div>
+</div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-15 五 17:48</p>
+<p>Updated: 2021-01-18 一 16:08</p>
 <p>Created: 2021-01-15 五 17:48</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

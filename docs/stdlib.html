@@ -4,11 +4,9 @@
 <!-- 2021-01-18 一 16:09 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lua 5.1 source guide</title>
+<title>std lib</title>
 <meta name="generator" content="Org mode">
 <meta name="author" content="DreamAndDead">
-<meta name="description" content="A little guide book about how to read lua 5.1 source code"
->
 <style type="text/css">
  <!--/*--><![CDATA[/*><!--*/
   .title  { text-align: center;
@@ -221,11 +219,30 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">lua 5.1 source guide</h1>
+<h1 class="title">std lib</h1>
+<p>
+luaL<sub>openlibs</sub> 进行注册
+</p>
 
-<div id="outline-container-org255123d" class="outline-2">
-<h2 id="org255123d"><span class="section-number-2">1</span> outline</h2>
+<p>
+使用 c api，对所有模块进行注册
+</p>
+
+<div id="outline-container-orgbc34983" class="outline-2">
+<h2 id="orgbc34983"><span class="section-number-2">1</span> register</h2>
 <div class="outline-text-2" id="text-1">
+<p>
+linit.c, luaL<sub>openlibs</sub>
+</p>
+
+<p>
+lualib.h
+</p>
+
+<p>
+根据注册的约定，各个模块分别注册
+</p>
+
 <table>
 
 
@@ -234,146 +251,238 @@
 
 <col  class="org-left">
 
-<col  class="org-right">
-
 <col  class="org-left">
 </colgroup>
 <thead>
 <tr>
-<th scope="col" class="org-left">subject</th>
+<th scope="col" class="org-left">file</th>
+<th scope="col" class="org-left">module</th>
 <th scope="col" class="org-left">desc</th>
-<th scope="col" class="org-right">progress</th>
-<th scope="col" class="org-left">link</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="org-left">overview</td>
-<td class="org-left">全书总览</td>
-<td class="org-right">70%</td>
-<td class="org-left"><a href="overview.html">preview</a></td>
+<td class="org-left">lbaselib.c</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">object</td>
-<td class="org-left">关键数据结构</td>
-<td class="org-right">90%</td>
-<td class="org-left"><a href="object.html">preview</a></td>
+<td class="org-left">lmathlib.c</td>
+<td class="org-left">math</td>
+<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">memory</td>
-<td class="org-left">内存分配</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="mem.html">read</a></td>
-</tr>
-
-<tr>
+<td class="org-left">lstrlib.c</td>
 <td class="org-left">string</td>
-<td class="org-left">字符串</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="string.html">read</a></td>
+<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
+<td class="org-left">ltablib.c</td>
 <td class="org-left">table</td>
-<td class="org-left">表</td>
-<td class="org-right">80%</td>
-<td class="org-left"><a href="table.html">preview</a></td>
-</tr>
-
-<tr>
-<td class="org-left">lexer</td>
-<td class="org-left">词法分析</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="lexer.html">read</a></td>
-</tr>
-
-<tr>
-<td class="org-left">opcode</td>
-<td class="org-left">字节码</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="opcode.html">read</a></td>
-</tr>
-
-<tr>
-<td class="org-left">parser</td>
-<td class="org-left">语法分析</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="parser.html">read</a></td>
-</tr>
-
-<tr>
-<td class="org-left">generator</td>
-<td class="org-left">字节码生成</td>
-<td class="org-right">80%</td>
-<td class="org-left"><a href="generator.html">preview</a></td>
-</tr>
-
-<tr>
-<td class="org-left">vm</td>
-<td class="org-left">虚拟机</td>
-<td class="org-right">80%</td>
-<td class="org-left"><a href="vm.html">preview</a></td>
-</tr>
-
-<tr>
-<td class="org-left">c api</td>
-<td class="org-left">外部 api</td>
-<td class="org-right">80%</td>
-<td class="org-left"><a href="api.html">preview</a></td>
-</tr>
-
-<tr>
-<td class="org-left">stdlib</td>
-<td class="org-left">标准库</td>
-<td class="org-right">5%</td>
-<td class="org-left"><a href="stdlib.html">preview</a></td>
-</tr>
-
-<tr>
-<td class="org-left">coroutine</td>
-<td class="org-left">协程结构</td>
-<td class="org-right">0%</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
+<td class="org-left">liolib.c</td>
+<td class="org-left">io</td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">loslib.c</td>
+<td class="org-left">os</td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">ldblib.c</td>
 <td class="org-left">debug</td>
-<td class="org-left">debug 模块</td>
-<td class="org-right">0%</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">gc</td>
-<td class="org-left">gc 模块</td>
-<td class="org-right">0%</td>
-<td class="org-left">&#xa0;</td>
-</tr>
-
-<tr>
-<td class="org-left">error handling</td>
-<td class="org-left">错误处理机制</td>
-<td class="org-right">0%</td>
-<td class="org-left">&#xa0;</td>
-</tr>
-
-<tr>
-<td class="org-left">userdata</td>
-<td class="org-left">userdata 结构</td>
-<td class="org-right">0%</td>
+<td class="org-left">loadlib.c</td>
+<td class="org-left">package</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 </tbody>
 </table>
+
+
+
+
+<p>
+REGISTRYINDEX . _LOADED 判断是否已经加载
+</p>
+
+<p>
+register 是 L-&gt;l<sub>G</sub>-&gt;l<sub>register</sub>
+</p>
+
+<p>
+luaL<sub>findtable</sub>，对 a.b.c 进行 . 分开搜索
+</p>
+
+<p>
+找不到则新建 {}，一直向下，最终将相应结果放在栈顶
+</p>
+
+
+
+
+
+<p>
+register['<sub>LOADED</sub>']['<sub>G</sub>'] = global
+</p>
+
+<p>
+记录加载情况
+</p>
+
+
+
+
+<p>
+GLOBALSINDEX 存储了 global 域，在 index2adr 中可以发现，
+对应 gt(L)  L-&gt;l<sub>gt</sub>  lua<sub>State</sub> 中的 global table （不是 global state）
+</p>
+
+<p>
+在完全运行前，这个环境需要加载，所以当前是动态的
+</p>
+
+
+<p>
+base<sub>open</sub>
+lbaselib.c:628 629
+设置 _G 为 global table 自身
+</p>
 </div>
+
+
+
+
+
+<div id="outline-container-orgf9ea4e6" class="outline-3">
+<h3 id="orgf9ea4e6"><span class="section-number-3">1.1</span> base</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+_G = _G
+</p>
+
+<p>
+base funcs
+</p>
+<ul class="org-ul">
+<li>assert</li>
+<li>collectgarbage</li>
+<li>dofile</li>
+<li>etc.</li>
+</ul>
+
+<p>
+global _VERSION    
+</p>
+
+<p>
+with upvalues
+ipairs
+pairs
+</p>
+
+
+<p>
+proxy table??
+</p>
+
+
+<p>
+coroutine funcs
+</p>
+<ul class="org-ul">
+<li>create</li>
+<li>etc.</li>
+</ul>
+
+<p>
+in coroutine chapter
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge8a241c" class="outline-3">
+<h3 id="orge8a241c"><span class="section-number-3">1.2</span> math</h3>
+<div class="outline-text-3" id="text-1-2">
+<ul class="org-ul">
+<li>abs</li>
+<li>acos</li>
+<li>etc.</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgd19d146" class="outline-3">
+<h3 id="orgd19d146"><span class="section-number-3">1.3</span> string</h3>
+</div>
+
+<div id="outline-container-orgac66782" class="outline-3">
+<h3 id="orgac66782"><span class="section-number-3">1.4</span> table</h3>
+</div>
+
+<div id="outline-container-org6f91c6a" class="outline-3">
+<h3 id="org6f91c6a"><span class="section-number-3">1.5</span> io</h3>
+</div>
+
+<div id="outline-container-orgf573505" class="outline-3">
+<h3 id="orgf573505"><span class="section-number-3">1.6</span> os</h3>
+</div>
+
+<div id="outline-container-orgea05aef" class="outline-3">
+<h3 id="orgea05aef"><span class="section-number-3">1.7</span> debug</h3>
+<div class="outline-text-3" id="text-1-7">
+<p>
+in debug chapter
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge461d82" class="outline-3">
+<h3 id="orge461d82"><span class="section-number-3">1.8</span> dynamic load</h3>
+<div class="outline-text-3" id="text-1-8">
+<p>
+require function
+</p>
+
+<p>
+load diff file type
+</p>
+<ul class="org-ul">
+<li>lua</li>
+<li>so</li>
+</ul>
+
+
+<ul class="org-ul">
+<li>loadlib</li>
+<li>seeall</li>
+<li>module</li>
+<li>require</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgba1d57c" class="outline-2">
+<h2 id="orgba1d57c"><span class="section-number-2">2</span> practice</h2>
 </div>
 </div>
 <div id="postamble" class="status">
 
 <p>Updated: 2021-01-18 一 16:09</p>
-<p>Created: 2020-12-21 一 09:35</p>
+<p>Created: 2021-01-18 一 16:08</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 <script src="https://utteranc.es/client.js" repo="DreamAndDead/DreamAndDead.github.io" issue-term="pathname" label="Comment" theme="github-light" crossorigin="anonymous" async></script>

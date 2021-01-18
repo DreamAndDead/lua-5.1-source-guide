@@ -3,144 +3,330 @@
 #+TITLE: c api
 #+DATE: <2021-01-15 五 17:48>
 
-c api 和 vm 是一样的
+Lua 的一个杰出的特性是，非常易于与 C 程序集成。
 
-都是在操作 lua_State
+一个原因是 Lua 本身是用 C 语言实现的，
+另一个原因则是 Lua 内部在 vm 层面设计提供了相应的 api。
 
-不过一个是 opcode interface，一个是 c func 接口
-
-这样就保证了和谐的与 c 语言集成的状态。
-
-lua 代码不过是 c api 的一种符号表示
-
-
-不仅外部使用，也提供给内部使用
-
-
-
-
-
-c api 是一个宽广的范畴
-
-getallocf
-
-dump  load
-
-call pcall error
-
-gc
-
-metatable
-
-
-fenv
-
-newstate
-
-
-newthread resume xmove yield status
-
-
-getupvalue
-
-
-和各个模块相关，api 只是一层接口
-
-
-
-只了解 api.c 和 stack 相关的内容
-
-
-* category
-
-lua.h:117
-
-lauxlib.c
-
-
-func and macro
-
-
-basic mani
-
-- xmove, in coroutine
-
-access stack -> C
-
-
-
-
-push C -> stack
-
-
-
-
-get lua -> stack
-
-set stack -> lua
-
-
-
-
-
-lua <-> stack
-
-stack internal manipulation
-
-
-
-
-
-
-
-
-
-
-lua call c means
-
-a cclosure in lua stack and lua_precall call it
-
-how cclosure mani L stack and return value is what
-base on the rules
-
-
-
-typedef int (*lua_CFunction) (lua_State *L);
-
-c closure protocol
-
-* index
-
-idx2addr
-
-+ -
-
-
-Pseudo-Indices??
-
-
-The thread environment (where global variables live) is always at pseudo-index LUA_GLOBALSINDEX. The environment of the running C function is always at pseudo-index LUA_ENVIRONINDEX. 
-
-
-regisTRYINDEX??
-  
-
-lua.h:33
-
-
-
-* api list
-
-[[http://www.lua.org/manual/5.1/manual.html#3][lua 5.1 ref]]
-
-
-* c closure?
-
-   
-
-* how to connect c with lua
-
-- compile with lua
-  - lua as lib
-  - c as lib，maybe registry
-
+* design
+
+从之前的视角来看，代码编译为 Proto，vm 开启线程，封装为 Closure 并按指令执行。
+
+从另一个角度来看 Lua 代码的运行过程。
+
+如果反过来看，vm 本身是静态不动的，程序的运行由输入的 Proto 而驱动。
+之所以产生这样的视角，是因为 vm 必须有指令输入，告诉其应该执行什么，
+否则 vm 本身也只是空转而已。
+
+api 层提供的功能就是如此，控制 vm 应该如何执行。
+
+如此来看，Lua 代码和 api 都是在操作 =lua_State= ，vm 的运行时状态。
+只不过一个是编译为 opcode 由 vm 主动执行，一个是通过 c 函数接口来直接控制。
+
+#+begin_src dot :file api-design.png
+digraph {
+	node[shape=box];
+
+	vm[label="vm state"];
+
+	opcode -> vm[label="manipulate"];
+	vm -> api[label="control", dir=back];
+
+	{rank=same; api; vm;}
+}
+#+end_src
+
+#+RESULTS:
+[[file:api-design.png]]
+
+值得注意的时，api 不仅提供与语言外部使用，也在内部发挥着重要作用。
+
+api 在外部使用，可以将 Lua 作为 C lib 来使用；
+同时 api 在内部，实现了诸多 Lua 语言标准库的功能。
+
+* stack
+
+说到 vm 运行时状态，最重要的部分就是栈。
+
+实际上，几乎全部 api 都是对栈的操作。
+
+#+caption: lua.h
+#+include: ../lua-5.1.5/src/lua.h src C -n 107 :lines "107-216"
+
+在官方文档[fn:1]中，有对所有 api 功能的绝佳描述。
+
+结合之前 opcode 的实现过程以及一些基本的栈操作理解，相应的 api 实现并不难理解。
+
+
+其中值得注意的是栈的索引。
+
+在对栈进行操作之前，必须先索引到其中的元素。
+
+api 内部使用一种自定义的映射关系，将整数映射到元素的栈位置。
+
+#+caption: lapi.c
+#+include: ../lua-5.1.5/src/lapi.c src C -n 49 :lines "49-77"
+
+#+begin_src dot :file api-index2addr.png
+digraph {
+	stack[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td port="top" border="0" bgcolor="white" align="right"></td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-1</td>
+		  <td border="0" bgcolor="white" align="right">5</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-2</td>
+		  <td border="0" bgcolor="white" align="right">4</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-3</td>
+		  <td border="0" bgcolor="white" align="right">3</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-4</td>
+		  <td border="0" bgcolor="white" align="right">2</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td port="base" border="0" bgcolor="white" align="right">-5</td>
+		  <td border="0" bgcolor="white" align="right">1</td>
+		  <td border="1" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="0" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="0" bgcolor="white">                 </td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-10000</td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="1" bgcolor="white">global_State.l_registry</td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-10001</td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="1" bgcolor="white">Closure Env</td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-10002</td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="1" bgcolor="white">lua_State.l_gt</td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-10003</td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="1" bgcolor="white">Closure Upvalue 0</td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">-10004</td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="1" bgcolor="white">Closure Upvalue 1</td>
+		</tr>
+	        <tr>
+		  <td border="0" bgcolor="white" align="right">......</td>
+		  <td border="0" bgcolor="white" align="right"></td>
+		  <td border="1" bgcolor="white">........</td>
+		</tr>
+              </table>
+	      >, shape=none];
+
+	node[shape=plain];
+
+	rankdir = LR;
+	
+	base[label="L->base"];
+	top[label="L->top"];
+
+	base -> stack:base;
+	top -> stack:top;
+}
+#+end_src
+
+#+RESULTS:
+[[file:api-index2addr.png]]
+
+其中 =L->base= 和 =L->top= 标识了栈底和栈顶。
+
+正整数索引从 1 开始，索引 1 指向 =L->base= ，递增向上。
+
+负整数索引从 -1 开始，索引 =L->top= 之下的元素，递减向下。
+
+0 不作为索引来使用。
+
+在上面的规则之外，api 内部使用几个特别定义的索引值，
+
+#+caption: lua.h
+#+include: ../lua-5.1.5/src/lua.h src C -n 33 :lines "33-40"
+
+- =LUA_REGISTRYINDEX= 索引全局状态的 =l_registry=
+- =LUA_ENVIRONINDEX= 索引当前 closure 的环境
+- =LUA_GLOBALSINDEX= 索引当前 =lua_State= 的全局表
+- 更小的负数，依次索引当前 closure 的 upvalue
+
+* c closure
+
+在 vm 章节提到过，closure 有两种类型，CClosure 和 LClosure。
+
+LClosure 即从 Lua 代码编译得到的函数，而 CClosure 是通过 C api 实现的函数。
+
+因为 CClosure 要和 Lua 交互，所以要遵循一定的约定[fn:2]。
+
+首先，CClosure 在 C 语言中需要定义为 =lua_CFunction= 类型，
+
+#+caption: lua.h
+#+include: ../lua-5.1.5/src/lua.h src C -n 52 :lines "52-53"
+
+其中，在调用时，从 base 到 top 都是 CClosure 的参数，
+
+最终，将返回值按顺序压栈，并返回参数个数。
+
+这个传参，调用，返回值的约定和 vm 内部解析 LClosure 是一样的。
+
+官方文档[fn:2]提供了一段示例代码，
+
+#+begin_src C
+#include <stdio.h>                        
+
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
+
+static int foo (lua_State *L) {
+  int n = lua_gettop(L);    /* number of arguments */
+  lua_Number sum = 0;
+  int i;
+  for (i = 1; i <= n; i++) {
+    if (!lua_isnumber(L, i)) {
+      lua_pushstring(L, "incorrect argument");
+      lua_error(L);
+    }
+    sum += lua_tonumber(L, i);
+  }
+  lua_pushnumber(L, sum/n);        /* first result */
+  lua_pushnumber(L, sum);         /* second result */
+  return 2;                   /* number of results */
+}
+
+int main(int argc, char* argv[])
+{
+    char* file = NULL;
+    file = argv[1];
+
+    lua_State* L = luaL_newstate();
+
+    luaL_openlibs(L);
+
+    lua_pushcfunction(L, foo);
+
+    lua_setfield(L, LUA_GLOBALSINDEX, "foo");
+    
+    luaL_dofile(L, file);
+
+    return 0;
+}
+#+end_src
+
+#+begin_src lua
+avg, sum = foo(1, 2, 3)
+
+print(avg, sum)
+#+end_src
+
+通过
+
+#+begin_example
+$ make -s example
+#+end_example
+
+可以编译运行上述示例。
+
+其中先注册了 CClosure 为全局变量 foo，再在 lua 代码中调用，
+打印出所有参数的平均值和总和。
+
+其中栈的变化情况如下，
+
+#+begin_src dot :file api-closure-call.png
+digraph {
+	before[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="white">                  </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">3</td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">2</td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">1</td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">foo</td>
+		</tr>
+	      </table>
+	      >, shape=none, xlabel="before call"]
+
+	after[label=<
+	      <table border="0" cellspacing="0">
+	        <tr>
+		  <td border="1" bgcolor="white">                  </td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">6</td>
+		</tr>
+	        <tr>
+		  <td border="1" bgcolor="white">2</td>
+		</tr>
+	      </table>
+	      >, shape=none, xlabel="after call"]
+}
+#+end_src
+
+#+RESULTS:
+[[file:api-closure-call.png]]
+
+
+* TODO registry
+
+* practice
+
+在 =example/= 目录下，实现了两种 foo 的实现方式。
+
+cclosure 小节在 C 语言层面，定义 foo 并注册到全局表中，而在 Lua 层面调用；
+=example/lclosure.c= =example/lclosure.lua= 将 foo 在 Lua 代码中定义为全局变量，
+而在 C 语言层面调用。
+
+读者可通过
+
+#+begin_example
+$ make -s example
+#+end_example
+
+来对比这两种协同方式。
+
+| 章节涉及文件 | 建议了解程度   |
+|--------------+----------------|
+| lua.h        | ★ ★ ★ ★ ★ |
+| lapi.h       | ★ ☆ ☆ ☆ ☆ |
+| lapi.c       | ★ ★ ★ ★ ★ |
+
+* Footnotes
+
+[fn:1]: http://www.lua.org/manual/5.1/manual.html#3
+
+[fn:2]: http://www.lua.org/manual/5.1/manual.html#lua_CFunction

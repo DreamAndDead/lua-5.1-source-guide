@@ -1,14 +1,13 @@
-* TODO package module lib
+#+SETUPFILE: setup.org
 
-
-
-std lib
+#+TITLE: std lib
+#+DATE: <2021-01-18 一 16:08>
 
 luaL_openlibs 进行注册
 
 使用 c api，对所有模块进行注册
 
-** register
+* register
 
 linit.c, luaL_openlibs
 
@@ -63,7 +62,7 @@ lbaselib.c:628 629
 
 
 
-*** base
+** base
 
 _G = _G
 
@@ -89,25 +88,25 @@ coroutine funcs
 
 in coroutine chapter
 
-*** math
+** math
 
 - abs
 - acos
 - etc.
 
-*** string
+** string
 
-*** table
+** table
 
-*** io
+** io
 
-*** os
+** os
 
-*** debug
+** debug
 
 in debug chapter
 
-*** TODO dynamic load
+** dynamic load
 
 require function
 
@@ -116,9 +115,12 @@ load diff file type
 - so
 
 
-
-
 - loadlib
 - seeall
 - module
 - require
+
+* practice
+
+
+

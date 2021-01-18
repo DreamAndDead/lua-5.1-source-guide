@@ -1,6 +1,9 @@
-test:
-	gcc -m32 -g -I$(CURDIR)/install/include -I$(CURDIR)/install/lib -ldl -lm -o test/test.out test/test.c $(CURDIR)/install/lib/liblua.a
-	(cd test;./test.out test.lua;cd ..)
+example:
+	gcc -m32 -g -I$(CURDIR)/install/include -I$(CURDIR)/install/lib -ldl -lm -o example/cclosure.out example/cclosure.c $(CURDIR)/install/lib/liblua.a
+	(cd example;./cclosure.out cclosure.lua;cd ..)
+
+	gcc -m32 -g -I$(CURDIR)/install/include -I$(CURDIR)/install/lib -ldl -lm -o example/lclosure.out example/lclosure.c $(CURDIR)/install/lib/liblua.a
+	(cd example;./lclosure.out lclosure.lua;cd ..)
 
 spy:
 	$(CURDIR)/install/bin/lua $(CURDIR)/tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua --interact
@@ -38,4 +41,4 @@ server:
 draw:
 	asy -f pdf -pdfviewer="okular" -batchView -tex xelatex
 
-.PHONY:	clean test publish
+.PHONY:	clean test publish example
