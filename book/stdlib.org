@@ -16,11 +16,13 @@
 #+caption: lualib.h
 #+include: ../lua-5.1.5/src/lualib.h src C -n 18 :lines "18-45"
 
+#+caption: lauxlib.h
+#+include: ../lua-5.1.5/src/lauxlib.h src C -n 35 :lines "35-39"
+
 #+caption: linit.c
 #+include: ../lua-5.1.5/src/linit.c src C -n 17 :lines "17-38"
 
 各个模块实现了各自的功能，分别注册到不同的模块名中。
-同时每个模块各自实现注册方法，由 =luaL_openlibs= 统一调用。
 
 | file       | module      |
 |------------+-------------|
@@ -33,94 +35,441 @@
 | ldblib.c   | debug       |
 | loadlib.c  | package     |
 
+同时每个模块各自实现注册方法，由 =luaL_openlibs= 统一调用。
 
-在完全运行前，这个环境需要加载，所以当前是动态的
+#+caption: lauxlib.c
+#+include: ../lua-5.1.5/src/lauxlib.c src C -n 229 :lines "229-269"
 
-base_open
-lbaselib.c:628 629
-设置 _G 为 global table 自身
+首先进行注册的是全局方法和 coroutine 模块，
 
+#+caption: lbaselib.c
+#+include: ../lua-5.1.5/src/lbaselib.c src C -n 626 :lines "626-653"
 
-注册的过程
+line 628 629 在全局表中添加 _G，指向全局表自身。
 
-加入全局表
+line 631 =luaL_register(L, "_G", base_funcs);= 将全局函数注册到 _G 中。
 
-加入注册表
+在注册过程中，在 REGISTRY 表中使用 _LOADED 记录相应注册的项，避免注册时出现重复冲突。
+同时将相应的注册项添加到全局表中。
+
+最终全部模块注册后，REGISTRY 表的内容大致如下，其中 _LOADED._G 引用的正是全局表，
+
+#+begin_src lua
+registry = {
+   _LOADED = {
+      _G = {
+	 _G = {
+	    -- ...
+	 },
+	 assert = ...,
+	 dofile = ...,
+	 --...
+	 --...
+	 coroutine = {
+	    --...
+	    --...
+	 },
+	 math = {
+	    --...
+	    --...
+	 },
+	 --...
+      },
+      coroutine = {
+	 --...
+	 --...
+      },
+      math = {
+	 --...
+	 --...
+      },
+      --...
+   }
+}
+#+end_src
+
+可通过
+
+#+begin_example
+$ make -s registry
+#+end_example
+
+来查看更具体的 REGISTRY 内容。
 
 * module
 
-** base
+base 模块注册了所有基础全局函数，
 
-_G = _G
+#+caption: lbaselib.c
+#+include: ../lua-5.1.5/src/lbaselib.c src C -n 447 :lines "447-474"
 
-base funcs
-- assert
-- collectgarbage
-- dofile
-- etc.
+其中每个函数都对应一个 C 函数实现，函数使用 api 接口与 Lua 进行数据交互，
+然后将函数注册到 Lua 的全局表中，在运行 Lua 代码时就可以平滑调用。
+正如 api 章节所述，这即是 api 在内部实现发挥的作用。
 
-global _VERSION    
+其它模块的注册过程与之类似，读者可结合官方文档[fn:1]针对相应的方法进行了解。
 
-with upvalues
-ipairs
-pairs
+* coroutine
+
+一个出人意料的点在于，协程是用 api 来实现的，而不是内建在 vm 中。
+
+coroutine 模块一并在 baselib 中注册，
+
+#+caption: lbaselib.c
+#+include: ../lua-5.1.5/src/lbaselib.c src C -n 605 :lines "605-614"
+
+其中的方法，正是在 lua 代码中使用的 coroutine.* 方法。
+
+** create
+
+至此，我们已经了解了 8 种基础类型的 7 种，余下的 thread 类型，正是协程。
+而并不意外的，协程本身正是 =lua_State= 。
+
+=lua_State= 记录了所有 lua 代码运行时的状态，协程可理解为是 vm 另外运行的一块 lua 代码，
+所以用 =lua_State= 来表示。
+
+从操作系统层面而言，lua 解释器是一个单线程程序。
+lua 实现的协程，虽然在内部声明类型为 thread，但是本质上，
+只是多个不同的 =lua_State= 交替控制权在轮换执行。
+
+也就是说，协程是异步并发的，而不是并行的。
+
+#+begin_src ditaa :file stdlib-thread.png
+
+                     +--------------------+
+                     |                    |
+                     |                    |
+                +--->|  global table      |<---+
+                |    |                    |    |
+                |    |                    |    |
+                |    +--------------------+    |
+                |                              |
+                |                              |
+                |                              |
+        +-------+--------+            +--------+-------+
+        |                |            |                |
+        |                |   create   |                |
+        |                +----------->|                |
+        |                |            |                |
+        |                |   resume   |                |
+        |                +----------->|                |
+        |                |            |                |
+        |                |   yield    |                |
+        | main thread    |<-----------+ thread         |
+        |                |            |                |
+        |                |   resume   |                |
+        |                +----------->|                |
+        |                |            |                |
+        |                |            |                |
+        |                |            |                |
+        +----------------+            +----------------+
+        +----------------------------------------------+
+        |                                              |
+        |                      vm                      |
+        |                                              |
+        +----------------------------------------------+
+
+#+end_src
+
+#+RESULTS:
+[[file:stdlib-thread.png]]
+
+lua 内部默认存在“主线程” main thread，就是多次出现在代码中的 =lua_State *L= 。
+
+主线程可创建出新的协程并通过 resume 执行，此时主线程失去控制权；
+协程通过 yield 放弃控制权，回到主线程调用时；
+主线程可通过 resume 重新进入协程的中断点，继续执行。
+
+#+caption: lbaselib.c
+#+include: ../lua-5.1.5/src/lbaselib.c src C -n 576 :lines "576-584"
+
+#+begin_src ditaa :file stdlib-create.png :cmdline -E
+
+    +------------------+                  +------------------+
+    |                  |                  |                  |
+    +------------------+                  +------------------+
+    |                  |                  |                  |
+    +------------------+   lua_xmove      +------------------+
+    |cBLK   f          +----------+       |                  |
+    +------------------+          |       +------------------+
+    |       NL         +----+     |       |                  |
+    +------------------+    |     |       +------------------+
+    |       f          |    |     |       |                  |
+    +------------------+    |     |       +------------------+
+    | luaB_cocreate    |    |     +------>|        f         |
+    +------------------+    |             +------------------+
+            L               |                      ^ NL
+                            |                      |
+                            +----------------------+
+                                lua_newthread
+
+#+end_src
+
+#+RESULTS:
+[[file:stdlib-create.png]]
+
+lua 内部通过 coroutine.create(f) 来创建协程，在主线程 L 的栈底即存在 =luaB_cocreate= 和 f，
+通过 =lua_newthead= 创建协程 NL（即 =lua_State= ）并入栈，再将 f 复制到栈顶，
+并通过 xmove 移动到 NL 的栈中，作为起始调用函数，最终返回 NL。
+
+=lua_newthead= 最终调用了 =luaE_newthread= ，
+
+#+caption: lstate.c
+#+include: ../lua-5.1.5/src/lstate.c src C -n 119 :lines "119-132"
+
+在 line 124 表明，协程是共享全局表的，即在协程中修改全局变量是相互影响的。
+
+** resume & yield
+
+resume 函数开始执行/恢复协程的运行，第一个参数为协程本身，后续参数为传递入协程的参数，
+
+#+caption: lbaselib.c
+#+include: ../lua-5.1.5/src/lbaselib.c src C -n 518 :lines "518-559"
+
+line 544 先找到协程，
+line 526 再通过 xmove 将参数传递到相应的栈中，
+line 528 恢复其执行，
+
+#+caption: ldo.c
+#+include: ../lua-5.1.5/src/ldo.c src C -n 418 :lines "418-442"
+
+执行协程之后，最终返回其状态值。
+
+line 529 判断状态为 yield 时，回收其栈上的返回值，通过 xmove 移动到 L 中。
+
+与之相配合的，yield 函数则直接准备参数数量，重置 =lua_State= 的状态为 yield 即可。
+
+#+caption: lbaselib.c
+#+include: ../lua-5.1.5/src/lbaselib.c src C -n 593 :lines "593-596"
+
+#+caption: ldo.c
+#+include: ../lua-5.1.5/src/ldo.c src C -n 444 :lines "444-454"
+
+比如如下示例代码，
+
+#+begin_src lua :results output :exports both
+local co = coroutine.create(function(a, b, c)
+      local d, e = coroutine.yield(a + b + c)
+      return d + e
+      end)
+
+print(coroutine.resume(co, 1, 2, 3))
+print(coroutine.resume(co, 4, 5))
+print(coroutine.resume(co))
+#+end_src
+
+#+RESULTS:
+: true	6
+: true	9
+: false	cannot resume dead coroutine
+
+第一次 resume 时，将参数传递入 NL，
+
+#+begin_src ditaa :file stdlib-resume.png :cmdline -E
+
+   +-------------------+                   +-------------------+
+   |                   |                   |                   |
+   +-------------------+                   +-------------------+
+   |                   |                   |                   |
+   +-------------------+                   +-------------------+
+   |cBLK    3          +----------+        |                   |
+   +-------------------+          |        +-------------------+
+   |cBLK    2          +--------+ +------->|        c          |
+   +-------------------+        |          +-------------------+
+   |cBLK    1          +------+ +--------->|        b          |
+   +-------------------+      |            +-------------------+
+   |        co         +---+  +----------->|        a          |
+   +-------------------+   |               +-------------------+
+   | luaB_coresume     |   |               |        f          |
+   +-------------------+   |               +-------------------+
+            L              +----------------------> NL
+
+#+end_src
+
+#+RESULTS:
+[[file:stdlib-resume.png]]
+
+协程内部执行 yield，返回状态 =LUA_YIELD= ，resume 通过 xmove 将结果从栈回收至 L，
+最终 resume 自己压栈 bool 值 true 并 insert 所有返回值，作为调用 resume 的返回值。
+
+#+begin_src ditaa :file stdlib-resume-return.png :cmdline -E
+
+   +-------------------+                   +-------------------+
+   |                   |                   |                   |
+   +-------------------+                   +-------------------+
+   |                   |               +---+        6     cBLK |
+   +-------------------+               |   +-------------------+
+   |        6          |               |   |    luaB_yield     |
+   +-------------------+               |   +-------------------+
+   |       true        |               |   |        c          |
+   +-------------------+               |   +-------------------+
+   |        6          |<--------------+   |        b          |
+   +-------------------+                   +-------------------+
+   |        co         +---+               |        a          |
+   +-------------------+   |               +-------------------+
+   | luaB_coresume     |   |               |        f          |
+   +-------------------+   |               +-------------------+
+            L              +----------------------> NL
+
+#+end_src
+
+#+RESULTS:
+[[file:stdlib-resume-return.png]]
+
+第二次调用 resume 时，传递参数 4 5，在协程内部，从中断的地方继续执行，
+4 5 作为 yield 调用的返回值，赋值与 d e。
+
+#+begin_src ditaa :file stdlib-resume-2.png :cmdline -E
+
+   +-------------------+                   +-------------------+
+   |                   |                   |                   |
+   +-------------------+                   +-------------------+
+   |                   |         +-------->|        e          |
+   +-------------------+         |         +-------------------+
+   |                   |         |   +---->|        d          |
+   +-------------------+         |   |     +-------------------+
+   |cBLK    5          +---------+   |     |        c          |
+   +-------------------+             |     +-------------------+
+   |cBLK    4          +-------------+     |        b          |
+   +-------------------+                   +-------------------+
+   |        co         +---+               |        a          |
+   +-------------------+   |               +-------------------+
+   | luaB_coresume     |   |               |        f          |
+   +-------------------+   |               +-------------------+
+            L              +----------------------> NL
+
+#+end_src
+
+#+RESULTS:
+[[file:stdlib-resume-2.png]]
+
+最终协程内部 return 执行结束，resume 执行相同的过程，回收栈上的返回值。
+
+#+begin_src ditaa :file stdlib-resume-return-2.png :cmdline -E
+
+   +-------------------+                   +-------------------+
+   |                   |                   |                   |
+   +-------------------+                   +-------------------+
+   |                   |               +---+        9     cBLK |
+   +-------------------+               |   +-------------------+
+   |                   |               |   |    luaB_yield     |
+   +-------------------+               |   +-------------------+
+   |                   |               |   |        e          |
+   +-------------------+               |   +-------------------+
+   |        9          |               |   |        d          |
+   +-------------------+               |   +-------------------+
+   |       true        |               |   |        c          |
+   +-------------------+               |   +-------------------+
+   |        9          |<--------------+   |        b          |
+   +-------------------+                   +-------------------+
+   |        co         +---+               |        a          |
+   +-------------------+   |               +-------------------+
+   | luaB_coresume     |   |               |        f          |
+   +-------------------+   |               +-------------------+
+            L              +----------------------> NL
+
+#+end_src
+
+#+RESULTS:
+[[file:stdlib-resume-return-2.png]]
+
+** status
+
+在 lua.h 中，定义线程状态有如下几种，
+
+#+caption: lua.h
+#+include: ../lua-5.1.5/src/lua.h src C -n 42 :lines "42-48"
+
+在线程运行没有出错的情况下，对协程状态的检测会更加细致，
+
+#+caption: lbaselib.c
+#+include: ../lua-5.1.5/src/lbaselib.c src C -n 482 :lines "482-516"
+
+在调用 =luaB_costatus= 时要明确一点，正在调用的线程，正是拥有控制权而正在运行的线程。
 
 
-proxy table??
+=CO_RUN= 状态，对应于协程自身检测自身的状态，在检测的此刻必然是 running 状态。
+
+#+begin_src lua :results output :exports both
+local co = coroutine.create(function(co)
+      print(coroutine.status(co))
+end)
+
+coroutine.resume(co, co)
+#+end_src
+
+#+RESULTS:
+: running
 
 
-coroutine funcs
-- create
-- etc.
+在协程刚刚新建/yield 之后，对应的状态为 =CO_SUS= 。
 
-in coroutine chapter
+#+begin_src lua :results output :exports both
+local co = coroutine.create(function()
+      coroutine.yield()
+end)
 
-** math
+print(coroutine.status(co))
+coroutine.resume(co)
+print(coroutine.status(co))
+#+end_src
 
-- abs
-- acos
-- etc.
+#+RESULTS:
+: suspended
+: suspended
 
-** string
+如果协程本身 resume 了其它协程，此刻检测其状态，对应 =CO_NOR= 。
 
-** table
+#+begin_src lua :results output :exports both
+local co = coroutine.create(function(co)
+      local a = coroutine.create(function()
+	    print(coroutine.status(co))
+      end)
 
-** io
+      coroutine.resume(a)
+end)
 
-** os
+coroutine.resume(co, co)
+#+end_src
 
-** debug
+#+RESULTS:
+: normal
 
-in debug chapter
+当协程执行结束/运行出错，状态都为 =CO_DEAD= 。
 
-** dynamic load
+#+begin_src lua :results output :exports both
+local co = coroutine.create(function()
+      coroutine.yield()
+end)
 
-REGISTRYINDEX . _LOADED 判断是否已经加载
+coroutine.resume(co)
+coroutine.resume(co)
+coroutine.resume(co)
 
-register 是 L->l_G->l_register
+print(coroutine.status(co))
+#+end_src
 
-luaL_findtable，对 a.b.c 进行 . 分开搜索
+#+RESULTS:
+: dead
 
-找不到则新建 {}，一直向下，最终将相应结果放在栈顶
-
-
-register['_LOADED']['_G'] = global
-
-记录加载情况
-
-
-require function
-
-load diff file type
-- lua
-- so
-
-
-- loadlib
-- seeall
-- module
-- require
+需要注意的是，主线程是无法检测状态的，因为在 lua 代码层面根本没有相应的变量来对应其 =lua_State= 。
 
 * practice
 
+标准库的代码量并不小，但是安排的架构很清晰，读者可根据自己的需要和兴趣有目的的按点阅读。
 
+| 章节涉及文件 | 建议阅读程度   |
+|--------------+----------------|
+| linit.c      | ★ ★ ★ ★ ★ |
+| lbaselib.c   | ★ ★ ★ ★ ☆ |
+| lmathlib.c   | ★ ★ ☆ ☆ ☆ |
+| lstrlib.c    | ★ ★ ☆ ☆ ☆ |
+| ltablib.c    | ★ ★ ☆ ☆ ☆ |
+| liolib.c     | ★ ★ ☆ ☆ ☆ |
+| loslib.c     | ★ ★ ☆ ☆ ☆ |
+| ldblib.c     | ★ ★ ☆ ☆ ☆ |
+| loadlib.c    | ★ ★ ☆ ☆ ☆ |
+
+* Footnotes
+
+[fn:1]: http://www.lua.org/manual/5.1/manual.html#5

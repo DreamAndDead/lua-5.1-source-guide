@@ -1,7 +1,7 @@
 #+SETUPFILE: setup.org
 
-* TODO debug
-
+#+TITLE: debug
+#+DATE: <2021-01-19 二 15:13>
 
 
 lua.h:301 -
@@ -94,7 +94,7 @@ lua_getupvalue / setupvalue in lapi.c
 
 
 
-** hook
+* hook
 
 lua_Hook is function pointer
 
@@ -154,7 +154,7 @@ luaD_callhook
 
 
 
-** debug api
+* debug api
 
 
 

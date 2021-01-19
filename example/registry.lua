@@ -1,4 +1,4 @@
-local ins = require "inspect"
+local ins = dofile "../tool/inspect.lua"
 
 local t = debug.getregistry()
 

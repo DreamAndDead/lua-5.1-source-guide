@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-18 一 16:09 -->
+<!-- 2021-01-19 二 15:14 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>std lib</title>
@@ -221,26 +221,88 @@
 <div id="content">
 <h1 class="title">std lib</h1>
 <p>
-luaL<sub>openlibs</sub> 进行注册
+在 lex 章节提到，require next 之类不是关键字而是函数，
+在 api 章节提到 api 也用于内部作用，
+它们描述的都是 lua 标准库。
 </p>
 
 <p>
-使用 c api，对所有模块进行注册
+本章节就来讲解 lua 内部是如何处理标准库的。
 </p>
 
 <div id="outline-container-orgbc34983" class="outline-2">
 <h2 id="orgbc34983"><span class="section-number-2">1</span> register</h2>
 <div class="outline-text-2" id="text-1">
 <p>
-linit.c, luaL<sub>openlibs</sub>
+标准库可以说是多种功能函数的集合，在被使用之前，必须先被注册。
 </p>
 
-<p>
-lualib.h
-</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>lualib.h</label><pre class="src src-C"><span class="linenr">18: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_COLIBNAME</span>   <span class="org-string">"coroutine"</span>
+<span class="linenr">19: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_base) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">20: </span>
+<span class="linenr">21: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_TABLIBNAME</span>  <span class="org-string">"table"</span>
+<span class="linenr">22: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_table) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">23: </span>
+<span class="linenr">24: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_IOLIBNAME</span>   <span class="org-string">"io"</span>
+<span class="linenr">25: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_io) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">26: </span>
+<span class="linenr">27: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_OSLIBNAME</span>   <span class="org-string">"os"</span>
+<span class="linenr">28: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_os) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">29: </span>
+<span class="linenr">30: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_STRLIBNAME</span>  <span class="org-string">"string"</span>
+<span class="linenr">31: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_string) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">32: </span>
+<span class="linenr">33: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MATHLIBNAME</span> <span class="org-string">"math"</span>
+<span class="linenr">34: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_math) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">35: </span>
+<span class="linenr">36: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_DBLIBNAME</span>   <span class="org-string">"debug"</span>
+<span class="linenr">37: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_debug) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">38: </span>
+<span class="linenr">39: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_LOADLIBNAME</span> <span class="org-string">"package"</span>
+<span class="linenr">40: </span><span class="org-type">LUALIB_API</span> <span class="org-type">int</span> (luaopen_package) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>);
+<span class="linenr">41: </span>
+<span class="linenr">42: </span>
+<span class="linenr">43: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">open all previous libraries</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">44: </span><span class="org-type">LUALIB_API</span> <span class="org-type">void</span> (luaL_openlibs) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>); 
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>lauxlib.h</label><pre class="src src-C"><span class="linenr">35: </span><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">luaL_Reg</span> {
+<span class="linenr">36: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>;
+<span class="linenr">37: </span>  <span class="org-type">lua_CFunction</span> <span class="org-variable-name">func</span>;
+<span class="linenr">38: </span>} <span class="org-type">luaL_Reg</span>;
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>linit.c</label><pre class="src src-C"><span class="linenr">17: </span><span class="org-keyword">static</span> <span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> <span class="org-variable-name">lualibs</span>[] = {
+<span class="linenr">18: </span>  {<span class="org-string">""</span>, luaopen_base},
+<span class="linenr">19: </span>  {LUA_LOADLIBNAME, luaopen_package},
+<span class="linenr">20: </span>  {LUA_TABLIBNAME, luaopen_table},
+<span class="linenr">21: </span>  {LUA_IOLIBNAME, luaopen_io},
+<span class="linenr">22: </span>  {LUA_OSLIBNAME, luaopen_os},
+<span class="linenr">23: </span>  {LUA_STRLIBNAME, luaopen_string},
+<span class="linenr">24: </span>  {LUA_MATHLIBNAME, luaopen_math},
+<span class="linenr">25: </span>  {LUA_DBLIBNAME, luaopen_debug},
+<span class="linenr">26: </span>  {<span class="org-constant">NULL</span>, <span class="org-constant">NULL</span>}
+<span class="linenr">27: </span>};
+<span class="linenr">28: </span>
+<span class="linenr">29: </span>
+<span class="linenr">30: </span>LUALIB_API <span class="org-type">void</span> <span class="org-function-name">luaL_openlibs</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">31: </span>  <span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> *<span class="org-variable-name">lib</span> = lualibs;
+<span class="linenr">32: </span>  <span class="org-keyword">for</span> (; lib-&gt;func; lib++) {
+<span class="linenr">33: </span>    lua_pushcfunction(L, lib-&gt;func);
+<span class="linenr">34: </span>    lua_pushstring(L, lib-&gt;name);
+<span class="linenr">35: </span>    lua_call(L, 1, 0);
+<span class="linenr">36: </span>  }
+<span class="linenr">37: </span>}
+</pre>
+</div>
 
 <p>
-根据注册的约定，各个模块分别注册
+各个模块实现了各自的功能，分别注册到不同的模块名中。
 </p>
 
 <table>
@@ -250,238 +312,799 @@ lualib.h
 <col  class="org-left">
 
 <col  class="org-left">
-
-<col  class="org-left">
 </colgroup>
 <thead>
 <tr>
 <th scope="col" class="org-left">file</th>
 <th scope="col" class="org-left">module</th>
-<th scope="col" class="org-left">desc</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="org-left">lbaselib.c</td>
-<td class="org-left">&#xa0;</td>
-<td class="org-left">&#xa0;</td>
+<td class="org-left">(coroutine)</td>
 </tr>
 
 <tr>
 <td class="org-left">lmathlib.c</td>
 <td class="org-left">math</td>
-<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
 <td class="org-left">lstrlib.c</td>
 <td class="org-left">string</td>
-<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
 <td class="org-left">ltablib.c</td>
 <td class="org-left">table</td>
-<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
 <td class="org-left">liolib.c</td>
 <td class="org-left">io</td>
-<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
 <td class="org-left">loslib.c</td>
 <td class="org-left">os</td>
-<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
 <td class="org-left">ldblib.c</td>
 <td class="org-left">debug</td>
-<td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
 <td class="org-left">loadlib.c</td>
 <td class="org-left">package</td>
-<td class="org-left">&#xa0;</td>
 </tr>
 </tbody>
 </table>
 
+<p>
+同时每个模块各自实现注册方法，由 <code>luaL_openlibs</code> 统一调用。
+</p>
 
-
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lauxlib.c</label><pre class="src src-C"><span class="linenr">229: </span><span class="org-type">LUALIB_API</span> <span class="org-type">void</span> (luaL_register) (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">libname</span>,
+<span class="linenr">230: </span>                                <span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> *<span class="org-variable-name">l</span>) {
+<span class="linenr">231: </span>  luaI_openlib(L, libname, l, 0);
+<span class="linenr">232: </span>}
+<span class="linenr">233: </span>
+<span class="linenr">234: </span>
+<span class="linenr">235: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">libsize</span> (<span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> *<span class="org-variable-name">l</span>) {
+<span class="linenr">236: </span>  <span class="org-type">int</span> <span class="org-variable-name">size</span> = 0;
+<span class="linenr">237: </span>  <span class="org-keyword">for</span> (; l-&gt;name; l++) size++;
+<span class="linenr">238: </span>  <span class="org-keyword">return</span> size;
+<span class="linenr">239: </span>}
+<span class="linenr">240: </span>
+<span class="linenr">241: </span>
+<span class="linenr">242: </span><span class="org-type">LUALIB_API</span> <span class="org-type">void</span> <span class="org-function-name">luaI_openlib</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">libname</span>,
+<span class="linenr">243: </span>                              <span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> *<span class="org-variable-name">l</span>, <span class="org-type">int</span> <span class="org-variable-name">nup</span>) {
+<span class="linenr">244: </span>  <span class="org-keyword">if</span> (libname) {
+<span class="linenr">245: </span>    <span class="org-type">int</span> <span class="org-variable-name">size</span> = libsize(l);
+<span class="linenr">246: </span>    <span class="org-comment-delimiter">/* </span><span class="org-comment">check whether lib already exists</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">247: </span>    luaL_findtable(L, LUA_REGISTRYINDEX, <span class="org-string">"_LOADED"</span>, 1);
+<span class="linenr">248: </span>    lua_getfield(L, -1, libname);  <span class="org-comment-delimiter">/* </span><span class="org-comment">get _LOADED[libname]</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">249: </span>    <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>lua_istable(L, -1)) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">not found?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">250: </span>      lua_pop(L, 1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">remove previous result</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">251: </span>      <span class="org-comment-delimiter">/* </span><span class="org-comment">try global variable (and create one if it does not exist)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">252: </span>      <span class="org-keyword">if</span> (luaL_findtable(L, LUA_GLOBALSINDEX, libname, size) != <span class="org-constant">NULL</span>)
+<span class="linenr">253: </span>        luaL_error(L, <span class="org-string">"name conflict for module "</span> LUA_QS, libname);
+<span class="linenr">254: </span>      lua_pushvalue(L, -1);
+<span class="linenr">255: </span>      lua_setfield(L, -3, libname);  <span class="org-comment-delimiter">/* </span><span class="org-comment">_LOADED[libname] = new table</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">256: </span>    }
+<span class="linenr">257: </span>    lua_remove(L, -2);  <span class="org-comment-delimiter">/* </span><span class="org-comment">remove _LOADED table</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">258: </span>    lua_insert(L, -(nup+1));  <span class="org-comment-delimiter">/* </span><span class="org-comment">move library table to below upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">259: </span>  }
+<span class="linenr">260: </span>  <span class="org-keyword">for</span> (; l-&gt;name; l++) {
+<span class="linenr">261: </span>    <span class="org-type">int</span> <span class="org-variable-name">i</span>;
+<span class="linenr">262: </span>    <span class="org-keyword">for</span> (i=0; i&lt;nup; i++)  <span class="org-comment-delimiter">/* </span><span class="org-comment">copy upvalues to the top</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">263: </span>      lua_pushvalue(L, -nup);
+<span class="linenr">264: </span>    lua_pushcclosure(L, l-&gt;func, nup);
+<span class="linenr">265: </span>    lua_setfield(L, -(nup+2), l-&gt;name);
+<span class="linenr">266: </span>  }
+<span class="linenr">267: </span>  lua_pop(L, nup);  <span class="org-comment-delimiter">/* </span><span class="org-comment">remove upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">268: </span>}
+</pre>
+</div>
 
 <p>
-REGISTRYINDEX . _LOADED 判断是否已经加载
+首先进行注册的是全局方法和 coroutine 模块，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>lbaselib.c</label><pre class="src src-C"><span class="linenr">626: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">base_open</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">627: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">set global _G</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">628: </span>  lua_pushvalue(L, LUA_GLOBALSINDEX);
+<span class="linenr">629: </span>  lua_setglobal(L, <span class="org-string">"_G"</span>);
+<span class="linenr">630: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">open lib into global table</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">631: </span>  luaL_register(L, <span class="org-string">"_G"</span>, base_funcs);
+<span class="linenr">632: </span>  lua_pushliteral(L, LUA_VERSION);
+<span class="linenr">633: </span>  lua_setglobal(L, <span class="org-string">"_VERSION"</span>);  <span class="org-comment-delimiter">/* </span><span class="org-comment">set global _VERSION</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">634: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">`ipairs' and `pairs' need auxiliary functions as upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">635: </span>  auxopen(L, <span class="org-string">"ipairs"</span>, luaB_ipairs, ipairsaux);
+<span class="linenr">636: </span>  auxopen(L, <span class="org-string">"pairs"</span>, luaB_pairs, luaB_next);
+<span class="linenr">637: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">`newproxy' needs a weaktable as upvalue</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">638: </span>  lua_createtable(L, 0, 1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">new table `w'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">639: </span>  lua_pushvalue(L, -1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">`w' will be its own metatable</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">640: </span>  lua_setmetatable(L, -2);
+<span class="linenr">641: </span>  lua_pushliteral(L, <span class="org-string">"kv"</span>);
+<span class="linenr">642: </span>  lua_setfield(L, -2, <span class="org-string">"__mode"</span>);  <span class="org-comment-delimiter">/* </span><span class="org-comment">metatable(w).__mode = "kv"</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">643: </span>  lua_pushcclosure(L, luaB_newproxy, 1);
+<span class="linenr">644: </span>  lua_setglobal(L, <span class="org-string">"newproxy"</span>);  <span class="org-comment-delimiter">/* </span><span class="org-comment">set global `newproxy'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">645: </span>}
+<span class="linenr">646: </span>
+<span class="linenr">647: </span>
+<span class="linenr">648: </span>LUALIB_API <span class="org-type">int</span> <span class="org-function-name">luaopen_base</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">649: </span>  base_open(L);
+<span class="linenr">650: </span>  luaL_register(L, LUA_COLIBNAME, co_funcs);
+<span class="linenr">651: </span>  <span class="org-keyword">return</span> 2;
+<span class="linenr">652: </span>}
+</pre>
+</div>
+
+<p>
+line 628 629 在全局表中添加 _G，指向全局表自身。
 </p>
 
 <p>
-register 是 L-&gt;l<sub>G</sub>-&gt;l<sub>register</sub>
+line 631 <code>luaL_register(L, "_G", base_funcs);</code> 将全局函数注册到 _G 中。
 </p>
 
 <p>
-luaL<sub>findtable</sub>，对 a.b.c 进行 . 分开搜索
+在注册过程中，在 REGISTRY 表中使用 _LOADED 记录相应注册的项，避免注册时出现重复冲突。
+同时将相应的注册项添加到全局表中。
 </p>
 
 <p>
-找不到则新建 {}，一直向下，最终将相应结果放在栈顶
+最终全部模块注册后，REGISTRY 表的内容大致如下，其中 _LOADED.<sub>G</sub> 引用的正是全局表，
 </p>
 
-
-
-
+<div class="org-src-container">
+<pre class="src src-lua">registry = {
+   _LOADED = {
+      <span class="org-builtin">_G</span> = {
+         <span class="org-builtin">_G</span> = {
+            <span class="org-comment-delimiter">-- </span><span class="org-comment">...</span>
+         },
+         <span class="org-builtin">assert</span> = ...,
+         <span class="org-builtin">dofile</span> = ...,
+         <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+         <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+         <span class="org-builtin">coroutine</span> = {
+            <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+            <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+         },
+         <span class="org-builtin">math</span> = {
+            <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+            <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+         },
+         <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+      },
+      <span class="org-builtin">coroutine</span> = {
+         <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+         <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+      },
+      <span class="org-builtin">math</span> = {
+         <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+         <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+      },
+      <span class="org-comment-delimiter">--</span><span class="org-comment">...</span>
+   }
+}
+</pre>
+</div>
 
 <p>
-register['<sub>LOADED</sub>']['<sub>G</sub>'] = global
+可通过
+</p>
+
+<pre class="example" id="orgcccc2e0">
+$ make -s registry
+</pre>
+
+<p>
+来查看更具体的 REGISTRY 内容。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org27016fb" class="outline-2">
+<h2 id="org27016fb"><span class="section-number-2">2</span> module</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+base 模块注册了所有基础全局函数，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>lbaselib.c</label><pre class="src src-C"><span class="linenr">447: </span><span class="org-keyword">static</span> <span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> <span class="org-variable-name">base_funcs</span>[] = {
+<span class="linenr">448: </span>  {<span class="org-string">"assert"</span>, luaB_assert},
+<span class="linenr">449: </span>  {<span class="org-string">"collectgarbage"</span>, luaB_collectgarbage},
+<span class="linenr">450: </span>  {<span class="org-string">"dofile"</span>, luaB_dofile},
+<span class="linenr">451: </span>  {<span class="org-string">"error"</span>, luaB_error},
+<span class="linenr">452: </span>  {<span class="org-string">"gcinfo"</span>, luaB_gcinfo},
+<span class="linenr">453: </span>  {<span class="org-string">"getfenv"</span>, luaB_getfenv},
+<span class="linenr">454: </span>  {<span class="org-string">"getmetatable"</span>, luaB_getmetatable},
+<span class="linenr">455: </span>  {<span class="org-string">"loadfile"</span>, luaB_loadfile},
+<span class="linenr">456: </span>  {<span class="org-string">"load"</span>, luaB_load},
+<span class="linenr">457: </span>  {<span class="org-string">"loadstring"</span>, luaB_loadstring},
+<span class="linenr">458: </span>  {<span class="org-string">"next"</span>, luaB_next},
+<span class="linenr">459: </span>  {<span class="org-string">"pcall"</span>, luaB_pcall},
+<span class="linenr">460: </span>  {<span class="org-string">"print"</span>, luaB_print},
+<span class="linenr">461: </span>  {<span class="org-string">"rawequal"</span>, luaB_rawequal},
+<span class="linenr">462: </span>  {<span class="org-string">"rawget"</span>, luaB_rawget},
+<span class="linenr">463: </span>  {<span class="org-string">"rawset"</span>, luaB_rawset},
+<span class="linenr">464: </span>  {<span class="org-string">"select"</span>, luaB_select},
+<span class="linenr">465: </span>  {<span class="org-string">"setfenv"</span>, luaB_setfenv},
+<span class="linenr">466: </span>  {<span class="org-string">"setmetatable"</span>, luaB_setmetatable},
+<span class="linenr">467: </span>  {<span class="org-string">"tonumber"</span>, luaB_tonumber},
+<span class="linenr">468: </span>  {<span class="org-string">"tostring"</span>, luaB_tostring},
+<span class="linenr">469: </span>  {<span class="org-string">"type"</span>, luaB_type},
+<span class="linenr">470: </span>  {<span class="org-string">"unpack"</span>, luaB_unpack},
+<span class="linenr">471: </span>  {<span class="org-string">"xpcall"</span>, luaB_xpcall},
+<span class="linenr">472: </span>  {<span class="org-constant">NULL</span>, <span class="org-constant">NULL</span>}
+<span class="linenr">473: </span>};
+</pre>
+</div>
+
+<p>
+其中每个函数都对应一个 C 函数实现，函数使用 api 接口与 Lua 进行数据交互，
+然后将函数注册到 Lua 的全局表中，在运行 Lua 代码时就可以平滑调用。
+正如 api 章节所述，这即是 api 在内部实现发挥的作用。
 </p>
 
 <p>
-记录加载情况
+其它模块的注册过程与之类似，读者可结合官方文档<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>针对相应的方法进行了解。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org67c8d46" class="outline-2">
+<h2 id="org67c8d46"><span class="section-number-2">3</span> coroutine</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+一个出人意料的点在于，协程是用 api 来实现的，而不是内建在 vm 中。
 </p>
 
-
-
-
 <p>
-GLOBALSINDEX 存储了 global 域，在 index2adr 中可以发现，
-对应 gt(L)  L-&gt;l<sub>gt</sub>  lua<sub>State</sub> 中的 global table （不是 global state）
+coroutine 模块一并在 baselib 中注册，
 </p>
 
-<p>
-在完全运行前，这个环境需要加载，所以当前是动态的
-</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>lbaselib.c</label><pre class="src src-C"><span class="linenr">605: </span><span class="org-keyword">static</span> <span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> <span class="org-variable-name">co_funcs</span>[] = {
+<span class="linenr">606: </span>  {<span class="org-string">"create"</span>, luaB_cocreate},
+<span class="linenr">607: </span>  {<span class="org-string">"resume"</span>, luaB_coresume},
+<span class="linenr">608: </span>  {<span class="org-string">"running"</span>, luaB_corunning},
+<span class="linenr">609: </span>  {<span class="org-string">"status"</span>, luaB_costatus},
+<span class="linenr">610: </span>  {<span class="org-string">"wrap"</span>, luaB_cowrap},
+<span class="linenr">611: </span>  {<span class="org-string">"yield"</span>, luaB_yield},
+<span class="linenr">612: </span>  {<span class="org-constant">NULL</span>, <span class="org-constant">NULL</span>}
+<span class="linenr">613: </span>};
+</pre>
+</div>
 
-
 <p>
-base<sub>open</sub>
-lbaselib.c:628 629
-设置 _G 为 global table 自身
+其中的方法，正是在 lua 代码中使用的 coroutine.* 方法。
 </p>
 </div>
 
-
-
-
-
-<div id="outline-container-orgf9ea4e6" class="outline-3">
-<h3 id="orgf9ea4e6"><span class="section-number-3">1.1</span> base</h3>
-<div class="outline-text-3" id="text-1-1">
+<div id="outline-container-orgbecc05e" class="outline-3">
+<h3 id="orgbecc05e"><span class="section-number-3">3.1</span> create</h3>
+<div class="outline-text-3" id="text-3-1">
 <p>
-_G = _G
+至此，我们已经了解了 8 种基础类型的 7 种，余下的 thread 类型，正是协程。
+而并不意外的，协程本身正是 <code>lua_State</code> 。
 </p>
 
 <p>
-base funcs
-</p>
-<ul class="org-ul">
-<li>assert</li>
-<li>collectgarbage</li>
-<li>dofile</li>
-<li>etc.</li>
-</ul>
-
-<p>
-global _VERSION    
+<code>lua_State</code> 记录了所有 lua 代码运行时的状态，协程可理解为是 vm 另外运行的一块 lua 代码，
+所以用 <code>lua_State</code> 来表示。
 </p>
 
 <p>
-with upvalues
-ipairs
-pairs
+从操作系统层面而言，lua 解释器是一个单线程程序。
+lua 实现的协程，虽然在内部声明类型为 thread，但是本质上，
+只是多个不同的 <code>lua_State</code> 交替控制权在轮换执行。
+</p>
+
+<p>
+也就是说，协程是异步并发的，而不是并行的。
 </p>
 
 
+<div id="org01247a8" class="figure">
+<p><img src="stdlib-thread.png" alt="stdlib-thread.png">
+</p>
+</div>
+
 <p>
-proxy table??
+lua 内部默认存在“主线程” main thread，就是多次出现在代码中的 <code>lua_State *L</code> 。
 </p>
 
-
 <p>
-coroutine funcs
+主线程可创建出新的协程并通过 resume 执行，此时主线程失去控制权；
+协程通过 yield 放弃控制权，回到主线程调用时；
+主线程可通过 resume 重新进入协程的中断点，继续执行。
 </p>
-<ul class="org-ul">
-<li>create</li>
-<li>etc.</li>
-</ul>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>lbaselib.c</label><pre class="src src-C"><span class="linenr">576: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">luaB_cocreate</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">577: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">NL</span> = lua_newthread(L);
+<span class="linenr">578: </span>  luaL_argcheck(L, lua_isfunction(L, 1) &amp;&amp; <span class="org-negation-char">!</span>lua_iscfunction(L, 1), 1,
+<span class="linenr">579: </span>    <span class="org-string">"Lua function expected"</span>);
+<span class="linenr">580: </span>  lua_pushvalue(L, 1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">move function to top</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">581: </span>  lua_xmove(L, NL, 1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">move function from L to NL</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">582: </span>  <span class="org-keyword">return</span> 1;
+<span class="linenr">583: </span>}
+</pre>
+</div>
+
+
+<div id="orge471268" class="figure">
+<p><img src="stdlib-create.png" alt="stdlib-create.png">
+</p>
+</div>
 
 <p>
-in coroutine chapter
+lua 内部通过 coroutine.create(f) 来创建协程，在主线程 L 的栈底即存在 <code>luaB_cocreate</code> 和 f，
+通过 <code>lua_newthead</code> 创建协程 NL（即 <code>lua_State</code> ）并入栈，再将 f 复制到栈顶，
+并通过 xmove 移动到 NL 的栈中，作为起始调用函数，最终返回 NL。
+</p>
+
+<p>
+<code>lua_newthead</code> 最终调用了 <code>luaE_newthread</code> ，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span>lstate.c</label><pre class="src src-C"><span class="linenr">119: </span><span class="org-type">lua_State</span> *<span class="org-function-name">luaE_newthread</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">120: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">L1</span> = tostate(luaM_malloc(L, state_size(lua_State)));
+<span class="linenr">121: </span>  luaC_link(L, obj2gco(L1), LUA_TTHREAD);
+<span class="linenr">122: </span>  preinit_state(L1, G(L));
+<span class="linenr">123: </span>  stack_init(L1, L);  <span class="org-comment-delimiter">/* </span><span class="org-comment">init stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">124: </span>  setobj2n(L, gt(L1), gt(L));  <span class="org-comment-delimiter">/* </span><span class="org-comment">share table of globals</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">125: </span>  L1-&gt;hookmask = L-&gt;hookmask;
+<span class="linenr">126: </span>  L1-&gt;basehookcount = L-&gt;basehookcount;
+<span class="linenr">127: </span>  L1-&gt;hook = L-&gt;hook;
+<span class="linenr">128: </span>  resethookcount(L1);
+<span class="linenr">129: </span>  lua_assert(iswhite(obj2gco(L1)));
+<span class="linenr">130: </span>  <span class="org-keyword">return</span> L1;
+<span class="linenr">131: </span>}
+</pre>
+</div>
+
+<p>
+在 line 124 表明，协程是共享全局表的，即在协程中修改全局变量是相互影响的。
 </p>
 </div>
 </div>
 
-<div id="outline-container-orge8a241c" class="outline-3">
-<h3 id="orge8a241c"><span class="section-number-3">1.2</span> math</h3>
-<div class="outline-text-3" id="text-1-2">
-<ul class="org-ul">
-<li>abs</li>
-<li>acos</li>
-<li>etc.</li>
-</ul>
-</div>
-</div>
-
-<div id="outline-container-orgd19d146" class="outline-3">
-<h3 id="orgd19d146"><span class="section-number-3">1.3</span> string</h3>
-</div>
-
-<div id="outline-container-orgac66782" class="outline-3">
-<h3 id="orgac66782"><span class="section-number-3">1.4</span> table</h3>
-</div>
-
-<div id="outline-container-org6f91c6a" class="outline-3">
-<h3 id="org6f91c6a"><span class="section-number-3">1.5</span> io</h3>
-</div>
-
-<div id="outline-container-orgf573505" class="outline-3">
-<h3 id="orgf573505"><span class="section-number-3">1.6</span> os</h3>
-</div>
-
-<div id="outline-container-orgea05aef" class="outline-3">
-<h3 id="orgea05aef"><span class="section-number-3">1.7</span> debug</h3>
-<div class="outline-text-3" id="text-1-7">
+<div id="outline-container-orgcfcc444" class="outline-3">
+<h3 id="orgcfcc444"><span class="section-number-3">3.2</span> resume &amp; yield</h3>
+<div class="outline-text-3" id="text-3-2">
 <p>
-in debug chapter
+resume 函数开始执行/恢复协程的运行，第一个参数为协程本身，后续参数为传递入协程的参数，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span>lbaselib.c</label><pre class="src src-C"><span class="linenr">518: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">auxresume</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_State</span> *<span class="org-variable-name">co</span>, <span class="org-type">int</span> <span class="org-variable-name">narg</span>) {
+<span class="linenr">519: </span>  <span class="org-type">int</span> <span class="org-variable-name">status</span> = costatus(L, co);
+<span class="linenr">520: </span>  <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>lua_checkstack(co, narg))
+<span class="linenr">521: </span>    luaL_error(L, <span class="org-string">"too many arguments to resume"</span>);
+<span class="linenr">522: </span>  <span class="org-keyword">if</span> (status != CO_SUS) {
+<span class="linenr">523: </span>    lua_pushfstring(L, <span class="org-string">"cannot resume %s coroutine"</span>, statnames[status]);
+<span class="linenr">524: </span>    <span class="org-keyword">return</span> -1;  <span class="org-comment-delimiter">/* </span><span class="org-comment">error flag</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">525: </span>  }
+<span class="linenr">526: </span>  lua_xmove(L, co, narg);
+<span class="linenr">527: </span>  lua_setlevel(L, co);
+<span class="linenr">528: </span>  status = lua_resume(co, narg);
+<span class="linenr">529: </span>  <span class="org-keyword">if</span> (status == 0 || status == LUA_YIELD) {
+<span class="linenr">530: </span>    <span class="org-type">int</span> <span class="org-variable-name">nres</span> = lua_gettop(co);
+<span class="linenr">531: </span>    <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>lua_checkstack(L, nres + 1))
+<span class="linenr">532: </span>      luaL_error(L, <span class="org-string">"too many results to resume"</span>);
+<span class="linenr">533: </span>    lua_xmove(co, L, nres);  <span class="org-comment-delimiter">/* </span><span class="org-comment">move yielded values</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">534: </span>    <span class="org-keyword">return</span> nres;
+<span class="linenr">535: </span>  }
+<span class="linenr">536: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">537: </span>    lua_xmove(co, L, 1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">move error message</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">538: </span>    <span class="org-keyword">return</span> -1;  <span class="org-comment-delimiter">/* </span><span class="org-comment">error flag</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">539: </span>  }
+<span class="linenr">540: </span>}
+<span class="linenr">541: </span>
+<span class="linenr">542: </span>
+<span class="linenr">543: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">luaB_coresume</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">544: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">co</span> = lua_tothread(L, 1);
+<span class="linenr">545: </span>  <span class="org-type">int</span> <span class="org-variable-name">r</span>;
+<span class="linenr">546: </span>  luaL_argcheck(L, co, 1, <span class="org-string">"coroutine expected"</span>);
+<span class="linenr">547: </span>  r = auxresume(L, co, lua_gettop(L) - 1);
+<span class="linenr">548: </span>  <span class="org-keyword">if</span> (r &lt; 0) {
+<span class="linenr">549: </span>    lua_pushboolean(L, 0);
+<span class="linenr">550: </span>    lua_insert(L, -2);
+<span class="linenr">551: </span>    <span class="org-keyword">return</span> 2;  <span class="org-comment-delimiter">/* </span><span class="org-comment">return false + error message</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">552: </span>  }
+<span class="linenr">553: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">554: </span>    lua_pushboolean(L, 1);
+<span class="linenr">555: </span>    lua_insert(L, -(r + 1));
+<span class="linenr">556: </span>    <span class="org-keyword">return</span> r + 1;  <span class="org-comment-delimiter">/* </span><span class="org-comment">return true + `resume' returns</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">557: </span>  }
+<span class="linenr">558: </span>}
+</pre>
+</div>
+
+<p>
+line 544 先找到协程，
+line 526 再通过 xmove 将参数传递到相应的栈中，
+line 528 恢复其执行，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 11: </span>ldo.c</label><pre class="src src-C"><span class="linenr">418: </span>LUA_API <span class="org-type">int</span> <span class="org-function-name">lua_resume</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nargs</span>) {
+<span class="linenr">419: </span>  <span class="org-type">int</span> <span class="org-variable-name">status</span>;
+<span class="linenr">420: </span>  lua_lock(L);
+<span class="linenr">421: </span>  <span class="org-keyword">if</span> (L-&gt;status != LUA_YIELD &amp;&amp; (L-&gt;status != 0 || L-&gt;ci != L-&gt;base_ci))
+<span class="linenr">422: </span>      <span class="org-keyword">return</span> resume_error(L, <span class="org-string">"cannot resume non-suspended coroutine"</span>);
+<span class="linenr">423: </span>  <span class="org-keyword">if</span> (L-&gt;nCcalls &gt;= LUAI_MAXCCALLS)
+<span class="linenr">424: </span>    <span class="org-keyword">return</span> resume_error(L, <span class="org-string">"C stack overflow"</span>);
+<span class="linenr">425: </span>  luai_userstateresume(L, nargs);
+<span class="linenr">426: </span>  lua_assert(L-&gt;errfunc == 0);
+<span class="linenr">427: </span>  L-&gt;baseCcalls = ++L-&gt;nCcalls;
+<span class="linenr">428: </span>  status = luaD_rawrunprotected(L, resume, L-&gt;top - nargs);
+<span class="linenr">429: </span>  <span class="org-keyword">if</span> (status != 0) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">error?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">430: </span>    L-&gt;status = cast_byte(status);  <span class="org-comment-delimiter">/* </span><span class="org-comment">mark thread as `dead'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">431: </span>    luaD_seterrorobj(L, status, L-&gt;top);
+<span class="linenr">432: </span>    L-&gt;ci-&gt;top = L-&gt;top;
+<span class="linenr">433: </span>  }
+<span class="linenr">434: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">435: </span>    lua_assert(L-&gt;nCcalls == L-&gt;baseCcalls);
+<span class="linenr">436: </span>    status = L-&gt;status;
+<span class="linenr">437: </span>  }
+<span class="linenr">438: </span>  --L-&gt;nCcalls;
+<span class="linenr">439: </span>  lua_unlock(L);
+<span class="linenr">440: </span>  <span class="org-keyword">return</span> status;
+<span class="linenr">441: </span>}
+</pre>
+</div>
+
+<p>
+执行协程之后，最终返回其状态值。
+</p>
+
+<p>
+line 529 判断状态为 yield 时，回收其栈上的返回值，通过 xmove 移动到 L 中。
+</p>
+
+<p>
+与之相配合的，yield 函数则直接准备参数数量，重置 <code>lua_State</code> 的状态为 yield 即可。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 12: </span>lbaselib.c</label><pre class="src src-C"><span class="linenr">593: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">luaB_yield</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">594: </span>  <span class="org-keyword">return</span> lua_yield(L, lua_gettop(L));
+<span class="linenr">595: </span>}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 13: </span>ldo.c</label><pre class="src src-C"><span class="linenr">444: </span>LUA_API <span class="org-type">int</span> <span class="org-function-name">lua_yield</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">nresults</span>) {
+<span class="linenr">445: </span>  luai_userstateyield(L, nresults);
+<span class="linenr">446: </span>  lua_lock(L);
+<span class="linenr">447: </span>  <span class="org-keyword">if</span> (L-&gt;nCcalls &gt; L-&gt;baseCcalls)
+<span class="linenr">448: </span>    luaG_runerror(L, <span class="org-string">"attempt to yield across metamethod/C-call boundary"</span>);
+<span class="linenr">449: </span>  L-&gt;base = L-&gt;top - nresults;  <span class="org-comment-delimiter">/* </span><span class="org-comment">protect stack slots below</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">450: </span>  L-&gt;status = LUA_YIELD;
+<span class="linenr">451: </span>  lua_unlock(L);
+<span class="linenr">452: </span>  <span class="org-keyword">return</span> -1;
+<span class="linenr">453: </span>}
+</pre>
+</div>
+
+<p>
+比如如下示例代码，
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">co</span> = <span class="org-builtin">coroutine</span>.<span class="org-builtin">create</span>(<span class="org-keyword">function</span>(<span class="org-variable-name">a</span>, <span class="org-variable-name">b</span>, <span class="org-variable-name">c</span>)
+      <span class="org-keyword">local</span> <span class="org-variable-name">d</span>, <span class="org-variable-name">e</span> = <span class="org-builtin">coroutine</span>.<span class="org-builtin">yield</span>(a + b + c)
+      <span class="org-keyword">return</span> d + e
+      <span class="org-keyword">end</span>)
+
+<span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co, 1, 2, 3))
+<span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co, 4, 5))
+<span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co))
+</pre>
+</div>
+
+<pre class="example">
+true	6
+true	9
+false	cannot resume dead coroutine
+</pre>
+
+
+<p>
+第一次 resume 时，将参数传递入 NL，
+</p>
+
+
+<div id="orga1dd08c" class="figure">
+<p><img src="stdlib-resume.png" alt="stdlib-resume.png">
+</p>
+</div>
+
+<p>
+协程内部执行 yield，返回状态 <code>LUA_YIELD</code> ，resume 通过 xmove 将结果从栈回收至 L，
+最终 resume 自己压栈 bool 值 true 并 insert 所有返回值，作为调用 resume 的返回值。
+</p>
+
+
+<div id="org9a631f0" class="figure">
+<p><img src="stdlib-resume-return.png" alt="stdlib-resume-return.png">
+</p>
+</div>
+
+<p>
+第二次调用 resume 时，传递参数 4 5，在协程内部，从中断的地方继续执行，
+4 5 作为 yield 调用的返回值，赋值与 d e。
+</p>
+
+
+<div id="orgc21326b" class="figure">
+<p><img src="stdlib-resume-2.png" alt="stdlib-resume-2.png">
+</p>
+</div>
+
+<p>
+最终协程内部 return 执行结束，resume 执行相同的过程，回收栈上的返回值。
+</p>
+
+
+<div id="orgeaafcea" class="figure">
+<p><img src="stdlib-resume-return-2.png" alt="stdlib-resume-return-2.png">
 </p>
 </div>
 </div>
+</div>
 
-<div id="outline-container-orge461d82" class="outline-3">
-<h3 id="orge461d82"><span class="section-number-3">1.8</span> dynamic load</h3>
-<div class="outline-text-3" id="text-1-8">
+<div id="outline-container-orgc6a2816" class="outline-3">
+<h3 id="orgc6a2816"><span class="section-number-3">3.3</span> status</h3>
+<div class="outline-text-3" id="text-3-3">
 <p>
-require function
+在 lua.h 中，定义线程状态有如下几种，
 </p>
 
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 14: </span>lua.h</label><pre class="src src-C"><span class="linenr">42: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">thread status; 0 is OK</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">43: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_YIELD</span>       1
+<span class="linenr">44: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_ERRRUN</span>      2
+<span class="linenr">45: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_ERRSYNTAX</span>   3
+<span class="linenr">46: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_ERRMEM</span>      4
+<span class="linenr">47: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_ERRERR</span>      5
+</pre>
+</div>
+
 <p>
-load diff file type
+在线程运行没有出错的情况下，对协程状态的检测会更加细致，
 </p>
-<ul class="org-ul">
-<li>lua</li>
-<li>so</li>
-</ul>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 15: </span>lbaselib.c</label><pre class="src src-C"><span class="linenr">482: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">CO_RUN</span>  0       <span class="org-comment-delimiter">/* </span><span class="org-comment">running</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">483: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">CO_SUS</span>  1       <span class="org-comment-delimiter">/* </span><span class="org-comment">suspended</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">484: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">CO_NOR</span>  2       <span class="org-comment-delimiter">/* </span><span class="org-comment">'normal' (it resumed another coroutine)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">485: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">CO_DEAD</span> 3
+<span class="linenr">486: </span>
+<span class="linenr">487: </span><span class="org-keyword">static</span> <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-keyword">const</span> <span class="org-variable-name">statnames</span>[] =
+<span class="linenr">488: </span>    {<span class="org-string">"running"</span>, <span class="org-string">"suspended"</span>, <span class="org-string">"normal"</span>, <span class="org-string">"dead"</span>};
+<span class="linenr">489: </span>
+<span class="linenr">490: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">costatus</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_State</span> *<span class="org-variable-name">co</span>) {
+<span class="linenr">491: </span>  <span class="org-keyword">if</span> (L == co) <span class="org-keyword">return</span> CO_RUN;
+<span class="linenr">492: </span>  <span class="org-keyword">switch</span> (lua_status(co)) {
+<span class="linenr">493: </span>    <span class="org-keyword">case</span> LUA_YIELD:
+<span class="linenr">494: </span>      <span class="org-keyword">return</span> CO_SUS;
+<span class="linenr">495: </span>    <span class="org-keyword">case</span> 0: {
+<span class="linenr">496: </span>      <span class="org-type">lua_Debug</span> <span class="org-variable-name">ar</span>;
+<span class="linenr">497: </span>      <span class="org-keyword">if</span> (lua_getstack(co, 0, &amp;ar) &gt; 0)  <span class="org-comment-delimiter">/* </span><span class="org-comment">does it have frames?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">498: </span>        <span class="org-keyword">return</span> CO_NOR;  <span class="org-comment-delimiter">/* </span><span class="org-comment">it is running</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">499: </span>      <span class="org-keyword">else</span> <span class="org-keyword">if</span> (lua_gettop(co) == 0)
+<span class="linenr">500: </span>          <span class="org-keyword">return</span> CO_DEAD;
+<span class="linenr">501: </span>      <span class="org-keyword">else</span>
+<span class="linenr">502: </span>        <span class="org-keyword">return</span> CO_SUS;  <span class="org-comment-delimiter">/* </span><span class="org-comment">initial state</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">503: </span>    }
+<span class="linenr">504: </span>    <span class="org-keyword">default</span>:  <span class="org-comment-delimiter">/* </span><span class="org-comment">some error occured</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">505: </span>      <span class="org-keyword">return</span> CO_DEAD;
+<span class="linenr">506: </span>  }
+<span class="linenr">507: </span>}
+<span class="linenr">508: </span>
+<span class="linenr">509: </span>
+<span class="linenr">510: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">luaB_costatus</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">511: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">co</span> = lua_tothread(L, 1);
+<span class="linenr">512: </span>  luaL_argcheck(L, co, 1, <span class="org-string">"coroutine expected"</span>);
+<span class="linenr">513: </span>  lua_pushstring(L, statnames[costatus(L, co)]);
+<span class="linenr">514: </span>  <span class="org-keyword">return</span> 1;
+<span class="linenr">515: </span>}
+</pre>
+</div>
+
+<p>
+在调用 <code>luaB_costatus</code> 时要明确一点，正在调用的线程，正是拥有控制权而正在运行的线程。
+</p>
 
 
-<ul class="org-ul">
-<li>loadlib</li>
-<li>seeall</li>
-<li>module</li>
-<li>require</li>
-</ul>
+<p>
+<code>CO_RUN</code> 状态，对应于协程自身检测自身的状态，在检测的此刻必然是 running 状态。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">co</span> = <span class="org-builtin">coroutine</span>.<span class="org-builtin">create</span>(<span class="org-keyword">function</span>(<span class="org-variable-name">co</span>)
+      <span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">status</span>(co))
+<span class="org-keyword">end</span>)
+
+<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co, co)
+</pre>
+</div>
+
+<pre class="example">
+running
+</pre>
+
+
+
+<p>
+在协程刚刚新建/yield 之后，对应的状态为 <code>CO_SUS</code> 。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">co</span> = <span class="org-builtin">coroutine</span>.<span class="org-builtin">create</span>(<span class="org-keyword">function</span>()
+      <span class="org-builtin">coroutine</span>.<span class="org-builtin">yield</span>()
+<span class="org-keyword">end</span>)
+
+<span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">status</span>(co))
+<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co)
+<span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">status</span>(co))
+</pre>
+</div>
+
+<pre class="example">
+suspended
+suspended
+</pre>
+
+
+<p>
+如果协程本身 resume 了其它协程，此刻检测其状态，对应 <code>CO_NOR</code> 。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">co</span> = <span class="org-builtin">coroutine</span>.<span class="org-builtin">create</span>(<span class="org-keyword">function</span>(<span class="org-variable-name">co</span>)
+      <span class="org-keyword">local</span> <span class="org-variable-name">a</span> = <span class="org-builtin">coroutine</span>.<span class="org-builtin">create</span>(<span class="org-keyword">function</span>()
+            <span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">status</span>(co))
+      <span class="org-keyword">end</span>)
+
+      <span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(a)
+<span class="org-keyword">end</span>)
+
+<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co, co)
+</pre>
+</div>
+
+<pre class="example">
+normal
+</pre>
+
+
+<p>
+当协程执行结束/运行出错，状态都为 <code>CO_DEAD</code> 。
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lua"><span class="org-keyword">local</span> <span class="org-variable-name">co</span> = <span class="org-builtin">coroutine</span>.<span class="org-builtin">create</span>(<span class="org-keyword">function</span>()
+      <span class="org-builtin">coroutine</span>.<span class="org-builtin">yield</span>()
+<span class="org-keyword">end</span>)
+
+<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co)
+<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co)
+<span class="org-builtin">coroutine</span>.<span class="org-builtin">resume</span>(co)
+
+<span class="org-builtin">print</span>(<span class="org-builtin">coroutine</span>.<span class="org-builtin">status</span>(co))
+</pre>
+</div>
+
+<pre class="example">
+dead
+</pre>
+
+
+<p>
+需要注意的是，主线程是无法检测状态的，因为在 lua 代码层面根本没有相应的变量来对应其 <code>lua_State</code> 。
+</p>
 </div>
 </div>
 </div>
 
 <div id="outline-container-orgba1d57c" class="outline-2">
-<h2 id="orgba1d57c"><span class="section-number-2">2</span> practice</h2>
+<h2 id="orgba1d57c"><span class="section-number-2">4</span> practice</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+标准库的代码量并不小，但是安排的架构很清晰，读者可根据自己的需要和兴趣有目的的按点阅读。
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">章节涉及文件</th>
+<th scope="col" class="org-left">建议阅读程度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">linit.c</td>
+<td class="org-left">★ ★ ★ ★ ★</td>
+</tr>
+
+<tr>
+<td class="org-left">lbaselib.c</td>
+<td class="org-left">★ ★ ★ ★ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">lmathlib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">lstrlib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">ltablib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">liolib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">loslib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">ldblib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">loadlib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://www.lua.org/manual/5.1/manual.html#5">http://www.lua.org/manual/5.1/manual.html#5</a>
+</p></div></div>
+
+
+</div>
+</div></div>
 <div id="postamble" class="status">
 
-<p>Updated: 2021-01-18 一 16:09</p>
+<p>Revised: 2021-01-19 二 15:13</p>
 <p>Created: 2021-01-18 一 16:08</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

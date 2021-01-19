@@ -1,6 +1,7 @@
 #+SETUPFILE: setup.org
 
-* TODO gc
+#+TITLE: gc
+#+DATE: <2021-01-19 二 15:16>
 
 - weaktable?
 - gc

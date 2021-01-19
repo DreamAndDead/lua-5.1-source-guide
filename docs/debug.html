@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-19 二 15:18 -->
+<!-- 2021-01-19 二 15:17 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lua 5.1 source guide</title>
+<title>debug</title>
 <meta name="generator" content="Org mode">
 <meta name="author" content="DreamAndDead">
-<meta name="description" content="A little guide book about how to read lua 5.1 source code"
->
 <style type="text/css">
  <!--/*--><![CDATA[/*><!--*/
   .title  { text-align: center;
@@ -221,132 +219,237 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">lua 5.1 source guide</h1>
-<table>
+<h1 class="title">debug</h1>
+<p>
+lua.h:301 -
+</p>
+
+<p>
+struct lua<sub>Debug</sub>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-keyword">struct</span> <span class="org-type">lua_Debug</span> {
+  <span class="org-type">int</span> <span class="org-variable-name">event</span>;
+  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>;     <span class="org-comment-delimiter">/* </span><span class="org-comment">(n)</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">namewhat</span>; <span class="org-comment-delimiter">/* </span><span class="org-comment">(n) `global', `local', `field', `method'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">what</span>;     <span class="org-comment-delimiter">/* </span><span class="org-comment">(S) `Lua', `C', `main', `tail'</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">source</span>;   <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">currentline</span>;      <span class="org-comment-delimiter">/* </span><span class="org-comment">(l)</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">nups</span>;             <span class="org-comment-delimiter">/* </span><span class="org-comment">(u) number of upvalues</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">linedefined</span>;      <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">lastlinedefined</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">char</span> <span class="org-variable-name">short_src</span>[LUA_IDSIZE]; <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-comment-delimiter">/* </span><span class="org-comment">private part</span><span class="org-comment-delimiter"> */</span>
+  <span class="org-type">int</span> <span class="org-variable-name">i_ci</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">active function</span><span class="org-comment-delimiter"> */</span>
+};
+</pre>
+</div>
 
 
-<colgroup>
-<col  class="org-left">
 
-<col  class="org-left">
+<p>
+debug info 针对函数而言
+</p>
 
-<col  class="org-right">
 
-<col  class="org-left">
-</colgroup>
-<thead>
-<tr>
-<th scope="col" class="org-left">subject</th>
-<th scope="col" class="org-left">desc</th>
-<th scope="col" class="org-right">progress</th>
-<th scope="col" class="org-left">link</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="org-left">overview</td>
-<td class="org-left">全书总览</td>
-<td class="org-right">70%</td>
-<td class="org-left"><a href="overview.html">preview</a></td>
-</tr>
+<p>
+i<sub>ci</sub> is private
+</p>
 
-<tr>
-<td class="org-left">object</td>
-<td class="org-left">关键数据结构</td>
-<td class="org-right">90%</td>
-<td class="org-left"><a href="object.html">preview</a></td>
-</tr>
+<p>
+lua<sub>getstack</sub>
+</p>
 
-<tr>
-<td class="org-left">memory</td>
-<td class="org-left">内存分配</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="mem.html">read</a></td>
-</tr>
+<p>
+store the i<sub>ci</sub>
+</p>
 
-<tr>
-<td class="org-left">string</td>
-<td class="org-left">字符串</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="string.html">read</a></td>
-</tr>
+<p>
+从当前 frame 开始，向上数 level 层，记录相应在 ci 中的序号
+方便索引 ci
+其中也对 tailcall 进行了过滤
+</p>
 
-<tr>
-<td class="org-left">table</td>
-<td class="org-left">表</td>
-<td class="org-right">80%</td>
-<td class="org-left"><a href="table.html">preview</a></td>
-</tr>
+<p>
+level == 0 means current
+</p>
 
-<tr>
-<td class="org-left">lexer</td>
-<td class="org-left">词法分析</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="lexer.html">read</a></td>
-</tr>
 
-<tr>
-<td class="org-left">opcode</td>
-<td class="org-left">字节码</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="opcode.html">read</a></td>
-</tr>
 
-<tr>
-<td class="org-left">parser</td>
-<td class="org-left">语法分析</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="parser.html">read</a></td>
-</tr>
 
-<tr>
-<td class="org-left">generator</td>
-<td class="org-left">字节码生成</td>
-<td class="org-right">80%</td>
-<td class="org-left"><a href="generator.html">preview</a></td>
-</tr>
+<p>
+lua<sub>getinfo</sub>, from i<sub>ci</sub> to fetch info to fill other part
+</p>
 
-<tr>
-<td class="org-left">vm</td>
-<td class="org-left">虚拟机</td>
-<td class="org-right">80%</td>
-<td class="org-left"><a href="vm.html">preview</a></td>
-</tr>
+<ul class="org-ul">
+<li>source, function name, @xxx if it's file chunk</li>
+<li>short<sub>src</sub>, printable source</li>
+<li>linedefined, function start line</li>
+<li>lastlinedefined, function end line</li>
+<li>what, lua / c / main / tailcall, tailcall no information</li>
+<li>currentline,</li>
+<li>name, found a reasonable name</li>
+<li>namewhat, explain name, global / local / method / field / upvalue / ""</li>
+<li>nups, num of upvalues</li>
+</ul>
 
-<tr>
-<td class="org-left">c api</td>
-<td class="org-left">外部 api</td>
-<td class="org-right">70%</td>
-<td class="org-left"><a href="api.html">preview</a></td>
-</tr>
 
-<tr>
-<td class="org-left">stdlib</td>
-<td class="org-left">标准库</td>
-<td class="org-right">100%</td>
-<td class="org-left"><a href="stdlib.html">read</a></td>
-</tr>
 
-<tr>
-<td class="org-left">debug</td>
-<td class="org-left">debug 模块</td>
-<td class="org-right">5%</td>
-<td class="org-left"><a href="debug.html">preview</a></td>
-</tr>
 
-<tr>
-<td class="org-left">gc</td>
-<td class="org-left">gc 模块</td>
-<td class="org-right">5%</td>
-<td class="org-left"><a href="gc.html">preview</a></td>
-</tr>
-</tbody>
-</table>
+<p>
+lua<sub>getinfo</sub>
+</p>
+
+<p>
+info 对应的字段是字符串，是随意的字符串，代表不同的信息
+</p>
+
+
+<ul class="org-ul">
+<li>n</li>
+<li>S</li>
+<li>l</li>
+<li>u</li>
+<li>f, push the f on top</li>
+<li>L, collectvalidlines????</li>
+<li><code>&gt;</code>, first char, pop the closure at stack top and inspect it
+otherwise, fetch f from ci</li>
+</ul>
+
+
+
+
+
+<p>
+lua<sub>getlocal</sub>
+</p>
+
+<p>
+findlocal
+</p>
+
+<p>
+lua<sub>setlocal</sub>
+</p>
+
+
+
+
+
+<p>
+lua<sub>getupvalue</sub> / setupvalue in lapi.c
+</p>
+
+
+
+
+
+<div id="outline-container-orga51bce4" class="outline-2">
+<h2 id="orga51bce4"><span class="section-number-2">1</span> hook</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+lua<sub>Hook</sub> is function pointer
+</p>
+
+<p>
+(*L, *ar)
+</p>
+
+<p>
+ar-&gt;event store the event type
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Event codes</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKCALL</span>    0
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKRET</span>     1
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKLINE</span>    2
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKCOUNT</span>   3
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKTAILRET</span> 4
+
+
+<span class="org-comment-delimiter">/*</span>
+<span class="org-comment">** Event masks</span>
+<span class="org-comment-delimiter">*/</span>
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKCALL</span>    (1 &lt;&lt; LUA_HOOKCALL)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKRET</span>     (1 &lt;&lt; LUA_HOOKRET)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKLINE</span>    (1 &lt;&lt; LUA_HOOKLINE)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKCOUNT</span>   (1 &lt;&lt; LUA_HOOKCOUNT)
+</pre>
+</div>
+
+
+
+<p>
+lua<sub>sethook</sub>
+</p>
+
+<p>
+set
+</p>
+<ul class="org-ul">
+<li>L-&gt;hook</li>
+<li>L-&gt;basehookcount</li>
+<li>L-&gt;hookcount</li>
+<li>L-&gt;hookmask</li>
+</ul>
+
+<p>
+mask means which type of event will trigger the hook func
+</p>
+
+
+<ul class="org-ul">
+<li>call hook, is called when vm calls a function</li>
+<li>return hook, called when return</li>
+<li>line hook, start exe new line of code / jump, only in lua func</li>
+<li>count hook, called when execute count instruction????</li>
+</ul>
+
+<p>
+mask to zero, disable hook
+</p>
+
+
+
+
+<p>
+L-&gt;allowhook, can't call hook in hook
+</p>
+
+<p>
+ldo.c:181
+</p>
+
+<p>
+luaD<sub>callhook</sub>
+</p>
+</div>
+</div>
+
+
+
+
+<div id="outline-container-org85001ed" class="outline-2">
+<h2 id="org85001ed"><span class="section-number-2">2</span> debug api</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+db<sub>debug</sub>
+</p>
+
+<p>
+a repl env to debug status
+</p>
+</div>
+</div>
 </div>
 <div id="postamble" class="status">
 
-<p>Revised: 2021-01-19 二 15:18</p>
-<p>Created: 2020-12-21 一 09:35</p>
+<p>Revised: 2021-01-19 二 15:16</p>
+<p>Created: 2021-01-19 二 15:13</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
 <script src="https://utteranc.es/client.js" repo="DreamAndDead/DreamAndDead.github.io" issue-term="pathname" label="Comment" theme="github-light" crossorigin="anonymous" async></script>
