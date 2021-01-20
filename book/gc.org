@@ -15,19 +15,11 @@
   - barrier
 
 
-http://wiki.luajit.org/New-Garbage-Collector
-
-
-
 Tables use backward barriers, all other traversable objects use forward barriers.
 
 
+
 A write barrier in a garbage collector is a fragment of code emitted by the compiler immediately before every store operation to ensure that (e.g.) generational invariants are maintained.”
-
-
-https://www.zhihu.com/question/62000722
-
-https://juejin.cn/post/6844903896368824328
 
 
 
@@ -66,3 +58,10 @@ Garbage collector states (each collection cycle passes through these states in t
 
 
 
+http://wiki.luajit.org/New-Garbage-Collector
+
+https://www.zhihu.com/question/62000722
+
+https://juejin.cn/post/6844903896368824328
+
+http://www.lua.org/manual/5.1/manual.html#2.10

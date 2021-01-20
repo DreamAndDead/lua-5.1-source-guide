@@ -454,6 +454,106 @@ print(coroutine.status(co))
 
 需要注意的是，主线程是无法检测状态的，因为在 lua 代码层面根本没有相应的变量来对应其 =lua_State= 。
 
+
+* debug
+  
+标准库提供了 debug 库，在 lua 语言层面提供了接口，用于自省和设置钩子。
+
+debug 库内部的实现可以印证之前所有的描述，这一章就来了解下 debug 库的相关实现。
+
+** getinfo
+
+ debug 库提供了如下函数，
+
+ #+caption: ldblib.c
+ #+include: ../lua-5.1.5/src/ldblib.c src C -n 375 :lines "375-392"
+
+ getinfo 用于运行时自省，可以得到很多运行时的信息。
+
+ 根据官方文档[fn:2]的描述，参数 thread 和 what 是可选的。
+
+ #+begin_example
+ debug.getinfo ([thread,] function [, what])
+ #+end_example
+
+ 在实现中，
+
+ #+caption: ldblib.c
+ #+include: ../lua-5.1.5/src/ldblib.c src C -n 76 :lines "76-86"
+
+ #+caption: ldblib.c
+ #+include: ../lua-5.1.5/src/ldblib.c src C -n 99 :lines "99-142"
+
+ 如果没有 thread，则从当前线程获取信息；如果没有 what，默认为 "flnSu"。
+
+ 在 line 118 调用 =lua_getinfo= 来获取信息。
+
+ 其中根据需要获取的信息的缩写，将所有信息存储到 =lua_Debug= 结构中返回。
+ 不同的缩写对应不同的字段。
+
+ #+caption: lua.h
+ #+include: ../lua-5.1.5/src/lua.h src C -n 346 :lines "346-360"
+
+ 在 =lua_getinfo= 内部，就是分别获取不同信息再整合到 =lua_Debug= 的过程。
+
+ #+caption: ldebug.c
+ #+include: ../lua-5.1.5/src/ldebug.c src C -n 193 :lines "193-260"
+
+ 结合官方文档[fn:3]，不难理解 getinfo 的行为。
+
+** getlocal
+
+ getlocal 方法，最终深入到 func 模块中的 =luaF_getlocalname= 函数，
+
+ #+caption: ldebug.c
+ #+include: ../lua-5.1.5/src/ldebug.c src C -n 112 :lines "112-136"
+
+ #+caption: lfunc.c
+ #+include: ../lua-5.1.5/src/lfunc.c src C -n 159 :lines "159-174"
+
+ 其中正是通过 =f->locvars= 来进行寻找，这和 generator 章节是相同的。
+
+** getupval
+
+ getupval 方法，最终调用 api 模块中的 =lua_getupvalue= 函数，
+
+ #+caption: lapi.c
+ #+include: ../lua-5.1.5/src/lapi.c src C -n 1039 :lines "1039-1069"
+
+ 其中正是通过 =Closure.upvalues= 来寻找 upval 的。
+
+** hook
+
+ debug 模块提供的另一方面的功能就是 hook。
+
+ hook 有 4 种类型[fn:4]， 分别为 =call return line count= 。
+
+
+ #+caption: lua.h
+ #+include: ../lua-5.1.5/src/lua.h src C -n 308 :lines "308-325"
+
+ sethook 先解析 mask 和 count，再调用 =lua_sethook= 设置 hook。
+
+ #+caption: ldblib.c
+ #+include: ../lua-5.1.5/src/ldblib.c src C -n 225 :lines "225-233"
+
+ #+caption: ldblib.c
+ #+include: ../lua-5.1.5/src/ldblib.c src C -n 258 :lines "258-280"
+
+ #+caption: ldebug.c
+ #+include: ../lua-5.1.5/src/ldebug.c src C -n 53 :lines "53-67"
+
+ 其中将所有 hook 信息存储到当前 =lua_State= 中。
+
+ hook 调用的时间点散落在 lvm.c 和 ldo.c 中，全部通过 =luaD_callhook= 来调用。
+
+ #+caption: ldo.c
+ #+include: ../lua-5.1.5/src/ldo.c src C -n 181 :lines "181-206"
+
+ 可能通过搜索 =luaD_callhook= 的调用位置，确认不同的 mask 对应的调用时机，
+ 这一点和 vm 的运行相关，细节就不再赘述。
+
+
 * practice
 
 标准库的代码量并不小，但是安排的架构很清晰，读者可根据自己的需要和兴趣有目的的按点阅读。
@@ -467,9 +567,18 @@ print(coroutine.status(co))
 | ltablib.c    | ★ ★ ☆ ☆ ☆ |
 | liolib.c     | ★ ★ ☆ ☆ ☆ |
 | loslib.c     | ★ ★ ☆ ☆ ☆ |
-| ldblib.c     | ★ ★ ☆ ☆ ☆ |
 | loadlib.c    | ★ ★ ☆ ☆ ☆ |
+| ldblib.c     | ★ ★ ☆ ☆ ☆ |
+| ldebug.c     | ★ ★ ☆ ☆ ☆ |
+
 
 * Footnotes
 
 [fn:1]: http://www.lua.org/manual/5.1/manual.html#5
+
+[fn:2]: http://www.lua.org/manual/5.1/manual.html#5.9
+
+[fn:3]: http://www.lua.org/manual/5.1/manual.html#lua_getinfo
+
+[fn:4]: http://www.lua.org/manual/5.1/manual.html#lua_sethook
+
