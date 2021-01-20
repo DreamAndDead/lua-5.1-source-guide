@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-19 二 15:17 -->
+<!-- 2021-01-20 三 17:54 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>gc</title>
@@ -220,28 +220,111 @@
 <body>
 <div id="content">
 <h1 class="title">gc</h1>
-<ul class="org-ul">
-<li>weaktable?</li>
-<li>gc
-<ul class="org-ul">
-<li>mark meaning</li>
-<li>diff rules for diff object</li>
-<li>state machine of gc states</li>
-</ul></li>
-<li>algo
-<ul class="org-ul">
-<li>mark sweep</li>
-<li>tri color</li>
-<li>four color</li>
-<li>barrier</li>
-</ul></li>
-</ul>
-
-
 <p>
-<a href="http://wiki.luajit.org/New-Garbage-Collector">http://wiki.luajit.org/New-Garbage-Collector</a>
+本章来讲解 Lua 内部实现的 gc 机制。
 </p>
 
+<div id="outline-container-org01d7562" class="outline-2">
+<h2 id="org01d7562"><span class="section-number-2">1</span> algo</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+gc 算法有很多种，Lua 采用一种增量式三色标记清除算法来实现 gc 机制。
+</p>
+
+<p>
+之所以说一种，是因为采用的 gc 算法与其说是一个算法，不如说是一类算法，
+大体的思想是相同的，不过在实现细节有些许不同。
+</p>
+</div>
+
+<div id="outline-container-org66923ba" class="outline-3">
+<h3 id="org66923ba"><span class="section-number-3">1.1</span> mark &amp; sweep</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+深入之前，先来了解一下经典的双色标记清除算法。
+</p>
+
+<p>
+初始阶段，新建的所有的对象，标记为白色，
+</p>
+
+
+<div id="org87725de" class="figure">
+<p><img src="gc-2-color-root.png" alt="gc-2-color-root.png">
+</p>
+</div>
+
+<p>
+标记阶段，将所有从 root 可达的对象标记为黑色；
+</p>
+
+
+<div id="orgabca1ea" class="figure">
+<p><img src="gc-2-color-root-1.png" alt="gc-2-color-root-1.png">
+</p>
+</div>
+
+<p>
+回收阶段，将所有白色对象回收，同时将所有黑色对象重新标记回白色；
+</p>
+
+
+<div id="org50d09f7" class="figure">
+<p><img src="gc-2-color-root-2.png" alt="gc-2-color-root-2.png">
+</p>
+</div>
+
+<p>
+gc 的过程，所有对象在两种颜色间完成标记和清理。
+</p>
+
+
+<div id="org7d50276" class="figure">
+<p><img src="gc-2-color.png" alt="gc-2-color.png">
+</p>
+</div>
+
+
+<div id="org9bb4551" class="figure">
+<p><img src="gc-not-inc.png" alt="gc-not-inc.png">
+</p>
+</div>
+
+<p>
+非增量
+</p>
+
+<p>
+collect 过程必须执行结束，才能执行程序
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-orgdb68781" class="outline-3">
+<h3 id="orgdb68781"><span class="section-number-3">1.2</span> tri color inc mark and sweep</h3>
+<div class="outline-text-3" id="text-1-2">
+
+<div id="org8b25b56" class="figure">
+<p><img src="gc-3-color.png" alt="gc-3-color.png">
+</p>
+</div>
+
+<p>
+barrier
+</p>
+</div>
+</div>
+
+
+
+
+<div id="outline-container-org0c87f84" class="outline-3">
+<h3 id="org0c87f84"><span class="section-number-3">1.3</span> 4 color</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+double white
+</p>
 
 
 <p>
@@ -252,18 +335,56 @@ Tables use backward barriers, all other traversable objects use forward barriers
 <p>
 A write barrier in a garbage collector is a fragment of code emitted by the compiler immediately before every store operation to ensure that (e.g.) generational invariants are maintained.”
 </p>
+</div>
+</div>
+</div>
+
+
+
+<div id="outline-container-orgabfdbd7" class="outline-2">
+<h2 id="orgabfdbd7"><span class="section-number-2">2</span> reality</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-orgb8ff4c6" class="outline-3">
+<h3 id="orgb8ff4c6"><span class="section-number-3">2.1</span> state</h3>
+<div class="outline-text-3" id="text-2-1">
+
+<div id="org20fcf78" class="figure">
+<p><img src="gc-state.png" alt="gc-state.png">
+</p>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orgef9abdc" class="outline-3">
+<h3 id="orgef9abdc"><span class="section-number-3">2.2</span> gclist</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+g-&gt;grey
+-&gt;gclist
+</p>
 
 
 <p>
-<a href="https://www.zhihu.com/question/62000722">https://www.zhihu.com/question/62000722</a>
+g-&gt;grayagain
 </p>
 
 <p>
-<a href="https://juejin.cn/post/6844903896368824328">https://juejin.cn/post/6844903896368824328</a>
+g-&gt;rootgc
 </p>
+</div>
+</div>
 
 
+<div id="outline-container-org8cbe035" class="outline-3">
+<h3 id="org8cbe035"><span class="section-number-3">2.3</span> bit</h3>
+<div class="outline-text-3" id="text-2-3">
 
+<div id="org3cedd50" class="figure">
+<p><img src="gc-bit-mark.png" alt="gc-bit-mark.png">
+</p>
+</div>
 
 <p>
 Simple description
@@ -311,10 +432,40 @@ GCSsweepstring - The color of each string in the internal strings hashtable is c
 GCSsweep - The color of each objects in the global rootgc list (this list holds all objects except strings) is checked just like the strings during the GCSsweepstring state. Dead objects are freed and removed from the rootgc list. Live objects have their color reset to the current white. Once all objects have been checked the state is changed to GCSfinalize.
 GCSfinalize - This state will finalize all dead userdata objects by running their "_<sub>gc</sub>" metamethod. Once all dead userdata objects have been finailzed the state is changed to GCSpause and this completes a cycle of the garbage collector. 
 </p>
+
+
+
+
+<p>
+<a href="http://wiki.luajit.org/New-Garbage-Collector">http://wiki.luajit.org/New-Garbage-Collector</a>
+</p>
+
+<p>
+<a href="https://www.zhihu.com/question/62000722">https://www.zhihu.com/question/62000722</a>
+</p>
+
+<p>
+<a href="https://juejin.cn/post/6844903896368824328">https://juejin.cn/post/6844903896368824328</a>
+</p>
+
+<p>
+<a href="http://www.lua.org/manual/5.1/manual.html#2.10">http://www.lua.org/manual/5.1/manual.html#2.10</a>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org64ef47d" class="outline-2">
+<h2 id="org64ef47d"><span class="section-number-2">3</span> weaktable</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+Tables use backward barriers, all other traversable objects use forward barriers.
+</p>
+</div>
+</div>
 </div>
 <div id="postamble" class="status">
 
-<p>Revised: 2021-01-19 二 15:16</p>
+<p>Revised: 2021-01-20 三 17:54</p>
 <p>Created: 2021-01-19 二 15:16</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

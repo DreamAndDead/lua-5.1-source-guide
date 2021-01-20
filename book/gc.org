@@ -3,27 +3,228 @@
 #+TITLE: gc
 #+DATE: <2021-01-19 二 15:16>
 
-- weaktable?
-- gc
-  - mark meaning
-  - diff rules for diff object
-  - state machine of gc states
-- algo
-  - mark sweep
-  - tri color
-  - four color
-  - barrier
+本章来讲解 Lua 内部实现的 gc 机制。
+
+* algo
+
+gc 算法有很多种，Lua 采用一种增量式三色标记清除算法来实现 gc 机制。
+
+之所以说一种，是因为采用的 gc 算法与其说是一个算法，不如说是一类算法，
+大体的思想是相同的，不过在实现细节有些许不同。
+
+** mark & sweep
+
+深入之前，先来了解一下经典的双色标记清除算法。
+
+初始阶段，新建的所有的对象，标记为白色，
+
+#+begin_src dot :file gc-2-color-root.png
+digraph {
+	node[shape=none];
+	
+	o[label=<
+	  <table border="0">
+	  <tr>
+	  <td port="0" border="1" bgcolor="white"><font color="black">  A  </font></td>
+	  <td port="1" border="1" bgcolor="white"><font color="black">  B  </font></td>
+	  <td port="2" border="1" bgcolor="white"><font color="black">  C  </font></td>
+	  <td port="3" border="1" bgcolor="white"><font color="black">  D  </font></td>
+	  <td port="4" border="1" bgcolor="white"><font color="black"> root </font></td>
+	  <td port="5" border="1" bgcolor="white"><font color="black">  F  </font></td>
+	  <td port="6" border="1" bgcolor="white"><font color="black">  G  </font></td>
+	  <td port="7" border="1" bgcolor="white"><font color="black">  H  </font></td>
+	  </tr>
+	  </table>
+	  >];
+
+	o:4 -> o:1 -> o:2 -> o:6;
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-2-color-root.png]]
+
+标记阶段，将所有从 root 可达的对象标记为黑色；
+
+#+begin_src dot :file gc-2-color-root-1.png
+digraph {
+	node[shape=none];
+	
+	o[label=<
+	  <table border="0">
+	  <tr>
+	  <td port="0" border="1" bgcolor="white"><font color="black">  A  </font></td>
+	  <td port="1" border="1" bgcolor="black"><font color="white">  B  </font></td>
+	  <td port="2" border="1" bgcolor="black"><font color="white">  C  </font></td>
+	  <td port="3" border="1" bgcolor="white"><font color="black">  D  </font></td>
+	  <td port="4" border="1" bgcolor="black"><font color="white"> root </font></td>
+	  <td port="5" border="1" bgcolor="white"><font color="black">  F  </font></td>
+	  <td port="6" border="1" bgcolor="black"><font color="white">  G  </font></td>
+	  <td port="7" border="1" bgcolor="white"><font color="black">  H  </font></td>
+	  </tr>
+	  </table>
+	  >];
+
+	o:4 -> o:1 -> o:2 -> o:6;
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-2-color-root-1.png]]
+
+回收阶段，将所有白色对象回收，同时将所有黑色对象重新标记回白色；
+
+#+begin_src dot :file gc-2-color-root-2.png
+digraph {
+	node[shape=none];
+	
+	o[label=<
+	  <table border="0">
+	  <tr>
+	  <td port="0" border="0" bgcolor="white"><font color="black">     </font></td>
+	  <td port="1" border="1" bgcolor="white"><font color="black">  B  </font></td>
+	  <td port="2" border="1" bgcolor="white"><font color="black">  C  </font></td>
+	  <td port="3" border="0" bgcolor="white"><font color="black">     </font></td>
+	  <td port="4" border="1" bgcolor="white"><font color="black"> root </font></td>
+	  <td port="5" border="0" bgcolor="white"><font color="black">     </font></td>
+	  <td port="6" border="1" bgcolor="white"><font color="black">  G  </font></td>
+	  <td port="7" border="0" bgcolor="white"><font color="black">     </font></td>
+	  </tr>
+	  </table>
+	  >];
+
+	o:4 -> o:1 -> o:2 -> o:6;
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-2-color-root-2.png]]
+
+gc 的过程，所有对象在两种颜色间完成标记和清理。
+
+#+begin_src dot :file gc-2-color.png
+digraph {
+	node[shape="circle"];
+	w[label="white"];
+	b[label="black", fontcolor="white", style=filled, color="black"];
+
+	w:w -> b:w[label="mark"];
+	b:e -> w:e[label="sweep"];
+
+	nodesep = 1;
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-2-color.png]]
+
+#+begin_src plantuml :file gc-not-inc.png
+@startuml
+scale 2
+
+
+[main] lasts 15 days
+[gc] lasts 10 days
+@enduml
+#+end_src
+
+#+RESULTS:
+[[file:gc-not-inc.png]]
+
+非增量
+
+collect 过程必须执行结束，才能执行程序
+
+
+** tri color inc mark and sweep
+
+#+begin_src dot :file gc-3-color.png
+digraph {
+	node[shape="circle"];
+	w[label="white"];
+	b[label="black", fontcolor="white", style=filled, color="black"];
+	g[label="grey ", fontcolor="white", style=filled, color="grey"];
+
+	nodesep = 1;
+
+	w -> g[label="push"];
+	w -> g[label="barrier fwd"];
+	
+	g -> b[label="pop"];
+	b -> g[label="barrier back"];
+	
+	b -> w[label="sweep"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-3-color.png]]
+
+barrier
+
+
+
+
+** 4 color
+
+double white
 
 
 Tables use backward barriers, all other traversable objects use forward barriers.
-
 
 
 A write barrier in a garbage collector is a fragment of code emitted by the compiler immediately before every store operation to ensure that (e.g.) generational invariants are maintained.”
 
 
 
+* reality
 
+** state
+
+#+begin_src dot :file gc-state.png
+digraph {
+	node[shape="circle", width=1.3, fixedsize=true];
+	rankdir = LR;
+
+	pause -> progagate -> sweepstring -> sweep -> finalize;
+	finalize:s -> pause:s;
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-state.png]]
+
+  
+** gclist
+
+   g->grey
+   ->gclist
+
+
+   g->grayagain
+
+   g->rootgc
+   
+
+** bit
+
+#+begin_src dot :file gc-bit-mark.png
+digraph {
+	m[shape=record, label="
+	  { super fixed | 6 } |
+	  { fixed | 5 } |
+	  { weak value | 4 } |
+	  { weak key / finalized | 3 } |
+	  { black | 2 } |
+	  { white 1 | 1 } |
+	  { white 0 | 0 }
+	  "];
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-bit-mark.png]]
+  
 Simple description
 The Lua garbage collector is a mark & sweep collector. The collector has two major phases mark & sweep that it runs each collection cycle. During the mark phases the collector traverse the Lua stack and into tables to mark values it finds as live. Next the sweep phases will walk a list of all collectible values and free all dead values it finds.
 
@@ -65,3 +266,8 @@ https://www.zhihu.com/question/62000722
 https://juejin.cn/post/6844903896368824328
 
 http://www.lua.org/manual/5.1/manual.html#2.10
+* weaktable
+
+Tables use backward barriers, all other traversable objects use forward barriers.
+
+
