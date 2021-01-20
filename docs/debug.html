@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-19 二 15:17 -->
+<!-- 2021-01-20 三 11:53 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>debug</title>
@@ -221,234 +221,532 @@
 <div id="content">
 <h1 class="title">debug</h1>
 <p>
-lua.h:301 -
+标准库提供了 debug 库，在 lua 语言层面提供了接口，用于自省和设置钩子。
 </p>
 
 <p>
-struct lua<sub>Debug</sub>
+debug 库内部的实现可以印证之前所有的描述，这一章就来了解下 debug 库的相关实现。
 </p>
 
-<div class="org-src-container">
-<pre class="src src-c"><span class="org-keyword">struct</span> <span class="org-type">lua_Debug</span> {
-  <span class="org-type">int</span> <span class="org-variable-name">event</span>;
-  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>;     <span class="org-comment-delimiter">/* </span><span class="org-comment">(n)</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">namewhat</span>; <span class="org-comment-delimiter">/* </span><span class="org-comment">(n) `global', `local', `field', `method'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">what</span>;     <span class="org-comment-delimiter">/* </span><span class="org-comment">(S) `Lua', `C', `main', `tail'</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">source</span>;   <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">currentline</span>;      <span class="org-comment-delimiter">/* </span><span class="org-comment">(l)</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">nups</span>;             <span class="org-comment-delimiter">/* </span><span class="org-comment">(u) number of upvalues</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">linedefined</span>;      <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">lastlinedefined</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">char</span> <span class="org-variable-name">short_src</span>[LUA_IDSIZE]; <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-comment-delimiter">/* </span><span class="org-comment">private part</span><span class="org-comment-delimiter"> */</span>
-  <span class="org-type">int</span> <span class="org-variable-name">i_ci</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">active function</span><span class="org-comment-delimiter"> */</span>
-};
-</pre>
-</div>
-
-
-
-<p>
-debug info 针对函数而言
-</p>
-
-
-<p>
-i<sub>ci</sub> is private
-</p>
-
-<p>
-lua<sub>getstack</sub>
-</p>
-
-<p>
-store the i<sub>ci</sub>
-</p>
-
-<p>
-从当前 frame 开始，向上数 level 层，记录相应在 ci 中的序号
-方便索引 ci
-其中也对 tailcall 进行了过滤
-</p>
-
-<p>
-level == 0 means current
-</p>
-
-
-
-
-<p>
-lua<sub>getinfo</sub>, from i<sub>ci</sub> to fetch info to fill other part
-</p>
-
-<ul class="org-ul">
-<li>source, function name, @xxx if it's file chunk</li>
-<li>short<sub>src</sub>, printable source</li>
-<li>linedefined, function start line</li>
-<li>lastlinedefined, function end line</li>
-<li>what, lua / c / main / tailcall, tailcall no information</li>
-<li>currentline,</li>
-<li>name, found a reasonable name</li>
-<li>namewhat, explain name, global / local / method / field / upvalue / ""</li>
-<li>nups, num of upvalues</li>
-</ul>
-
-
-
-
-<p>
-lua<sub>getinfo</sub>
-</p>
-
-<p>
-info 对应的字段是字符串，是随意的字符串，代表不同的信息
-</p>
-
-
-<ul class="org-ul">
-<li>n</li>
-<li>S</li>
-<li>l</li>
-<li>u</li>
-<li>f, push the f on top</li>
-<li>L, collectvalidlines????</li>
-<li><code>&gt;</code>, first char, pop the closure at stack top and inspect it
-otherwise, fetch f from ci</li>
-</ul>
-
-
-
-
-
-<p>
-lua<sub>getlocal</sub>
-</p>
-
-<p>
-findlocal
-</p>
-
-<p>
-lua<sub>setlocal</sub>
-</p>
-
-
-
-
-
-<p>
-lua<sub>getupvalue</sub> / setupvalue in lapi.c
-</p>
-
-
-
-
-
-<div id="outline-container-orga51bce4" class="outline-2">
-<h2 id="orga51bce4"><span class="section-number-2">1</span> hook</h2>
+<div id="outline-container-orge00d648" class="outline-2">
+<h2 id="orge00d648"><span class="section-number-2">1</span> getinfo</h2>
 <div class="outline-text-2" id="text-1">
 <p>
-lua<sub>Hook</sub> is function pointer
-</p>
-
-<p>
-(*L, *ar)
-</p>
-
-<p>
-ar-&gt;event store the event type
+debug 库提供了如下函数，
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span class="org-comment-delimiter">/*</span>
-<span class="org-comment">** Event codes</span>
-<span class="org-comment-delimiter">*/</span>
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKCALL</span>    0
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKRET</span>     1
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKLINE</span>    2
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKCOUNT</span>   3
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKTAILRET</span> 4
-
-
-<span class="org-comment-delimiter">/*</span>
-<span class="org-comment">** Event masks</span>
-<span class="org-comment-delimiter">*/</span>
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKCALL</span>    (1 &lt;&lt; LUA_HOOKCALL)
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKRET</span>     (1 &lt;&lt; LUA_HOOKRET)
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKLINE</span>    (1 &lt;&lt; LUA_HOOKLINE)
-<span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKCOUNT</span>   (1 &lt;&lt; LUA_HOOKCOUNT)
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>ldblib.c</label><pre class="src src-C"><span class="linenr">375: </span><span class="org-keyword">static</span> <span class="org-keyword">const</span> <span class="org-type">luaL_Reg</span> <span class="org-variable-name">dblib</span>[] = {
+<span class="linenr">376: </span>  {<span class="org-string">"debug"</span>, db_debug},
+<span class="linenr">377: </span>  {<span class="org-string">"getfenv"</span>, db_getfenv},
+<span class="linenr">378: </span>  {<span class="org-string">"gethook"</span>, db_gethook},
+<span class="linenr">379: </span>  {<span class="org-string">"getinfo"</span>, db_getinfo},
+<span class="linenr">380: </span>  {<span class="org-string">"getlocal"</span>, db_getlocal},
+<span class="linenr">381: </span>  {<span class="org-string">"getregistry"</span>, db_getregistry},
+<span class="linenr">382: </span>  {<span class="org-string">"getmetatable"</span>, db_getmetatable},
+<span class="linenr">383: </span>  {<span class="org-string">"getupvalue"</span>, db_getupvalue},
+<span class="linenr">384: </span>  {<span class="org-string">"setfenv"</span>, db_setfenv},
+<span class="linenr">385: </span>  {<span class="org-string">"sethook"</span>, db_sethook},
+<span class="linenr">386: </span>  {<span class="org-string">"setlocal"</span>, db_setlocal},
+<span class="linenr">387: </span>  {<span class="org-string">"setmetatable"</span>, db_setmetatable},
+<span class="linenr">388: </span>  {<span class="org-string">"setupvalue"</span>, db_setupvalue},
+<span class="linenr">389: </span>  {<span class="org-string">"traceback"</span>, db_errorfb},
+<span class="linenr">390: </span>  {<span class="org-constant">NULL</span>, <span class="org-constant">NULL</span>}
+<span class="linenr">391: </span>};
 </pre>
 </div>
 
-
-
 <p>
-lua<sub>sethook</sub>
+getinfo 用于运行时自省，可以得到很多运行时的信息。
 </p>
 
 <p>
-set
-</p>
-<ul class="org-ul">
-<li>L-&gt;hook</li>
-<li>L-&gt;basehookcount</li>
-<li>L-&gt;hookcount</li>
-<li>L-&gt;hookmask</li>
-</ul>
-
-<p>
-mask means which type of event will trigger the hook func
+根据官方文档<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>的描述，参数 thread 和 what 是可选的。
 </p>
 
-
-<ul class="org-ul">
-<li>call hook, is called when vm calls a function</li>
-<li>return hook, called when return</li>
-<li>line hook, start exe new line of code / jump, only in lua func</li>
-<li>count hook, called when execute count instruction????</li>
-</ul>
+<pre class="example" id="org05ee8e6">
+debug.getinfo ([thread,] function [, what])
+</pre>
 
 <p>
-mask to zero, disable hook
+在实现中，
 </p>
 
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>ldblib.c</label><pre class="src src-C"><span class="linenr">76: </span><span class="org-keyword">static</span> <span class="org-type">lua_State</span> *<span class="org-function-name">getthread</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> *<span class="org-variable-name">arg</span>) {
+<span class="linenr">77: </span>  <span class="org-keyword">if</span> (lua_isthread(L, 1)) {
+<span class="linenr">78: </span>    *arg = 1;
+<span class="linenr">79: </span>    <span class="org-keyword">return</span> lua_tothread(L, 1);
+<span class="linenr">80: </span>  }
+<span class="linenr">81: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">82: </span>    *arg = 0;
+<span class="linenr">83: </span>    <span class="org-keyword">return</span> L;
+<span class="linenr">84: </span>  }
+<span class="linenr">85: </span>}
+</pre>
+</div>
 
-
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>ldblib.c</label><pre class="src src-C"><span class="linenr"> 99: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">db_getinfo</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">100: </span>  <span class="org-type">lua_Debug</span> <span class="org-variable-name">ar</span>;
+<span class="linenr">101: </span>  <span class="org-type">int</span> <span class="org-variable-name">arg</span>;
+<span class="linenr">102: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">L1</span> = getthread(L, &amp;arg);
+<span class="linenr">103: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">options</span> = luaL_optstring(L, arg+2, <span class="org-string">"flnSu"</span>);
+<span class="linenr">104: </span>  <span class="org-keyword">if</span> (lua_isnumber(L, arg+1)) {
+<span class="linenr">105: </span>    <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>lua_getstack(L1, (<span class="org-type">int</span>)lua_tointeger(L, arg+1), &amp;ar)) {
+<span class="linenr">106: </span>      lua_pushnil(L);  <span class="org-comment-delimiter">/* </span><span class="org-comment">level out of range</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">107: </span>      <span class="org-keyword">return</span> 1;
+<span class="linenr">108: </span>    }
+<span class="linenr">109: </span>  }
+<span class="linenr">110: </span>  <span class="org-keyword">else</span> <span class="org-keyword">if</span> (lua_isfunction(L, arg+1)) {
+<span class="linenr">111: </span>    lua_pushfstring(L, <span class="org-string">"&gt;%s"</span>, options);
+<span class="linenr">112: </span>    options = lua_tostring(L, -1);
+<span class="linenr">113: </span>    lua_pushvalue(L, arg+1);
+<span class="linenr">114: </span>    lua_xmove(L, L1, 1);
+<span class="linenr">115: </span>  }
+<span class="linenr">116: </span>  <span class="org-keyword">else</span>
+<span class="linenr">117: </span>    <span class="org-keyword">return</span> luaL_argerror(L, arg+1, <span class="org-string">"function or level expected"</span>);
+<span class="linenr">118: </span>  <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>lua_getinfo(L1, options, &amp;ar))
+<span class="linenr">119: </span>    <span class="org-keyword">return</span> luaL_argerror(L, arg+2, <span class="org-string">"invalid option"</span>);
+<span class="linenr">120: </span>  lua_createtable(L, 0, 2);
+<span class="linenr">121: </span>  <span class="org-keyword">if</span> (strchr(options, <span class="org-string">'S'</span>)) {
+<span class="linenr">122: </span>    settabss(L, <span class="org-string">"source"</span>, ar.source);
+<span class="linenr">123: </span>    settabss(L, <span class="org-string">"short_src"</span>, ar.short_src);
+<span class="linenr">124: </span>    settabsi(L, <span class="org-string">"linedefined"</span>, ar.linedefined);
+<span class="linenr">125: </span>    settabsi(L, <span class="org-string">"lastlinedefined"</span>, ar.lastlinedefined);
+<span class="linenr">126: </span>    settabss(L, <span class="org-string">"what"</span>, ar.what);
+<span class="linenr">127: </span>  }
+<span class="linenr">128: </span>  <span class="org-keyword">if</span> (strchr(options, <span class="org-string">'l'</span>))
+<span class="linenr">129: </span>    settabsi(L, <span class="org-string">"currentline"</span>, ar.currentline);
+<span class="linenr">130: </span>  <span class="org-keyword">if</span> (strchr(options, <span class="org-string">'u'</span>))
+<span class="linenr">131: </span>    settabsi(L, <span class="org-string">"nups"</span>, ar.nups);
+<span class="linenr">132: </span>  <span class="org-keyword">if</span> (strchr(options, <span class="org-string">'n'</span>)) {
+<span class="linenr">133: </span>    settabss(L, <span class="org-string">"name"</span>, ar.name);
+<span class="linenr">134: </span>    settabss(L, <span class="org-string">"namewhat"</span>, ar.namewhat);
+<span class="linenr">135: </span>  }
+<span class="linenr">136: </span>  <span class="org-keyword">if</span> (strchr(options, <span class="org-string">'L'</span>))
+<span class="linenr">137: </span>    treatstackoption(L, L1, <span class="org-string">"activelines"</span>);
+<span class="linenr">138: </span>  <span class="org-keyword">if</span> (strchr(options, <span class="org-string">'f'</span>))
+<span class="linenr">139: </span>    treatstackoption(L, L1, <span class="org-string">"func"</span>);
+<span class="linenr">140: </span>  <span class="org-keyword">return</span> 1;  <span class="org-comment-delimiter">/* </span><span class="org-comment">return table</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">141: </span>}
+</pre>
+</div>
 
 <p>
-L-&gt;allowhook, can't call hook in hook
+如果没有 thread，则从当前线程获取信息；如果没有 what，默认为 "flnSu"。
 </p>
 
 <p>
-ldo.c:181
+在 line 118 调用 <code>lua_getinfo</code> 来获取信息。
 </p>
 
 <p>
-luaD<sub>callhook</sub>
+其中根据需要获取的信息的缩写，将所有信息存储到 <code>lua_Debug</code> 结构中返回。
+不同的缩写对应不同的字段。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lua.h</label><pre class="src src-C"><span class="linenr">346: </span><span class="org-keyword">struct</span> <span class="org-type">lua_Debug</span> {
+<span class="linenr">347: </span>  <span class="org-type">int</span> <span class="org-variable-name">event</span>;
+<span class="linenr">348: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>;     <span class="org-comment-delimiter">/* </span><span class="org-comment">(n)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">349: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">namewhat</span>; <span class="org-comment-delimiter">/* </span><span class="org-comment">(n) `global', `local', `field', `method'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">350: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">what</span>;     <span class="org-comment-delimiter">/* </span><span class="org-comment">(S) `Lua', `C', `main', `tail'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">351: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">source</span>;   <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">352: </span>  <span class="org-type">int</span> <span class="org-variable-name">currentline</span>;      <span class="org-comment-delimiter">/* </span><span class="org-comment">(l)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">353: </span>  <span class="org-type">int</span> <span class="org-variable-name">nups</span>;             <span class="org-comment-delimiter">/* </span><span class="org-comment">(u) number of upvalues</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">354: </span>  <span class="org-type">int</span> <span class="org-variable-name">linedefined</span>;      <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">355: </span>  <span class="org-type">int</span> <span class="org-variable-name">lastlinedefined</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">356: </span>  <span class="org-type">char</span> <span class="org-variable-name">short_src</span>[LUA_IDSIZE]; <span class="org-comment-delimiter">/* </span><span class="org-comment">(S)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">357: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">private part</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">358: </span>  <span class="org-type">int</span> <span class="org-variable-name">i_ci</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">active function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">359: </span>};
+</pre>
+</div>
+
+<p>
+在 <code>lua_getinfo</code> 内部，就是分别获取不同信息再整合到 <code>lua_Debug</code> 的过程。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>ldebug.c</label><pre class="src src-C"><span class="linenr">193: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">auxgetinfo</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">what</span>, <span class="org-type">lua_Debug</span> *<span class="org-variable-name">ar</span>,
+<span class="linenr">194: </span>                    <span class="org-type">Closure</span> *<span class="org-variable-name">f</span>, <span class="org-type">CallInfo</span> *<span class="org-variable-name">ci</span>) {
+<span class="linenr">195: </span>  <span class="org-type">int</span> <span class="org-variable-name">status</span> = 1;
+<span class="linenr">196: </span>  <span class="org-keyword">if</span> (f == <span class="org-constant">NULL</span>) {
+<span class="linenr">197: </span>    info_tailcall(ar);
+<span class="linenr">198: </span>    <span class="org-keyword">return</span> status;
+<span class="linenr">199: </span>  }
+<span class="linenr">200: </span>  <span class="org-keyword">for</span> (; *what; what++) {
+<span class="linenr">201: </span>    <span class="org-keyword">switch</span> (*what) {
+<span class="linenr">202: </span>      <span class="org-keyword">case</span> <span class="org-string">'S'</span>: {
+<span class="linenr">203: </span>        funcinfo(ar, f);
+<span class="linenr">204: </span>        <span class="org-keyword">break</span>;
+<span class="linenr">205: </span>      }
+<span class="linenr">206: </span>      <span class="org-keyword">case</span> <span class="org-string">'l'</span>: {
+<span class="linenr">207: </span>        ar-&gt;currentline = (ci) ? currentline(L, ci) : -1;
+<span class="linenr">208: </span>        <span class="org-keyword">break</span>;
+<span class="linenr">209: </span>      }
+<span class="linenr">210: </span>      <span class="org-keyword">case</span> <span class="org-string">'u'</span>: {
+<span class="linenr">211: </span>        ar-&gt;nups = f-&gt;c.nupvalues;
+<span class="linenr">212: </span>        <span class="org-keyword">break</span>;
+<span class="linenr">213: </span>      }
+<span class="linenr">214: </span>      <span class="org-keyword">case</span> <span class="org-string">'n'</span>: {
+<span class="linenr">215: </span>        ar-&gt;namewhat = (ci) ? getfuncname(L, ci, &amp;ar-&gt;name) : <span class="org-constant">NULL</span>;
+<span class="linenr">216: </span>        <span class="org-keyword">if</span> (ar-&gt;namewhat == <span class="org-constant">NULL</span>) {
+<span class="linenr">217: </span>          ar-&gt;namewhat = <span class="org-string">""</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">not found</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">218: </span>          ar-&gt;name = <span class="org-constant">NULL</span>;
+<span class="linenr">219: </span>        }
+<span class="linenr">220: </span>        <span class="org-keyword">break</span>;
+<span class="linenr">221: </span>      }
+<span class="linenr">222: </span>      <span class="org-keyword">case</span> <span class="org-string">'L'</span>:
+<span class="linenr">223: </span>      <span class="org-keyword">case</span> <span class="org-string">'f'</span>:  <span class="org-comment-delimiter">/* </span><span class="org-comment">handled by lua_getinfo</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">224: </span>        <span class="org-keyword">break</span>;
+<span class="linenr">225: </span>      <span class="org-keyword">default</span>: status = 0;  <span class="org-comment-delimiter">/* </span><span class="org-comment">invalid option</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">226: </span>    }
+<span class="linenr">227: </span>  }
+<span class="linenr">228: </span>  <span class="org-keyword">return</span> status;
+<span class="linenr">229: </span>}
+<span class="linenr">230: </span>
+<span class="linenr">231: </span>
+<span class="linenr">232: </span>LUA_API <span class="org-type">int</span> <span class="org-function-name">lua_getinfo</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">what</span>, <span class="org-type">lua_Debug</span> *<span class="org-variable-name">ar</span>) {
+<span class="linenr">233: </span>  <span class="org-type">int</span> <span class="org-variable-name">status</span>;
+<span class="linenr">234: </span>  <span class="org-type">Closure</span> *<span class="org-variable-name">f</span> = <span class="org-constant">NULL</span>;
+<span class="linenr">235: </span>  <span class="org-type">CallInfo</span> *<span class="org-variable-name">ci</span> = <span class="org-constant">NULL</span>;
+<span class="linenr">236: </span>  lua_lock(L);
+<span class="linenr">237: </span>  <span class="org-keyword">if</span> (*what == <span class="org-string">'&gt;'</span>) {
+<span class="linenr">238: </span>    <span class="org-type">StkId</span> <span class="org-variable-name">func</span> = L-&gt;top - 1;
+<span class="linenr">239: </span>    luai_apicheck(L, ttisfunction(func));
+<span class="linenr">240: </span>    what++;  <span class="org-comment-delimiter">/* </span><span class="org-comment">skip the '&gt;'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">241: </span>    f = clvalue(func);
+<span class="linenr">242: </span>    L-&gt;top--;  <span class="org-comment-delimiter">/* </span><span class="org-comment">pop function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">243: </span>  }
+<span class="linenr">244: </span>  <span class="org-keyword">else</span> <span class="org-keyword">if</span> (ar-&gt;i_ci != 0) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">no tail call?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">245: </span>    ci = L-&gt;base_ci + ar-&gt;i_ci;
+<span class="linenr">246: </span>    lua_assert(ttisfunction(ci-&gt;func));
+<span class="linenr">247: </span>    f = clvalue(ci-&gt;func);
+<span class="linenr">248: </span>  }
+<span class="linenr">249: </span>  status = auxgetinfo(L, what, ar, f, ci);
+<span class="linenr">250: </span>  <span class="org-keyword">if</span> (strchr(what, <span class="org-string">'f'</span>)) {
+<span class="linenr">251: </span>    <span class="org-keyword">if</span> (f == <span class="org-constant">NULL</span>) setnilvalue(L-&gt;top);
+<span class="linenr">252: </span>    <span class="org-keyword">else</span> setclvalue(L, L-&gt;top, f);
+<span class="linenr">253: </span>    incr_top(L);
+<span class="linenr">254: </span>  }
+<span class="linenr">255: </span>  <span class="org-keyword">if</span> (strchr(what, <span class="org-string">'L'</span>))
+<span class="linenr">256: </span>    collectvalidlines(L, f);
+<span class="linenr">257: </span>  lua_unlock(L);
+<span class="linenr">258: </span>  <span class="org-keyword">return</span> status;
+<span class="linenr">259: </span>}
+</pre>
+</div>
+
+<p>
+结合官方文档<sup><a id="fnr.2" class="footref" href="#fn.2">2</a></sup>，不难理解 getinfo 的行为。
 </p>
 </div>
 </div>
 
-
-
-
-<div id="outline-container-org85001ed" class="outline-2">
-<h2 id="org85001ed"><span class="section-number-2">2</span> debug api</h2>
+<div id="outline-container-org3ab36dc" class="outline-2">
+<h2 id="org3ab36dc"><span class="section-number-2">2</span> getlocal</h2>
 <div class="outline-text-2" id="text-2">
 <p>
-db<sub>debug</sub>
+getlocal 方法，最终深入到 func 模块中的 <code>luaF_getlocalname</code> 函数，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>ldebug.c</label><pre class="src src-C"><span class="linenr">112: </span><span class="org-keyword">static</span> <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-function-name">findlocal</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">CallInfo</span> *<span class="org-variable-name">ci</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>) {
+<span class="linenr">113: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>;
+<span class="linenr">114: </span>  <span class="org-type">Proto</span> *<span class="org-variable-name">fp</span> = getluaproto(ci);
+<span class="linenr">115: </span>  <span class="org-keyword">if</span> (fp &amp;&amp; (name = luaF_getlocalname(fp, n, currentpc(L, ci))) != <span class="org-constant">NULL</span>)
+<span class="linenr">116: </span>    <span class="org-keyword">return</span> name;  <span class="org-comment-delimiter">/* </span><span class="org-comment">is a local variable in a Lua function</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">117: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">118: </span>    <span class="org-type">StkId</span> <span class="org-variable-name">limit</span> = (ci == L-&gt;ci) ? L-&gt;top : (ci+1)-&gt;func;
+<span class="linenr">119: </span>    <span class="org-keyword">if</span> (limit - ci-&gt;base &gt;= n &amp;&amp; n &gt; 0)  <span class="org-comment-delimiter">/* </span><span class="org-comment">is 'n' inside 'ci' stack?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">120: </span>      <span class="org-keyword">return</span> <span class="org-string">"(*temporary)"</span>;
+<span class="linenr">121: </span>    <span class="org-keyword">else</span>
+<span class="linenr">122: </span>      <span class="org-keyword">return</span> <span class="org-constant">NULL</span>;
+<span class="linenr">123: </span>  }
+<span class="linenr">124: </span>}
+<span class="linenr">125: </span>
+<span class="linenr">126: </span>
+<span class="linenr">127: </span><span class="org-type">LUA_API</span> <span class="org-keyword">const</span> <span class="org-type">char</span> *lua_getlocal (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-keyword">const</span> <span class="org-type">lua_Debug</span> *<span class="org-variable-name">ar</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>) {
+<span class="linenr">128: </span>  <span class="org-type">CallInfo</span> *<span class="org-variable-name">ci</span> = L-&gt;base_ci + ar-&gt;i_ci;
+<span class="linenr">129: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span> = findlocal(L, ci, n);
+<span class="linenr">130: </span>  lua_lock(L);
+<span class="linenr">131: </span>  <span class="org-keyword">if</span> (name)
+<span class="linenr">132: </span>      luaA_pushobject(L, ci-&gt;base + (n - 1));
+<span class="linenr">133: </span>  lua_unlock(L);
+<span class="linenr">134: </span>  <span class="org-keyword">return</span> name;
+<span class="linenr">135: </span>}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>lfunc.c</label><pre class="src src-C"><span class="linenr">159: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">160: </span><span class="org-comment">** Look for n-th local variable at line `line' in function `func'.</span>
+<span class="linenr">161: </span><span class="org-comment">** Returns NULL if not found.</span>
+<span class="linenr">162: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">163: </span><span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-function-name">luaF_getlocalname</span> (<span class="org-keyword">const</span> <span class="org-type">Proto</span> *<span class="org-variable-name">f</span>, <span class="org-type">int</span> <span class="org-variable-name">local_number</span>, <span class="org-type">int</span> <span class="org-variable-name">pc</span>) {
+<span class="linenr">164: </span>  <span class="org-type">int</span> <span class="org-variable-name">i</span>;
+<span class="linenr">165: </span>  <span class="org-keyword">for</span> (i = 0; i&lt;f-&gt;sizelocvars &amp;&amp; f-&gt;locvars[i].startpc &lt;= pc; i++) {
+<span class="linenr">166: </span>    <span class="org-keyword">if</span> (pc &lt; f-&gt;locvars[i].endpc) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">is variable active?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">167: </span>      local_number--;
+<span class="linenr">168: </span>      <span class="org-keyword">if</span> (local_number == 0)
+<span class="linenr">169: </span>        <span class="org-keyword">return</span> getstr(f-&gt;locvars[i].varname);
+<span class="linenr">170: </span>    }
+<span class="linenr">171: </span>  }
+<span class="linenr">172: </span>  <span class="org-keyword">return</span> <span class="org-constant">NULL</span>;  <span class="org-comment-delimiter">/* </span><span class="org-comment">not found</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">173: </span>}
+</pre>
+</div>
+
+<p>
+其中正是通过 <code>f-&gt;locvars</code> 来进行寻找，这和 generator 章节是相同的。
+</p>
+</div>
+</div>
+
+<div id="outline-container-org310eced" class="outline-2">
+<h2 id="org310eced"><span class="section-number-2">3</span> getupval</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+getupval 方法，最终调用 api 模块中的 <code>lua_getupvalue</code> 函数，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>lapi.c</label><pre class="src src-C"><span class="linenr">1039: </span><span class="org-keyword">static</span> <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-function-name">aux_upvalue</span> (<span class="org-type">StkId</span> <span class="org-variable-name">fi</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>, <span class="org-type">TValue</span> **<span class="org-variable-name">val</span>) {
+<span class="linenr">1040: </span>  <span class="org-type">Closure</span> *<span class="org-variable-name">f</span>;
+<span class="linenr">1041: </span>  <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>ttisfunction(fi)) <span class="org-keyword">return</span> <span class="org-constant">NULL</span>;
+<span class="linenr">1042: </span>  f = clvalue(fi);
+<span class="linenr">1043: </span>  <span class="org-keyword">if</span> (f-&gt;c.isC) {
+<span class="linenr">1044: </span>    <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>(1 &lt;= n &amp;&amp; n &lt;= f-&gt;c.nupvalues)) <span class="org-keyword">return</span> <span class="org-constant">NULL</span>;
+<span class="linenr">1045: </span>    *val = &amp;f-&gt;c.upvalue[n-1];
+<span class="linenr">1046: </span>    <span class="org-keyword">return</span> <span class="org-string">""</span>;
+<span class="linenr">1047: </span>  }
+<span class="linenr">1048: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">1049: </span>    <span class="org-type">Proto</span> *<span class="org-variable-name">p</span> = f-&gt;l.p;
+<span class="linenr">1050: </span>    <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>(1 &lt;= n &amp;&amp; n &lt;= p-&gt;sizeupvalues)) <span class="org-keyword">return</span> <span class="org-constant">NULL</span>;
+<span class="linenr">1051: </span>    *val = f-&gt;l.upvals[n-1]-&gt;v;
+<span class="linenr">1052: </span>    <span class="org-keyword">return</span> getstr(p-&gt;upvalues[n-1]);
+<span class="linenr">1053: </span>  }
+<span class="linenr">1054: </span>}
+<span class="linenr">1055: </span>
+<span class="linenr">1056: </span>
+<span class="linenr">1057: </span><span class="org-type">LUA_API</span> <span class="org-keyword">const</span> <span class="org-type">char</span> *lua_getupvalue (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">funcindex</span>, <span class="org-type">int</span> <span class="org-variable-name">n</span>) {
+<span class="linenr">1058: </span>  <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">name</span>;
+<span class="linenr">1059: </span>  <span class="org-type">TValue</span> *<span class="org-variable-name">val</span>;
+<span class="linenr">1060: </span>  lua_lock(L);
+<span class="linenr">1061: </span>  name = aux_upvalue(index2adr(L, funcindex), n, &amp;val);
+<span class="linenr">1062: </span>  <span class="org-keyword">if</span> (name) {
+<span class="linenr">1063: </span>    setobj2s(L, L-&gt;top, val);
+<span class="linenr">1064: </span>    api_incr_top(L);
+<span class="linenr">1065: </span>  }
+<span class="linenr">1066: </span>  lua_unlock(L);
+<span class="linenr">1067: </span>  <span class="org-keyword">return</span> name;
+<span class="linenr">1068: </span>}
+</pre>
+</div>
+
+<p>
+其中正是通过 <code>Closure.upvalues</code> 来寻找 upval 的。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orga51bce4" class="outline-2">
+<h2 id="orga51bce4"><span class="section-number-2">4</span> hook</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+debug 模块提供的另一方面的功能就是 hook。
 </p>
 
 <p>
-a repl env to debug status
+hook 有 4 种类型<sup><a id="fnr.3" class="footref" href="#fn.3">3</a></sup>， 分别为 <code>call return line count</code> 。
+</p>
+
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span>lua.h</label><pre class="src src-C"><span class="linenr">308: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">309: </span><span class="org-comment">** Event codes</span>
+<span class="linenr">310: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">311: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKCALL</span>    0
+<span class="linenr">312: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKRET</span>     1
+<span class="linenr">313: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKLINE</span>    2
+<span class="linenr">314: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKCOUNT</span>   3
+<span class="linenr">315: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_HOOKTAILRET</span> 4
+<span class="linenr">316: </span>
+<span class="linenr">317: </span>
+<span class="linenr">318: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">319: </span><span class="org-comment">** Event masks</span>
+<span class="linenr">320: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">321: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKCALL</span>    (1 &lt;&lt; LUA_HOOKCALL)
+<span class="linenr">322: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKRET</span>     (1 &lt;&lt; LUA_HOOKRET)
+<span class="linenr">323: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKLINE</span>    (1 &lt;&lt; LUA_HOOKLINE)
+<span class="linenr">324: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">LUA_MASKCOUNT</span>   (1 &lt;&lt; LUA_HOOKCOUNT)
+</pre>
+</div>
+
+<p>
+sethook 先解析 mask 和 count，再调用 <code>lua_sethook</code> 设置 hook。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span>ldblib.c</label><pre class="src src-C"><span class="linenr">225: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">makemask</span> (<span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">smask</span>, <span class="org-type">int</span> <span class="org-variable-name">count</span>) {
+<span class="linenr">226: </span>  <span class="org-type">int</span> <span class="org-variable-name">mask</span> = 0;
+<span class="linenr">227: </span>  <span class="org-keyword">if</span> (strchr(smask, <span class="org-string">'c'</span>)) mask |= LUA_MASKCALL;
+<span class="linenr">228: </span>  <span class="org-keyword">if</span> (strchr(smask, <span class="org-string">'r'</span>)) mask |= LUA_MASKRET;
+<span class="linenr">229: </span>  <span class="org-keyword">if</span> (strchr(smask, <span class="org-string">'l'</span>)) mask |= LUA_MASKLINE;
+<span class="linenr">230: </span>  <span class="org-keyword">if</span> (count &gt; 0) mask |= LUA_MASKCOUNT;
+<span class="linenr">231: </span>  <span class="org-keyword">return</span> mask;
+<span class="linenr">232: </span>}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 11: </span>ldblib.c</label><pre class="src src-C"><span class="linenr">258: </span><span class="org-keyword">static</span> <span class="org-type">int</span> <span class="org-function-name">db_sethook</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">259: </span>  <span class="org-type">int</span> <span class="org-variable-name">arg</span>, <span class="org-variable-name">mask</span>, <span class="org-variable-name">count</span>;
+<span class="linenr">260: </span>  <span class="org-type">lua_Hook</span> <span class="org-variable-name">func</span>;
+<span class="linenr">261: </span>  <span class="org-type">lua_State</span> *<span class="org-variable-name">L1</span> = getthread(L, &amp;arg);
+<span class="linenr">262: </span>  <span class="org-keyword">if</span> (lua_isnoneornil(L, arg+1)) {
+<span class="linenr">263: </span>    lua_settop(L, arg+1);
+<span class="linenr">264: </span>    func = <span class="org-constant">NULL</span>; mask = 0; count = 0;  <span class="org-comment-delimiter">/* </span><span class="org-comment">turn off hooks</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">265: </span>  }
+<span class="linenr">266: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">267: </span>    <span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">smask</span> = luaL_checkstring(L, arg+2);
+<span class="linenr">268: </span>    luaL_checktype(L, arg+1, LUA_TFUNCTION);
+<span class="linenr">269: </span>    count = luaL_optint(L, arg+3, 0);
+<span class="linenr">270: </span>    func = hookf; mask = makemask(smask, count);
+<span class="linenr">271: </span>  }
+<span class="linenr">272: </span>  gethooktable(L);
+<span class="linenr">273: </span>  lua_pushlightuserdata(L, L1);
+<span class="linenr">274: </span>  lua_pushvalue(L, arg+1);
+<span class="linenr">275: </span>  lua_rawset(L, -3);  <span class="org-comment-delimiter">/* </span><span class="org-comment">set new hook</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">276: </span>  lua_pop(L, 1);  <span class="org-comment-delimiter">/* </span><span class="org-comment">remove hook table</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">277: </span>  lua_sethook(L1, func, mask, count);  <span class="org-comment-delimiter">/* </span><span class="org-comment">set hooks</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">278: </span>  <span class="org-keyword">return</span> 0;
+<span class="linenr">279: </span>}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 12: </span>ldebug.c</label><pre class="src src-C"><span class="linenr">53: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">54: </span><span class="org-comment">** this function can be called asynchronous (e.g. during a signal)</span>
+<span class="linenr">55: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">56: </span>LUA_API <span class="org-type">int</span> <span class="org-function-name">lua_sethook</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">lua_Hook</span> <span class="org-variable-name">func</span>, <span class="org-type">int</span> <span class="org-variable-name">mask</span>, <span class="org-type">int</span> <span class="org-variable-name">count</span>) {
+<span class="linenr">57: </span>  <span class="org-keyword">if</span> (func == <span class="org-constant">NULL</span> || mask == 0) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">turn off hooks?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">58: </span>    mask = 0;
+<span class="linenr">59: </span>    func = <span class="org-constant">NULL</span>;
+<span class="linenr">60: </span>  }
+<span class="linenr">61: </span>  L-&gt;hook = func;
+<span class="linenr">62: </span>  L-&gt;basehookcount = count;
+<span class="linenr">63: </span>  resethookcount(L);
+<span class="linenr">64: </span>  L-&gt;hookmask = cast_byte(mask);
+<span class="linenr">65: </span>  <span class="org-keyword">return</span> 1;
+<span class="linenr">66: </span>}
+</pre>
+</div>
+
+<p>
+其中将所有 hook 信息存储到当前 <code>lua_State</code> 中。
+</p>
+
+<p>
+hook 调用的时间点散落在 lvm.c 和 ldo.c 中，全部通过 <code>luaD_callhook</code> 来调用。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 13: </span>ldo.c</label><pre class="src src-C"><span class="linenr">181: </span><span class="org-type">void</span> <span class="org-function-name">luaD_callhook</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">int</span> <span class="org-variable-name">event</span>, <span class="org-type">int</span> <span class="org-variable-name">line</span>) {
+<span class="linenr">182: </span>  <span class="org-type">lua_Hook</span> <span class="org-variable-name">hook</span> = L-&gt;hook;
+<span class="linenr">183: </span>  <span class="org-keyword">if</span> (hook &amp;&amp; L-&gt;allowhook) {
+<span class="linenr">184: </span>    <span class="org-type">ptrdiff_t</span> <span class="org-variable-name">top</span> = savestack(L, L-&gt;top);
+<span class="linenr">185: </span>    <span class="org-type">ptrdiff_t</span> <span class="org-variable-name">ci_top</span> = savestack(L, L-&gt;ci-&gt;top);
+<span class="linenr">186: </span>    <span class="org-type">lua_Debug</span> <span class="org-variable-name">ar</span>;
+<span class="linenr">187: </span>    ar.event = event;
+<span class="linenr">188: </span>    ar.currentline = line;
+<span class="linenr">189: </span>    <span class="org-keyword">if</span> (event == LUA_HOOKTAILRET)
+<span class="linenr">190: </span>      ar.i_ci = 0;  <span class="org-comment-delimiter">/* </span><span class="org-comment">tail call; no debug information about it</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">191: </span>    <span class="org-keyword">else</span>
+<span class="linenr">192: </span>      ar.i_ci = cast_int(L-&gt;ci - L-&gt;base_ci);
+<span class="linenr">193: </span>    luaD_checkstack(L, LUA_MINSTACK);  <span class="org-comment-delimiter">/* </span><span class="org-comment">ensure minimum stack size</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">194: </span>    L-&gt;ci-&gt;top = L-&gt;top + LUA_MINSTACK;
+<span class="linenr">195: </span>    lua_assert(L-&gt;ci-&gt;top &lt;= L-&gt;stack_last);
+<span class="linenr">196: </span>    L-&gt;allowhook = 0;  <span class="org-comment-delimiter">/* </span><span class="org-comment">cannot call hooks inside a hook</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">197: </span>    lua_unlock(L);
+<span class="linenr">198: </span>    (*hook)(L, &amp;ar);
+<span class="linenr">199: </span>    lua_lock(L);
+<span class="linenr">200: </span>    lua_assert(<span class="org-negation-char">!</span>L-&gt;allowhook);
+<span class="linenr">201: </span>    L-&gt;allowhook = 1;
+<span class="linenr">202: </span>    L-&gt;ci-&gt;top = restorestack(L, ci_top);
+<span class="linenr">203: </span>    L-&gt;top = restorestack(L, top);
+<span class="linenr">204: </span>  }
+<span class="linenr">205: </span>}
+</pre>
+</div>
+
+<p>
+可能通过搜索 <code>luaD_callhook</code> 的调用位置，确认不同的 mask 对应的调用时机，
+这一点和 vm 的运行相关，细节就不再赘述。
 </p>
 </div>
 </div>
+
+<div id="outline-container-org09dbaf5" class="outline-2">
+<h2 id="org09dbaf5"><span class="section-number-2">5</span> practice</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+debug 库并没有涉及到新的内容，阅读其实现过程可以加强对原有模型的理解，
+对 debug 功能没有特殊需求的读者粗略阅读即可。
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">章节涉及文件</th>
+<th scope="col" class="org-left">建议阅读程度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">ldblib.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">ldebug.c</td>
+<td class="org-left">★ ★ ☆ ☆ ☆</td>
+</tr>
+</tbody>
+</table>
 </div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://www.lua.org/manual/5.1/manual.html#5.9">http://www.lua.org/manual/5.1/manual.html#5.9</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.2" class="footnum" href="#fnr.2">2</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://www.lua.org/manual/5.1/manual.html#lua_getinfo">http://www.lua.org/manual/5.1/manual.html#lua_getinfo</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.3" class="footnum" href="#fnr.3">3</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://www.lua.org/manual/5.1/manual.html#lua_sethook">http://www.lua.org/manual/5.1/manual.html#lua_sethook</a>
+</p></div></div>
+
+
+</div>
+</div></div>
 <div id="postamble" class="status">
 
-<p>Revised: 2021-01-19 二 15:16</p>
+<p>Revised: 2021-01-20 三 11:42</p>
 <p>Created: 2021-01-19 二 15:13</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>
