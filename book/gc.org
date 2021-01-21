@@ -14,14 +14,14 @@ gc 算法有很多种，Lua 采用一种增量式三色标记清除算法来实�
 
 ** mark & sweep
 
-深入之前，先来了解一下经典的双色标记清除算法。
+双色标记清除算法是最经典的算法。
 
-初始阶段，新建的所有的对象，标记为白色，
+初始阶段，所有对象标记为白色；
 
 #+begin_src dot :file gc-2-color-root.png
 digraph {
 	node[shape=none];
-	
+
 	o[label=<
 	  <table border="0">
 	  <tr>
@@ -29,7 +29,7 @@ digraph {
 	  <td port="1" border="1" bgcolor="white"><font color="black">  B  </font></td>
 	  <td port="2" border="1" bgcolor="white"><font color="black">  C  </font></td>
 	  <td port="3" border="1" bgcolor="white"><font color="black">  D  </font></td>
-	  <td port="4" border="1" bgcolor="white"><font color="black"> root </font></td>
+	  <td port="4" border="1" bgcolor="white"><font color="black">  E  </font></td>
 	  <td port="5" border="1" bgcolor="white"><font color="black">  F  </font></td>
 	  <td port="6" border="1" bgcolor="white"><font color="black">  G  </font></td>
 	  <td port="7" border="1" bgcolor="white"><font color="black">  H  </font></td>
@@ -38,6 +38,8 @@ digraph {
 	  >];
 
 	o:4 -> o:1 -> o:2 -> o:6;
+
+	o:4 -> root[dir=back];
 }
 #+end_src
 
@@ -49,7 +51,7 @@ digraph {
 #+begin_src dot :file gc-2-color-root-1.png
 digraph {
 	node[shape=none];
-	
+
 	o[label=<
 	  <table border="0">
 	  <tr>
@@ -57,7 +59,7 @@ digraph {
 	  <td port="1" border="1" bgcolor="black"><font color="white">  B  </font></td>
 	  <td port="2" border="1" bgcolor="black"><font color="white">  C  </font></td>
 	  <td port="3" border="1" bgcolor="white"><font color="black">  D  </font></td>
-	  <td port="4" border="1" bgcolor="black"><font color="white"> root </font></td>
+	  <td port="4" border="1" bgcolor="black"><font color="white">  E  </font></td>
 	  <td port="5" border="1" bgcolor="white"><font color="black">  F  </font></td>
 	  <td port="6" border="1" bgcolor="black"><font color="white">  G  </font></td>
 	  <td port="7" border="1" bgcolor="white"><font color="black">  H  </font></td>
@@ -66,6 +68,8 @@ digraph {
 	  >];
 
 	o:4 -> o:1 -> o:2 -> o:6;
+
+	o:4 -> root[dir=back];
 }
 #+end_src
 
@@ -77,7 +81,7 @@ digraph {
 #+begin_src dot :file gc-2-color-root-2.png
 digraph {
 	node[shape=none];
-	
+
 	o[label=<
 	  <table border="0">
 	  <tr>
@@ -85,7 +89,7 @@ digraph {
 	  <td port="1" border="1" bgcolor="white"><font color="black">  B  </font></td>
 	  <td port="2" border="1" bgcolor="white"><font color="black">  C  </font></td>
 	  <td port="3" border="0" bgcolor="white"><font color="black">     </font></td>
-	  <td port="4" border="1" bgcolor="white"><font color="black"> root </font></td>
+	  <td port="4" border="1" bgcolor="white"><font color="black">  E  </font></td>
 	  <td port="5" border="0" bgcolor="white"><font color="black">     </font></td>
 	  <td port="6" border="1" bgcolor="white"><font color="black">  G  </font></td>
 	  <td port="7" border="0" bgcolor="white"><font color="black">     </font></td>
@@ -94,13 +98,15 @@ digraph {
 	  >];
 
 	o:4 -> o:1 -> o:2 -> o:6;
+
+	o:4 -> root[dir=back];
 }
 #+end_src
 
 #+RESULTS:
 [[file:gc-2-color-root-2.png]]
 
-gc 的过程，所有对象在两种颜色间完成标记和清理。
+gc 的过程，就在这些阶段中循环进行，所有对象在两种颜色间完成标记和清理。
 
 #+begin_src dot :file gc-2-color.png
 digraph {
@@ -118,25 +124,57 @@ digraph {
 #+RESULTS:
 [[file:gc-2-color.png]]
 
-#+begin_src plantuml :file gc-not-inc.png
-@startuml
-scale 2
+不过在传统的标记清除算法中，gc 过程是一个整体，主程序在这期间需要暂停。
+如果需要处理的对象过多，则主程序需要暂停过长时间。
 
+#+begin_src ditaa :file gc-not-inc.png
 
-[main] lasts 15 days
-[gc] lasts 10 days
-@enduml
++----------------+                                                  +---------------+
+|     main       +-+                                             +->|     main      |
++----------------+ |                                             |  +---------------+
+                   |                                             |
+                   |  +----------------------------------------+ |
+                   +->|                   gc                   +-+
+                      +----------------------------------------+
+
 #+end_src
 
 #+RESULTS:
 [[file:gc-not-inc.png]]
 
-非增量
+** tri color incremental mark & sweep
 
-collect 过程必须执行结束，才能执行程序
+三色标记清除算法是对上述算法的改进。
 
+引入了第三种颜色灰色，使 gc 过程可以增量式的运行，
+即 gc 过程可以分成短时间的小段穿插在主程序间执行。
 
-** tri color inc mark and sweep
+#+begin_src ditaa :file gc-inc.png
+
++----------+              +----------+              +----------+              +----------+
+|   main   +-+         +->|   main   +-+         +->|   main   +-+         +->|   main   |
++----------+ |         |  +----------+ |         |  +----------+ |         |  +----------+
+             |         |               |         |               |         |
+             |  +----+ |               |  +----+ |               |  +----+ |
+             +->| gc +-+               +->| gc +-+               +->| gc +-+
+                +----+                    +----+                    +----+
+
+#+end_src
+
+#+RESULTS:
+[[file:gc-inc.png]]
+
+改进后的 gc 过程如下：
+
+初始阶段，所有对象标识为白色；
+
+标记阶段的开始，将所有从 root 可达的对象标记为灰色；
+
+标记阶段，逐个取出灰色对象，将其所有可达的白色对象标记为灰色，最后将自身标记为黑色；
+
+清除阶段，当不存在灰色对象时，开始清除白色对象，将所有黑色对象标记回白色。
+
+改进后的算法，标记阶段可以增量式的运行，随时暂停和继续。
 
 #+begin_src dot :file gc-3-color.png
 digraph {
@@ -148,11 +186,9 @@ digraph {
 	nodesep = 1;
 
 	w -> g[label="push"];
-	w -> g[label="barrier fwd"];
-	
+
 	g -> b[label="pop"];
-	b -> g[label="barrier back"];
-	
+
 	b -> w[label="sweep"];
 }
 #+end_src
@@ -160,57 +196,145 @@ digraph {
 #+RESULTS:
 [[file:gc-3-color.png]]
 
-barrier
+但是在主程序和 gc 交替的过程中，主程序可以随时修改对象间的引用关系，
+这就给 gc 带来了困难。
 
+比如以下情况，A 已经标记为黑色，B 标记为灰色，
 
-
-
-** 4 color
-
-double white
-
-
-Tables use backward barriers, all other traversable objects use forward barriers.
-
-
-A write barrier in a garbage collector is a fragment of code emitted by the compiler immediately before every store operation to ensure that (e.g.) generational invariants are maintained.”
-
-
-
-* reality
-
-** state
-
-#+begin_src dot :file gc-state.png
+#+begin_src dot :file gc-problem-0.png
 digraph {
-	node[shape="circle", width=1.3, fixedsize=true];
-	rankdir = LR;
+	node[shape=box];
 
-	pause -> progagate -> sweepstring -> sweep -> finalize;
-	finalize:s -> pause:s;
+	a[label="A", color=black, style=filled, fontcolor=white];
+	b[label="B", color=grey, style=filled, fontcolor=white];
+	c[label="C", color=black, fontcolor=black];
+
+	{rank=same; b; c;}
+
+	a -> b -> c;
 }
 #+end_src
 
 #+RESULTS:
-[[file:gc-state.png]]
+[[file:gc-problem-0.png]]
 
-  
-** gclist
+在 gc 间歇期间，主程序修改了对象间的引用关系，
+B 不再引用 C，而 A 开始引用 C。
 
-   g->grey
-   ->gclist
+#+begin_src dot :file gc-problem-1.png
+digraph {
+	node[shape=box];
 
+	a[label="A", color=black, style=filled, fontcolor=white];
+	c[label="C", color=black, fontcolor=black];
+	b[label="B", color=grey, style=filled, fontcolor=white];
 
-   g->grayagain
+	{rank=same; b; c;}
 
-   g->rootgc
-   
+	a -> c;
+	a -> b;
+	b -> c[color=invis];
+}
+#+end_src
 
-** bit
+#+RESULTS:
+[[file:gc-problem-1.png]]
+
+虽然 C 也是可达对象，但是由于断开了 B 到 C 的连接，而 A 已经是黑色，
+所以 C 无法被标记为灰色继而黑色，所以本轮 gc 会被回收，最终造成 A 对象的空指针引用，
+这显然是不正确的。
+
+所以算法中引用了写屏障（barrier）技术，来解决这种问题。
+
+- 当黑色对象引用白色对象时，将此 **白色** 对象标记成灰色，称为 barrier forward
+- 当黑色对象引用白色对象时，将此 **黑色** 对象标记回灰色，称为 barrier back
+
+两种方法都可以解决上述问题，在 Lua 内部两种方式都有使用。
+
+#+begin_src dot :file gc-3-color-with-barrier.png
+digraph {
+	node[shape="circle"];
+	w[label="white"];
+	b[label="black", fontcolor="white", style=filled, color="black"];
+	g[label="grey ", fontcolor="white", style=filled, color="grey"];
+
+	nodesep = 1;
+
+	w -> g[label="push"];
+	w -> g[label="barrier fwd"];
+
+	g -> b[label="pop"];
+	b -> g[label="barrier back"];
+
+	b -> w[label="sweep"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-3-color-with-barrier.png]]
+
+读者可以思考一下，为什么只在黑色引用白色时会出现问题。
+（排列组合，白->白，白->灰，...，黑->黑）
+
+** double white
+
+Lua 内部更进一步[fn:1]，引用了双白色，加上灰黑，也就是 4 种颜色。
+
+双白色的目的在于，在一轮 gc 的过程中，主程序会新建新的对象，新建对象用另一种白色来标识。
+这样在此轮 gc 最终回收的时候，只回收原有白色的对象即可，不会涉及到新建对象。
+
+同时，最终黑色会被标记为另一种白色。
+
+#+begin_src dot :file gc-4-color-with-barrier.png
+digraph {
+	node[shape="circle"];
+	w[label="white"];
+	ww[label="other\nwhite"];
+
+	b[label="black", fontcolor="white", style=filled, color="black"];
+	g[label="grey ", fontcolor="white", style=filled, color="grey"];
+
+	nodesep = 1;
+
+	w -> g[label="push"];
+	w -> g[label="barrier fwd"];
+
+	g -> b[label="pop"];
+	b -> g[label="barrier back"];
+
+	b -> ww[label="sweep"];
+	w -> ww[label="flip", dir=back];
+
+	{rank=same; w; ww;}
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-4-color-with-barrier.png]]
+
+如果开始下一轮 gc，需要将所有 other white 翻转为 white，回到起始点。
+
+但是这样代价比较高，Lua 直接使用标识 =g->currentwhite= 来表示当前 gc 处理的白色类型，
+这样就只需要翻转 =g->currentwhite= 即可。
+
+* bit
+
+下面来看 gc 算法是如何和 Lua 内部的对象关联起来的。
+
+回忆 object 章节，
+
+#+caption: lobject.h
+#+include: ../lua-5.1.5/src/lobject.h src C -n 39 :lines "39-44"
+
+每一个 GCObject 都有共同的 CommonHeader 字段，其中 marked 就是用来标识对象在 gc 过程中的状态。
+
+#+caption: lgc.h
+#+include: ../lua-5.1.5/src/lgc.h src C -n 41 :lines "41-62"
 
 #+begin_src dot :file gc-bit-mark.png
 digraph {
 	m[shape=record, label="
+	  {  | 7 } |
 	  { super fixed | 6 } |
 	  { fixed | 5 } |
 	  { weak value | 4 } |
@@ -224,50 +348,103 @@ digraph {
 
 #+RESULTS:
 [[file:gc-bit-mark.png]]
+
+marked 字节中，前 3 位标识了颜色，任意时刻最多只有 1 位为 1。
+当 3 个位都为 0 时，表示灰色。
+
+* state
+
+Lua 内部的 gc 过程分为如下几个状态，
+
+#+caption: lgc.h
+#+include: ../lua-5.1.5/src/lgc.h src C -n 14 :lines "14-22"
+
+不同状态间执行不同阶段的 gc 操作，
+
+#+begin_src dot :file gc-state.png
+digraph {
+	node[shape="circle", width=1.3, fixedsize=true];
+	rankdir = LR;
+
+	pause -> propagate[label="push"];
+	propagate -> sweepstring[label="pop"];
+	sweepstring -> sweep[label="sweep"];
+	sweep -> finalize[label="sweep"];
+	finalize:s -> pause:s[label="sweep"];
+}
+#+end_src
+
+#+RESULTS:
+[[file:gc-state.png]]
+
+Lua 内部通过 =g->gcstate= 来记录当前的状态。
+
+* phase
+
+gc 模块内部通过 =luaC_step= 来推动整个 gc 过程，
+
+#+caption: lgc.c
+#+include: ../lua-5.1.5/src/lgc.c src C -n 610 :lines "610-633"
+
+其中调用 singlestep 来进行每个 phase 操作，其中统计处理的对象空间大小的和，
+达到阈值就结束此次增量 gc 过程。
+
+#+caption: lgc.c
+#+include: ../lua-5.1.5/src/lgc.c src C -n 556 :lines "556-608"
   
-Simple description
-The Lua garbage collector is a mark & sweep collector. The collector has two major phases mark & sweep that it runs each collection cycle. During the mark phases the collector traverse the Lua stack and into tables to mark values it finds as live. Next the sweep phases will walk a list of all collectible values and free all dead values it finds.
+** push
 
-Detailed description
-All collectible type objects have a 'marked' bit field. The bits are defined as (copied from header "lgc.h"):
+push 阶段从 root 开始，
 
-    bit 0 - object is white (type 0)
-    bit 1 - object is white (type 1)
-    bit 2 - object is black
-    bit 3 - for userdata: has been finalized
-    bit 3 - for tables: has weak keys (note this bit has two different meanings one for userdata and one for tables)
-    bit 4 - for tables: has weak values
-    bit 5 - object is fixed (should not be collected)
-    bit 6 - object is "super" fixed (only the main thread) 
+#+caption: lgc.c
+#+include: ../lua-5.1.5/src/lgc.c src C -n 500 :lines "500-513"
+   
+从 markroot 可以看出，gc 中的 root 从 mainthread registry globalState 开始。
 
-The garbage collector keeps track of a current white (type 0 or 1) and objects with the other white are dead objects that can be collected during the sweep states.
+** pop
 
-An object's color is defined by which of the first 3 bits (0, 1, 2) are set:
+pop 阶段的主要入口在 propagatemark，
 
-    It is white if one of the two white bits (0,1) are set and the black bit is clear. Only one white bit should be used by a white object.
-    It is gray if all three color bits (0,1,2) are clear.
-    It is black if the black bit is set and the two white bits are clear. 
+#+caption: lgc.c
+#+include: ../lua-5.1.5/src/lgc.c src C -n 273 :lines "273-321"
 
-Garbage collector states (each collection cycle passes through these states in this order):
+其中针对不同的对象类型，进行不同的处理。
 
-    GCSpause - Start of collection cycle. At this state all objects should be marked with the current white. The main lua_State, globals table, registry, and metatables are marked gray and added to the gray list. The state now changes to GCSpropagate.
-    GCSpropagate - Each object in the gray list is removed and marked black, then any white (type 0 or 1) objects it references are marked gray and added to the gray list. Once the gray list is empty the current white is switched to the other white. All objects marked with the old white type are now dead objects. The state now changes to GCSsweepstring.
-    GCSsweepstring - The color of each string in the internal strings hashtable is checked. If the color matches the old white type that string is dead and is freed. If the color matches the current white (newly created string) or is gray (some other object references it), then it is alive and its color is reset to the current white. Once all strings are checked the state is changed to GCSsweep.
-    GCSsweep - The color of each objects in the global rootgc list (this list holds all objects except strings) is checked just like the strings during the GCSsweepstring state. Dead objects are freed and removed from the rootgc list. Live objects have their color reset to the current white. Once all objects have been checked the state is changed to GCSfinalize.
-    GCSfinalize - This state will finalize all dead userdata objects by running their "__gc" metamethod. Once all dead userdata objects have been finailzed the state is changed to GCSpause and this completes a cycle of the garbage collector. 
+** sweep
 
+sweep 阶段通过 sweeplist 遍历并回收白色对象，
 
+#+caption: lgc.c
+#+include: ../lua-5.1.5/src/lgc.c src C -n 404 :lines "404-429"
 
+最终通过 freeobj 回收相应内存空间，
 
-http://wiki.luajit.org/New-Garbage-Collector
+#+caption: lgc.c
+#+include: ../lua-5.1.5/src/lgc.c src C -n 378 :lines "378-401"
 
-https://www.zhihu.com/question/62000722
+* barrier
 
-https://juejin.cn/post/6844903896368824328
+=luaC_barrierf= 和 =luaC_barrierback= 提供了 forward barrier 和 backward barrier 的实现。
 
-http://www.lua.org/manual/5.1/manual.html#2.10
-* weaktable
+#+caption: lgc.c
+#+include: ../lua-5.1.5/src/lgc.c src C -n 661 :lines "661-683"
 
-Tables use backward barriers, all other traversable objects use forward barriers.
+在 Lua 内部，只有 table 对象使用 backward barrier，因为其作为容器，
+引用其它可变动的对象比较多，置为灰色就不用一直触发写屏障，提高效率。
 
+* TODO g->*
+
+g->rootgc
+g->gcstate
+  
+* TODO weaktable
+
+* practice
+
+| 章节涉及文件 | 建议阅读程度   |
+|--------------+----------------|
+| lgc.h        | ★ ★ ★ ★ ☆ |
+| lgc.c        | ★ ★ ★ ☆ ☆ |
+
+[fn:1]: http://wiki.luajit.org/New-Garbage-Collector#gc-algorithms
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-20 三 17:54 -->
+<!-- 2021-01-21 四 11:47 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>gc</title>
@@ -241,15 +241,15 @@ gc 算法有很多种，Lua 采用一种增量式三色标记清除算法来实�
 <h3 id="org66923ba"><span class="section-number-3">1.1</span> mark &amp; sweep</h3>
 <div class="outline-text-3" id="text-1-1">
 <p>
-深入之前，先来了解一下经典的双色标记清除算法。
+双色标记清除算法是最经典的算法。
 </p>
 
 <p>
-初始阶段，新建的所有的对象，标记为白色，
+初始阶段，所有对象标记为白色；
 </p>
 
 
-<div id="org87725de" class="figure">
+<div id="org2761d09" class="figure">
 <p><img src="gc-2-color-root.png" alt="gc-2-color-root.png">
 </p>
 </div>
@@ -259,7 +259,7 @@ gc 算法有很多种，Lua 采用一种增量式三色标记清除算法来实�
 </p>
 
 
-<div id="orgabca1ea" class="figure">
+<div id="org6035b78" class="figure">
 <p><img src="gc-2-color-root-1.png" alt="gc-2-color-root-1.png">
 </p>
 </div>
@@ -269,203 +269,617 @@ gc 算法有很多种，Lua 采用一种增量式三色标记清除算法来实�
 </p>
 
 
-<div id="org50d09f7" class="figure">
+<div id="org131b6f8" class="figure">
 <p><img src="gc-2-color-root-2.png" alt="gc-2-color-root-2.png">
 </p>
 </div>
 
 <p>
-gc 的过程，所有对象在两种颜色间完成标记和清理。
+gc 的过程，就在这些阶段中循环进行，所有对象在两种颜色间完成标记和清理。
 </p>
 
 
-<div id="org7d50276" class="figure">
+<div id="orga1bdc9a" class="figure">
 <p><img src="gc-2-color.png" alt="gc-2-color.png">
 </p>
 </div>
 
+<p>
+不过在传统的标记清除算法中，gc 过程是一个整体，主程序在这期间需要暂停。
+如果需要处理的对象过多，则主程序需要暂停过长时间。
+</p>
 
-<div id="org9bb4551" class="figure">
+
+<div id="orgcd3b398" class="figure">
 <p><img src="gc-not-inc.png" alt="gc-not-inc.png">
 </p>
 </div>
-
-<p>
-非增量
-</p>
-
-<p>
-collect 过程必须执行结束，才能执行程序
-</p>
 </div>
 </div>
 
-
-<div id="outline-container-orgdb68781" class="outline-3">
-<h3 id="orgdb68781"><span class="section-number-3">1.2</span> tri color inc mark and sweep</h3>
+<div id="outline-container-orgb0429c6" class="outline-3">
+<h3 id="orgb0429c6"><span class="section-number-3">1.2</span> tri color incremental mark &amp; sweep</h3>
 <div class="outline-text-3" id="text-1-2">
+<p>
+三色标记清除算法是对上述算法的改进。
+</p>
 
-<div id="org8b25b56" class="figure">
+<p>
+引入了第三种颜色灰色，使 gc 过程可以增量式的运行，
+即 gc 过程可以分成短时间的小段穿插在主程序间执行。
+</p>
+
+
+<div id="org0fba336" class="figure">
+<p><img src="gc-inc.png" alt="gc-inc.png">
+</p>
+</div>
+
+<p>
+改进后的 gc 过程如下：
+</p>
+
+<p>
+初始阶段，所有对象标识为白色；
+</p>
+
+<p>
+标记阶段的开始，将所有从 root 可达的对象标记为灰色；
+</p>
+
+<p>
+标记阶段，逐个取出灰色对象，将其所有可达的白色对象标记为灰色，最后将自身标记为黑色；
+</p>
+
+<p>
+清除阶段，当不存在灰色对象时，开始清除白色对象，将所有黑色对象标记回白色。
+</p>
+
+<p>
+改进后的算法，标记阶段可以增量式的运行，随时暂停和继续。
+</p>
+
+
+<div id="orga31b353" class="figure">
 <p><img src="gc-3-color.png" alt="gc-3-color.png">
 </p>
 </div>
 
 <p>
-barrier
+但是在主程序和 gc 交替的过程中，主程序可以随时修改对象间的引用关系，
+这就给 gc 带来了困难。
+</p>
+
+<p>
+比如以下情况，A 已经标记为黑色，B 标记为灰色，
+</p>
+
+
+<div id="orga14b7ca" class="figure">
+<p><img src="gc-problem-0.png" alt="gc-problem-0.png">
+</p>
+</div>
+
+<p>
+在 gc 间歇期间，主程序修改了对象间的引用关系，
+B 不再引用 C，而 A 开始引用 C。
+</p>
+
+
+<div id="org81d2e93" class="figure">
+<p><img src="gc-problem-1.png" alt="gc-problem-1.png">
+</p>
+</div>
+
+<p>
+虽然 C 也是可达对象，但是由于断开了 B 到 C 的连接，而 A 已经是黑色，
+所以 C 无法被标记为灰色继而黑色，所以本轮 gc 会被回收，最终造成 A 对象的空指针引用，
+这显然是不正确的。
+</p>
+
+<p>
+所以算法中引用了写屏障（barrier）技术，来解决这种问题。
+</p>
+
+<ul class="org-ul">
+<li>当黑色对象引用白色对象时，将此 <b><b>白色</b></b> 对象标记成灰色，称为 barrier forward</li>
+<li>当黑色对象引用白色对象时，将此 <b><b>黑色</b></b> 对象标记回灰色，称为 barrier back</li>
+</ul>
+
+<p>
+两种方法都可以解决上述问题，在 Lua 内部两种方式都有使用。
+</p>
+
+
+<div id="org6485d6a" class="figure">
+<p><img src="gc-3-color-with-barrier.png" alt="gc-3-color-with-barrier.png">
+</p>
+</div>
+
+<p>
+读者可以思考一下，为什么只在黑色引用白色时会出现问题。
+（排列组合，白-&gt;白，白-&gt;灰，&#x2026;，黑-&gt;黑）
 </p>
 </div>
 </div>
 
-
-
-
-<div id="outline-container-org0c87f84" class="outline-3">
-<h3 id="org0c87f84"><span class="section-number-3">1.3</span> 4 color</h3>
+<div id="outline-container-org26c7a68" class="outline-3">
+<h3 id="org26c7a68"><span class="section-number-3">1.3</span> double white</h3>
 <div class="outline-text-3" id="text-1-3">
 <p>
-double white
+Lua 内部更进一步<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>，引用了双白色，加上灰黑，也就是 4 种颜色。
 </p>
-
 
 <p>
-Tables use backward barriers, all other traversable objects use forward barriers.
+双白色的目的在于，在一轮 gc 的过程中，主程序会新建新的对象，新建对象用另一种白色来标识。
+这样在此轮 gc 最终回收的时候，只回收原有白色的对象即可，不会涉及到新建对象。
 </p>
-
 
 <p>
-A write barrier in a garbage collector is a fragment of code emitted by the compiler immediately before every store operation to ensure that (e.g.) generational invariants are maintained.”
+同时，最终黑色会被标记为另一种白色。
+</p>
+
+
+<div id="org778b76d" class="figure">
+<p><img src="gc-4-color-with-barrier.png" alt="gc-4-color-with-barrier.png">
+</p>
+</div>
+
+<p>
+如果开始下一轮 gc，需要将所有 other white 翻转为 white，回到起始点。
+</p>
+
+<p>
+但是这样代价比较高，Lua 直接使用标识 <code>g-&gt;currentwhite</code> 来表示当前 gc 处理的白色类型，
+这样就只需要翻转 <code>g-&gt;currentwhite</code> 即可。
 </p>
 </div>
 </div>
 </div>
 
-
-
-<div id="outline-container-orgabfdbd7" class="outline-2">
-<h2 id="orgabfdbd7"><span class="section-number-2">2</span> reality</h2>
+<div id="outline-container-org8cbe035" class="outline-2">
+<h2 id="org8cbe035"><span class="section-number-2">2</span> bit</h2>
 <div class="outline-text-2" id="text-2">
-</div>
-<div id="outline-container-orgb8ff4c6" class="outline-3">
-<h3 id="orgb8ff4c6"><span class="section-number-3">2.1</span> state</h3>
-<div class="outline-text-3" id="text-2-1">
-
-<div id="org20fcf78" class="figure">
-<p><img src="gc-state.png" alt="gc-state.png">
-</p>
-</div>
-</div>
-</div>
-
-
-<div id="outline-container-orgef9abdc" class="outline-3">
-<h3 id="orgef9abdc"><span class="section-number-3">2.2</span> gclist</h3>
-<div class="outline-text-3" id="text-2-2">
 <p>
-g-&gt;grey
--&gt;gclist
-</p>
-
-
-<p>
-g-&gt;grayagain
+下面来看 gc 算法是如何和 Lua 内部的对象关联起来的。
 </p>
 
 <p>
-g-&gt;rootgc
+回忆 object 章节，
 </p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span>lobject.h</label><pre class="src src-C"><span class="linenr">39: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">40: </span><span class="org-comment">** Common Header for all collectable objects (in macro form, to be</span>
+<span class="linenr">41: </span><span class="org-comment">** included in other objects)</span>
+<span class="linenr">42: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">43: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">CommonHeader</span>    <span class="org-type">GCObject</span> *<span class="org-variable-name">next</span>; <span class="org-type">lu_byte</span> <span class="org-variable-name">tt</span>; <span class="org-type">lu_byte</span> <span class="org-variable-name">marked</span>
+</pre>
 </div>
+
+<p>
+每一个 GCObject 都有共同的 CommonHeader 字段，其中 marked 就是用来标识对象在 gc 过程中的状态。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span>lgc.h</label><pre class="src src-C"><span class="linenr">41: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">42: </span><span class="org-comment">** Layout for bit use in `marked' field:</span>
+<span class="linenr">43: </span><span class="org-comment">** bit 0 - object is white (type 0)</span>
+<span class="linenr">44: </span><span class="org-comment">** bit 1 - object is white (type 1)</span>
+<span class="linenr">45: </span><span class="org-comment">** bit 2 - object is black</span>
+<span class="linenr">46: </span><span class="org-comment">** bit 3 - for userdata: has been finalized</span>
+<span class="linenr">47: </span><span class="org-comment">** bit 3 - for tables: has weak keys</span>
+<span class="linenr">48: </span><span class="org-comment">** bit 4 - for tables: has weak values</span>
+<span class="linenr">49: </span><span class="org-comment">** bit 5 - object is fixed (should not be collected)</span>
+<span class="linenr">50: </span><span class="org-comment">** bit 6 - object is "super" fixed (only the main thread)</span>
+<span class="linenr">51: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">52: </span>
+<span class="linenr">53: </span>
+<span class="linenr">54: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">WHITE0BIT</span>       0
+<span class="linenr">55: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">WHITE1BIT</span>       1
+<span class="linenr">56: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">BLACKBIT</span>        2
+<span class="linenr">57: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">FINALIZEDBIT</span>    3
+<span class="linenr">58: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">KEYWEAKBIT</span>      3
+<span class="linenr">59: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">VALUEWEAKBIT</span>    4
+<span class="linenr">60: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">FIXEDBIT</span>        5
+<span class="linenr">61: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">SFIXEDBIT</span>       6
+</pre>
 </div>
 
 
-<div id="outline-container-org8cbe035" class="outline-3">
-<h3 id="org8cbe035"><span class="section-number-3">2.3</span> bit</h3>
-<div class="outline-text-3" id="text-2-3">
-
-<div id="org3cedd50" class="figure">
+<div id="org78e4921" class="figure">
 <p><img src="gc-bit-mark.png" alt="gc-bit-mark.png">
 </p>
 </div>
 
 <p>
-Simple description
-The Lua garbage collector is a mark &amp; sweep collector. The collector has two major phases mark &amp; sweep that it runs each collection cycle. During the mark phases the collector traverse the Lua stack and into tables to mark values it finds as live. Next the sweep phases will walk a list of all collectible values and free all dead values it finds.
-</p>
-
-<p>
-Detailed description
-All collectible type objects have a 'marked' bit field. The bits are defined as (copied from header "lgc.h"):
-</p>
-
-<p>
-bit 0 - object is white (type 0)
-bit 1 - object is white (type 1)
-bit 2 - object is black
-bit 3 - for userdata: has been finalized
-bit 3 - for tables: has weak keys (note this bit has two different meanings one for userdata and one for tables)
-bit 4 - for tables: has weak values
-bit 5 - object is fixed (should not be collected)
-bit 6 - object is "super" fixed (only the main thread) 
-</p>
-
-<p>
-The garbage collector keeps track of a current white (type 0 or 1) and objects with the other white are dead objects that can be collected during the sweep states.
-</p>
-
-<p>
-An object's color is defined by which of the first 3 bits (0, 1, 2) are set:
-</p>
-
-<p>
-It is white if one of the two white bits (0,1) are set and the black bit is clear. Only one white bit should be used by a white object.
-It is gray if all three color bits (0,1,2) are clear.
-It is black if the black bit is set and the two white bits are clear. 
-</p>
-
-<p>
-Garbage collector states (each collection cycle passes through these states in this order):
-</p>
-
-<p>
-GCSpause - Start of collection cycle. At this state all objects should be marked with the current white. The main lua<sub>State</sub>, globals table, registry, and metatables are marked gray and added to the gray list. The state now changes to GCSpropagate.
-GCSpropagate - Each object in the gray list is removed and marked black, then any white (type 0 or 1) objects it references are marked gray and added to the gray list. Once the gray list is empty the current white is switched to the other white. All objects marked with the old white type are now dead objects. The state now changes to GCSsweepstring.
-GCSsweepstring - The color of each string in the internal strings hashtable is checked. If the color matches the old white type that string is dead and is freed. If the color matches the current white (newly created string) or is gray (some other object references it), then it is alive and its color is reset to the current white. Once all strings are checked the state is changed to GCSsweep.
-GCSsweep - The color of each objects in the global rootgc list (this list holds all objects except strings) is checked just like the strings during the GCSsweepstring state. Dead objects are freed and removed from the rootgc list. Live objects have their color reset to the current white. Once all objects have been checked the state is changed to GCSfinalize.
-GCSfinalize - This state will finalize all dead userdata objects by running their "_<sub>gc</sub>" metamethod. Once all dead userdata objects have been finailzed the state is changed to GCSpause and this completes a cycle of the garbage collector. 
-</p>
-
-
-
-
-<p>
-<a href="http://wiki.luajit.org/New-Garbage-Collector">http://wiki.luajit.org/New-Garbage-Collector</a>
-</p>
-
-<p>
-<a href="https://www.zhihu.com/question/62000722">https://www.zhihu.com/question/62000722</a>
-</p>
-
-<p>
-<a href="https://juejin.cn/post/6844903896368824328">https://juejin.cn/post/6844903896368824328</a>
-</p>
-
-<p>
-<a href="http://www.lua.org/manual/5.1/manual.html#2.10">http://www.lua.org/manual/5.1/manual.html#2.10</a>
+marked 字节中，前 3 位标识了颜色，任意时刻最多只有 1 位为 1。
+当 3 个位都为 0 时，表示灰色。
 </p>
 </div>
 </div>
-</div>
-<div id="outline-container-org64ef47d" class="outline-2">
-<h2 id="org64ef47d"><span class="section-number-2">3</span> weaktable</h2>
+
+<div id="outline-container-orgb8ff4c6" class="outline-2">
+<h2 id="orgb8ff4c6"><span class="section-number-2">3</span> state</h2>
 <div class="outline-text-2" id="text-3">
 <p>
-Tables use backward barriers, all other traversable objects use forward barriers.
+Lua 内部的 gc 过程分为如下几个状态，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span>lgc.h</label><pre class="src src-C"><span class="linenr">14: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">15: </span><span class="org-comment">** Possible states of the Garbage Collector</span>
+<span class="linenr">16: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">17: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">GCSpause</span>        0
+<span class="linenr">18: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">GCSpropagate</span>    1
+<span class="linenr">19: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">GCSsweepstring</span>  2
+<span class="linenr">20: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">GCSsweep</span>        3
+<span class="linenr">21: </span><span class="org-preprocessor">#define</span> <span class="org-variable-name">GCSfinalize</span>     4
+</pre>
+</div>
+
+<p>
+不同状态间执行不同阶段的 gc 操作，
+</p>
+
+
+<div id="orga13a6f1" class="figure">
+<p><img src="gc-state.png" alt="gc-state.png">
+</p>
+</div>
+
+<p>
+Lua 内部通过 <code>g-&gt;gcstate</code> 来记录当前的状态。
 </p>
 </div>
 </div>
+
+<div id="outline-container-org7578085" class="outline-2">
+<h2 id="org7578085"><span class="section-number-2">4</span> phase</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+gc 模块内部通过 <code>luaC_step</code> 来推动整个 gc 过程，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span>lgc.c</label><pre class="src src-C"><span class="linenr">610: </span><span class="org-type">void</span> <span class="org-function-name">luaC_step</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">611: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr">612: </span>  <span class="org-type">l_mem</span> <span class="org-variable-name">lim</span> = (GCSTEPSIZE/100) * g-&gt;gcstepmul;
+<span class="linenr">613: </span>  <span class="org-keyword">if</span> (lim == 0)
+<span class="linenr">614: </span>    lim = (MAX_LUMEM-1)/2;  <span class="org-comment-delimiter">/* </span><span class="org-comment">no limit</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">615: </span>  g-&gt;gcdept += g-&gt;totalbytes - g-&gt;GCthreshold;
+<span class="linenr">616: </span>  <span class="org-keyword">do</span> {
+<span class="linenr">617: </span>    lim -= singlestep(L);
+<span class="linenr">618: </span>    <span class="org-keyword">if</span> (g-&gt;gcstate == GCSpause)
+<span class="linenr">619: </span>      <span class="org-keyword">break</span>;
+<span class="linenr">620: </span>  } <span class="org-keyword">while</span> (lim &gt; 0);
+<span class="linenr">621: </span>  <span class="org-keyword">if</span> (g-&gt;gcstate != GCSpause) {
+<span class="linenr">622: </span>    <span class="org-keyword">if</span> (g-&gt;gcdept &lt; GCSTEPSIZE)
+<span class="linenr">623: </span>      g-&gt;GCthreshold = g-&gt;totalbytes + GCSTEPSIZE;  <span class="org-comment-delimiter">/* </span><span class="org-comment">- lim/g-&gt;gcstepmul;</span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">624: </span>    <span class="org-keyword">else</span> {
+<span class="linenr">625: </span>      g-&gt;gcdept -= GCSTEPSIZE;
+<span class="linenr">626: </span>      g-&gt;GCthreshold = g-&gt;totalbytes;
+<span class="linenr">627: </span>    }
+<span class="linenr">628: </span>  }
+<span class="linenr">629: </span>  <span class="org-keyword">else</span> {
+<span class="linenr">630: </span>    setthreshold(g);
+<span class="linenr">631: </span>  }
+<span class="linenr">632: </span>}
+</pre>
 </div>
+
+<p>
+其中调用 singlestep 来进行每个 phase 操作，其中统计处理的对象空间大小的和，
+达到阈值就结束此次增量 gc 过程。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span>lgc.c</label><pre class="src src-C"><span class="linenr">556: </span><span class="org-keyword">static</span> <span class="org-type">l_mem</span> <span class="org-function-name">singlestep</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">557: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr">558: </span>  <span class="org-comment-delimiter">/*</span><span class="org-comment">lua_checkmemory(L);</span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">559: </span>  <span class="org-keyword">switch</span> (g-&gt;gcstate) {
+<span class="linenr">560: </span>    <span class="org-keyword">case</span> GCSpause: {
+<span class="linenr">561: </span>      markroot(L);  <span class="org-comment-delimiter">/* </span><span class="org-comment">start a new collection</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">562: </span>      <span class="org-keyword">return</span> 0;
+<span class="linenr">563: </span>    }
+<span class="linenr">564: </span>    <span class="org-keyword">case</span> GCSpropagate: {
+<span class="linenr">565: </span>      <span class="org-keyword">if</span> (g-&gt;gray)
+<span class="linenr">566: </span>        <span class="org-keyword">return</span> propagatemark(g);
+<span class="linenr">567: </span>      <span class="org-keyword">else</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">no more `gray' objects</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">568: </span>        atomic(L);  <span class="org-comment-delimiter">/* </span><span class="org-comment">finish mark phase</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">569: </span>        <span class="org-keyword">return</span> 0;
+<span class="linenr">570: </span>      }
+<span class="linenr">571: </span>    }
+<span class="linenr">572: </span>    <span class="org-keyword">case</span> GCSsweepstring: {
+<span class="linenr">573: </span>      <span class="org-type">lu_mem</span> <span class="org-variable-name">old</span> = g-&gt;totalbytes;
+<span class="linenr">574: </span>      sweepwholelist(L, &amp;g-&gt;strt.hash[g-&gt;sweepstrgc++]);
+<span class="linenr">575: </span>      <span class="org-keyword">if</span> (g-&gt;sweepstrgc &gt;= g-&gt;strt.size)  <span class="org-comment-delimiter">/* </span><span class="org-comment">nothing more to sweep?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">576: </span>        g-&gt;gcstate = GCSsweep;  <span class="org-comment-delimiter">/* </span><span class="org-comment">end sweep-string phase</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">577: </span>      lua_assert(old &gt;= g-&gt;totalbytes);
+<span class="linenr">578: </span>      g-&gt;estimate -= old - g-&gt;totalbytes;
+<span class="linenr">579: </span>      <span class="org-keyword">return</span> GCSWEEPCOST;
+<span class="linenr">580: </span>    }
+<span class="linenr">581: </span>    <span class="org-keyword">case</span> GCSsweep: {
+<span class="linenr">582: </span>      <span class="org-type">lu_mem</span> <span class="org-variable-name">old</span> = g-&gt;totalbytes;
+<span class="linenr">583: </span>      g-&gt;sweepgc = sweeplist(L, g-&gt;sweepgc, GCSWEEPMAX);
+<span class="linenr">584: </span>      <span class="org-keyword">if</span> (*g-&gt;sweepgc == <span class="org-constant">NULL</span>) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">nothing more to sweep?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">585: </span>        checkSizes(L);
+<span class="linenr">586: </span>        g-&gt;gcstate = GCSfinalize;  <span class="org-comment-delimiter">/* </span><span class="org-comment">end sweep phase</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">587: </span>      }
+<span class="linenr">588: </span>      lua_assert(old &gt;= g-&gt;totalbytes);
+<span class="linenr">589: </span>      g-&gt;estimate -= old - g-&gt;totalbytes;
+<span class="linenr">590: </span>      <span class="org-keyword">return</span> GCSWEEPMAX*GCSWEEPCOST;
+<span class="linenr">591: </span>    }
+<span class="linenr">592: </span>    <span class="org-keyword">case</span> GCSfinalize: {
+<span class="linenr">593: </span>      <span class="org-keyword">if</span> (g-&gt;tmudata) {
+<span class="linenr">594: </span>        GCTM(L);
+<span class="linenr">595: </span>        <span class="org-keyword">if</span> (g-&gt;estimate &gt; GCFINALIZECOST)
+<span class="linenr">596: </span>          g-&gt;estimate -= GCFINALIZECOST;
+<span class="linenr">597: </span>        <span class="org-keyword">return</span> GCFINALIZECOST;
+<span class="linenr">598: </span>      }
+<span class="linenr">599: </span>      <span class="org-keyword">else</span> {
+<span class="linenr">600: </span>        g-&gt;gcstate = GCSpause;  <span class="org-comment-delimiter">/* </span><span class="org-comment">end collection</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">601: </span>        g-&gt;gcdept = 0;
+<span class="linenr">602: </span>        <span class="org-keyword">return</span> 0;
+<span class="linenr">603: </span>      }
+<span class="linenr">604: </span>    }
+<span class="linenr">605: </span>    <span class="org-keyword">default</span>: lua_assert(0); <span class="org-keyword">return</span> 0;
+<span class="linenr">606: </span>  }
+<span class="linenr">607: </span>}
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org39ba14c" class="outline-3">
+<h3 id="org39ba14c"><span class="section-number-3">4.1</span> push</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+push 阶段从 root 开始，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span>lgc.c</label><pre class="src src-C"><span class="linenr">500: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">mark root set</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">501: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">markroot</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>) {
+<span class="linenr">502: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr">503: </span>  g-&gt;gray = <span class="org-constant">NULL</span>;
+<span class="linenr">504: </span>  g-&gt;grayagain = <span class="org-constant">NULL</span>;
+<span class="linenr">505: </span>  g-&gt;weak = <span class="org-constant">NULL</span>;
+<span class="linenr">506: </span>  markobject(g, g-&gt;mainthread);
+<span class="linenr">507: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">make global table be traversed before main stack</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">508: </span>  markvalue(g, gt(g-&gt;mainthread));
+<span class="linenr">509: </span>  markvalue(g, registry(L));
+<span class="linenr">510: </span>  markmt(g);
+<span class="linenr">511: </span>  g-&gt;gcstate = GCSpropagate;
+<span class="linenr">512: </span>}
+</pre>
+</div>
+
+<p>
+从 markroot 可以看出，gc 中的 root 从 mainthread registry globalState 开始。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgc6f0516" class="outline-3">
+<h3 id="orgc6f0516"><span class="section-number-3">4.2</span> pop</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+pop 阶段的主要入口在 propagatemark，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span>lgc.c</label><pre class="src src-C"><span class="linenr">273: </span><span class="org-comment-delimiter">/*</span>
+<span class="linenr">274: </span><span class="org-comment">** traverse one gray object, turning it to black.</span>
+<span class="linenr">275: </span><span class="org-comment">** Returns `quantity' traversed.</span>
+<span class="linenr">276: </span><span class="org-comment-delimiter">*/</span>
+<span class="linenr">277: </span><span class="org-keyword">static</span> <span class="org-type">l_mem</span> <span class="org-function-name">propagatemark</span> (<span class="org-type">global_State</span> *<span class="org-variable-name">g</span>) {
+<span class="linenr">278: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">o</span> = g-&gt;gray;
+<span class="linenr">279: </span>  lua_assert(isgray(o));
+<span class="linenr">280: </span>  gray2black(o);
+<span class="linenr">281: </span>  <span class="org-keyword">switch</span> (o-&gt;gch.tt) {
+<span class="linenr">282: </span>    <span class="org-keyword">case</span> LUA_TTABLE: {
+<span class="linenr">283: </span>      <span class="org-type">Table</span> *<span class="org-variable-name">h</span> = gco2h(o);
+<span class="linenr">284: </span>      g-&gt;gray = h-&gt;gclist;
+<span class="linenr">285: </span>      <span class="org-keyword">if</span> (traversetable(g, h))  <span class="org-comment-delimiter">/* </span><span class="org-comment">table is weak?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">286: </span>        black2gray(o);  <span class="org-comment-delimiter">/* </span><span class="org-comment">keep it gray</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">287: </span>      <span class="org-keyword">return</span> <span class="org-keyword">sizeof</span>(Table) + <span class="org-keyword">sizeof</span>(TValue) * h-&gt;sizearray +
+<span class="linenr">288: </span>                             <span class="org-keyword">sizeof</span>(Node) * sizenode(h);
+<span class="linenr">289: </span>    }
+<span class="linenr">290: </span>    <span class="org-keyword">case</span> LUA_TFUNCTION: {
+<span class="linenr">291: </span>      <span class="org-type">Closure</span> *<span class="org-variable-name">cl</span> = gco2cl(o);
+<span class="linenr">292: </span>      g-&gt;gray = cl-&gt;c.gclist;
+<span class="linenr">293: </span>      traverseclosure(g, cl);
+<span class="linenr">294: </span>      <span class="org-keyword">return</span> (cl-&gt;c.isC) ? sizeCclosure(cl-&gt;c.nupvalues) :
+<span class="linenr">295: </span>                           sizeLclosure(cl-&gt;l.nupvalues);
+<span class="linenr">296: </span>    }
+<span class="linenr">297: </span>    <span class="org-keyword">case</span> LUA_TTHREAD: {
+<span class="linenr">298: </span>      <span class="org-type">lua_State</span> *<span class="org-variable-name">th</span> = gco2th(o);
+<span class="linenr">299: </span>      g-&gt;gray = th-&gt;gclist;
+<span class="linenr">300: </span>      th-&gt;gclist = g-&gt;grayagain;
+<span class="linenr">301: </span>      g-&gt;grayagain = o;
+<span class="linenr">302: </span>      black2gray(o);
+<span class="linenr">303: </span>      traversestack(g, th);
+<span class="linenr">304: </span>      <span class="org-keyword">return</span> <span class="org-keyword">sizeof</span>(lua_State) + <span class="org-keyword">sizeof</span>(TValue) * th-&gt;stacksize +
+<span class="linenr">305: </span>                                 <span class="org-keyword">sizeof</span>(CallInfo) * th-&gt;size_ci;
+<span class="linenr">306: </span>    }
+<span class="linenr">307: </span>    <span class="org-keyword">case</span> LUA_TPROTO: {
+<span class="linenr">308: </span>      <span class="org-type">Proto</span> *<span class="org-variable-name">p</span> = gco2p(o);
+<span class="linenr">309: </span>      g-&gt;gray = p-&gt;gclist;
+<span class="linenr">310: </span>      traverseproto(g, p);
+<span class="linenr">311: </span>      <span class="org-keyword">return</span> <span class="org-keyword">sizeof</span>(Proto) + <span class="org-keyword">sizeof</span>(Instruction) * p-&gt;sizecode +
+<span class="linenr">312: </span>                             <span class="org-keyword">sizeof</span>(<span class="org-type">Proto</span> *) * p-&gt;sizep +
+<span class="linenr">313: </span>                             <span class="org-keyword">sizeof</span>(TValue) * p-&gt;sizek + 
+<span class="linenr">314: </span>                             <span class="org-keyword">sizeof</span>(<span class="org-type">int</span>) * p-&gt;sizelineinfo +
+<span class="linenr">315: </span>                             <span class="org-keyword">sizeof</span>(LocVar) * p-&gt;sizelocvars +
+<span class="linenr">316: </span>                             <span class="org-keyword">sizeof</span>(<span class="org-type">TString</span> *) * p-&gt;sizeupvalues;
+<span class="linenr">317: </span>    }
+<span class="linenr">318: </span>    <span class="org-keyword">default</span>: lua_assert(0); <span class="org-keyword">return</span> 0;
+<span class="linenr">319: </span>  }
+<span class="linenr">320: </span>}
+</pre>
+</div>
+
+<p>
+其中针对不同的对象类型，进行不同的处理。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgafecbb0" class="outline-3">
+<h3 id="orgafecbb0"><span class="section-number-3">4.3</span> sweep</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+sweep 阶段通过 sweeplist 遍历并回收白色对象，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span>lgc.c</label><pre class="src src-C"><span class="linenr">404: </span><span class="org-preprocessor">#define</span> <span class="org-function-name">sweepwholelist</span>(<span class="org-variable-name">L</span>,<span class="org-variable-name">p</span>)     sweeplist(L,p,MAX_LUMEM)
+<span class="linenr">405: </span>
+<span class="linenr">406: </span>
+<span class="linenr">407: </span><span class="org-keyword">static</span> <span class="org-type">GCObject</span> **<span class="org-function-name">sweeplist</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">GCObject</span> **<span class="org-variable-name">p</span>, <span class="org-type">lu_mem</span> <span class="org-variable-name">count</span>) {
+<span class="linenr">408: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">curr</span>;
+<span class="linenr">409: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr">410: </span>  <span class="org-type">int</span> <span class="org-variable-name">deadmask</span> = otherwhite(g);
+<span class="linenr">411: </span>  <span class="org-keyword">while</span> ((curr = *p) != <span class="org-constant">NULL</span> &amp;&amp; count-- &gt; 0) {
+<span class="linenr">412: </span>    <span class="org-keyword">if</span> (curr-&gt;gch.tt == LUA_TTHREAD)  <span class="org-comment-delimiter">/* </span><span class="org-comment">sweep open upvalues of each thread</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">413: </span>      sweepwholelist(L, &amp;gco2th(curr)-&gt;openupval);
+<span class="linenr">414: </span>    <span class="org-keyword">if</span> ((curr-&gt;gch.marked ^ WHITEBITS) &amp; deadmask) {  <span class="org-comment-delimiter">/* </span><span class="org-comment">not dead?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">415: </span>      lua_assert(<span class="org-negation-char">!</span>isdead(g, curr) || testbit(curr-&gt;gch.marked, FIXEDBIT));
+<span class="linenr">416: </span>      makewhite(g, curr);  <span class="org-comment-delimiter">/* </span><span class="org-comment">make it white (for next cycle)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">417: </span>      p = &amp;curr-&gt;gch.next;
+<span class="linenr">418: </span>    }
+<span class="linenr">419: </span>    <span class="org-keyword">else</span> {  <span class="org-comment-delimiter">/* </span><span class="org-comment">must erase `curr'</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">420: </span>      lua_assert(isdead(g, curr) || deadmask == bitmask(SFIXEDBIT));
+<span class="linenr">421: </span>      *p = curr-&gt;gch.next;
+<span class="linenr">422: </span>      <span class="org-keyword">if</span> (curr == g-&gt;rootgc)  <span class="org-comment-delimiter">/* </span><span class="org-comment">is the first element of the list?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">423: </span>        g-&gt;rootgc = curr-&gt;gch.next;  <span class="org-comment-delimiter">/* </span><span class="org-comment">adjust first</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">424: </span>      freeobj(L, curr);
+<span class="linenr">425: </span>    }
+<span class="linenr">426: </span>  }
+<span class="linenr">427: </span>  <span class="org-keyword">return</span> p;
+<span class="linenr">428: </span>}
+</pre>
+</div>
+
+<p>
+最终通过 freeobj 回收相应内存空间，
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span>lgc.c</label><pre class="src src-C"><span class="linenr">378: </span><span class="org-keyword">static</span> <span class="org-type">void</span> <span class="org-function-name">freeobj</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">GCObject</span> *<span class="org-variable-name">o</span>) {
+<span class="linenr">379: </span>  <span class="org-keyword">switch</span> (o-&gt;gch.tt) {
+<span class="linenr">380: </span>    <span class="org-keyword">case</span> LUA_TPROTO: luaF_freeproto(L, gco2p(o)); <span class="org-keyword">break</span>;
+<span class="linenr">381: </span>    <span class="org-keyword">case</span> LUA_TFUNCTION: luaF_freeclosure(L, gco2cl(o)); <span class="org-keyword">break</span>;
+<span class="linenr">382: </span>    <span class="org-keyword">case</span> LUA_TUPVAL: luaF_freeupval(L, gco2uv(o)); <span class="org-keyword">break</span>;
+<span class="linenr">383: </span>    <span class="org-keyword">case</span> LUA_TTABLE: luaH_free(L, gco2h(o)); <span class="org-keyword">break</span>;
+<span class="linenr">384: </span>    <span class="org-keyword">case</span> LUA_TTHREAD: {
+<span class="linenr">385: </span>      lua_assert(gco2th(o) != L &amp;&amp; gco2th(o) != G(L)-&gt;mainthread);
+<span class="linenr">386: </span>      luaE_freethread(L, gco2th(o));
+<span class="linenr">387: </span>      <span class="org-keyword">break</span>;
+<span class="linenr">388: </span>    }
+<span class="linenr">389: </span>    <span class="org-keyword">case</span> LUA_TSTRING: {
+<span class="linenr">390: </span>      G(L)-&gt;strt.nuse--;
+<span class="linenr">391: </span>      luaM_freemem(L, o, sizestring(gco2ts(o)));
+<span class="linenr">392: </span>      <span class="org-keyword">break</span>;
+<span class="linenr">393: </span>    }
+<span class="linenr">394: </span>    <span class="org-keyword">case</span> LUA_TUSERDATA: {
+<span class="linenr">395: </span>      luaM_freemem(L, o, sizeudata(gco2u(o)));
+<span class="linenr">396: </span>      <span class="org-keyword">break</span>;
+<span class="linenr">397: </span>    }
+<span class="linenr">398: </span>    <span class="org-keyword">default</span>: lua_assert(0);
+<span class="linenr">399: </span>  }
+<span class="linenr">400: </span>}
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org1b5017e" class="outline-2">
+<h2 id="org1b5017e"><span class="section-number-2">5</span> barrier</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+<code>luaC_barrierf</code> 和 <code>luaC_barrierback</code> 提供了 forward barrier 和 backward barrier 的实现。
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span>lgc.c</label><pre class="src src-C"><span class="linenr">661: </span><span class="org-type">void</span> <span class="org-function-name">luaC_barrierf</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">GCObject</span> *<span class="org-variable-name">o</span>, <span class="org-type">GCObject</span> *<span class="org-variable-name">v</span>) {
+<span class="linenr">662: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr">663: </span>  lua_assert(isblack(o) &amp;&amp; iswhite(v) &amp;&amp; <span class="org-negation-char">!</span>isdead(g, v) &amp;&amp; <span class="org-negation-char">!</span>isdead(g, o));
+<span class="linenr">664: </span>  lua_assert(g-&gt;gcstate != GCSfinalize &amp;&amp; g-&gt;gcstate != GCSpause);
+<span class="linenr">665: </span>  lua_assert(ttype(&amp;o-&gt;gch) != LUA_TTABLE);
+<span class="linenr">666: </span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">must keep invariant?</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">667: </span>  <span class="org-keyword">if</span> (g-&gt;gcstate == GCSpropagate)
+<span class="linenr">668: </span>    reallymarkobject(g, v);  <span class="org-comment-delimiter">/* </span><span class="org-comment">restore invariant</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">669: </span>  <span class="org-keyword">else</span>  <span class="org-comment-delimiter">/* </span><span class="org-comment">don't mind</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">670: </span>    makewhite(g, o);  <span class="org-comment-delimiter">/* </span><span class="org-comment">mark as white just to avoid other barriers</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">671: </span>}
+<span class="linenr">672: </span>
+<span class="linenr">673: </span>
+<span class="linenr">674: </span><span class="org-type">void</span> <span class="org-function-name">luaC_barrierback</span> (<span class="org-type">lua_State</span> *<span class="org-variable-name">L</span>, <span class="org-type">Table</span> *<span class="org-variable-name">t</span>) {
+<span class="linenr">675: </span>  <span class="org-type">global_State</span> *<span class="org-variable-name">g</span> = G(L);
+<span class="linenr">676: </span>  <span class="org-type">GCObject</span> *<span class="org-variable-name">o</span> = obj2gco(t);
+<span class="linenr">677: </span>  lua_assert(isblack(o) &amp;&amp; <span class="org-negation-char">!</span>isdead(g, o));
+<span class="linenr">678: </span>  lua_assert(g-&gt;gcstate != GCSfinalize &amp;&amp; g-&gt;gcstate != GCSpause);
+<span class="linenr">679: </span>  black2gray(o);  <span class="org-comment-delimiter">/* </span><span class="org-comment">make table gray (again)</span><span class="org-comment-delimiter"> */</span>
+<span class="linenr">680: </span>  t-&gt;gclist = g-&gt;grayagain;
+<span class="linenr">681: </span>  g-&gt;grayagain = o;
+<span class="linenr">682: </span>}
+</pre>
+</div>
+
+<p>
+在 Lua 内部，只有 table 对象使用 backward barrier，因为其作为容器，
+引用其它可变动的对象比较多，置为灰色就不用一直触发写屏障，提高效率。
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgac173b2" class="outline-2">
+<h2 id="orgac173b2"><span class="section-number-2">6</span> practice</h2>
+<div class="outline-text-2" id="text-6">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">章节涉及文件</th>
+<th scope="col" class="org-left">建议阅读程度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">lgc.h</td>
+<td class="org-left">★ ★ ★ ★ ☆</td>
+</tr>
+
+<tr>
+<td class="org-left">lgc.c</td>
+<td class="org-left">★ ★ ★ ☆ ☆</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+: <a href="http://wiki.luajit.org/New-Garbage-Collector#gc-algorithms">http://wiki.luajit.org/New-Garbage-Collector#gc-algorithms</a>
+</p></div></div>
+
+
+</div>
+</div></div>
 <div id="postamble" class="status">
 
-<p>Revised: 2021-01-20 三 17:54</p>
+<p>Revised: 2021-01-21 四 11:47</p>
 <p>Created: 2021-01-19 二 15:16</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

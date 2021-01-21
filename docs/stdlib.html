@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2021-01-20 三 13:07 -->
+<!-- 2021-01-21 四 11:44 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>std lib</title>
@@ -501,7 +501,7 @@ line 631 <code>luaL_register(L, "_G", base_funcs);</code> 将全局函数注册�
 可通过
 </p>
 
-<pre class="example" id="org1084ae0">
+<pre class="example" id="orgb4ce2ae">
 $ make -s registry
 </pre>
 
@@ -614,7 +614,7 @@ lua 实现的协程，虽然在内部声明类型为 thread，但是本质上，
 </p>
 
 
-<div id="orgcb1a716" class="figure">
+<div id="org508edc4" class="figure">
 <p><img src="stdlib-thread.png" alt="stdlib-thread.png">
 </p>
 </div>
@@ -642,7 +642,7 @@ lua 内部默认存在“主线程” main thread，就是多次出现在代码�
 </div>
 
 
-<div id="orgf14748c" class="figure">
+<div id="org3aef77a" class="figure">
 <p><img src="stdlib-create.png" alt="stdlib-create.png">
 </p>
 </div>
@@ -827,7 +827,7 @@ false	cannot resume dead coroutine
 </p>
 
 
-<div id="org1dafad9" class="figure">
+<div id="org58da23a" class="figure">
 <p><img src="stdlib-resume.png" alt="stdlib-resume.png">
 </p>
 </div>
@@ -838,7 +838,7 @@ false	cannot resume dead coroutine
 </p>
 
 
-<div id="org5f00664" class="figure">
+<div id="org2296192" class="figure">
 <p><img src="stdlib-resume-return.png" alt="stdlib-resume-return.png">
 </p>
 </div>
@@ -849,7 +849,7 @@ false	cannot resume dead coroutine
 </p>
 
 
-<div id="org6b9687f" class="figure">
+<div id="org6c85600" class="figure">
 <p><img src="stdlib-resume-2.png" alt="stdlib-resume-2.png">
 </p>
 </div>
@@ -859,7 +859,7 @@ false	cannot resume dead coroutine
 </p>
 
 
-<div id="org18a5097" class="figure">
+<div id="org18cb5d0" class="figure">
 <p><img src="stdlib-resume-return-2.png" alt="stdlib-resume-return-2.png">
 </p>
 </div>
@@ -1070,7 +1070,7 @@ getinfo 用于运行时自省，可以得到很多运行时的信息。
 根据官方文档<sup><a id="fnr.2" class="footref" href="#fn.2">2</a></sup>的描述，参数 thread 和 what 是可选的。
 </p>
 
-<pre class="example" id="org386f5a6">
+<pre class="example" id="orge424855">
 debug.getinfo ([thread,] function [, what])
 </pre>
 
@@ -1597,7 +1597,7 @@ hook 调用的时间点散落在 lvm.c 和 ldo.c 中，全部通过 <code>luaD_c
 </div></div>
 <div id="postamble" class="status">
 
-<p>Revised: 2021-01-20 三 13:06</p>
+<p>Revised: 2021-01-21 四 10:58</p>
 <p>Created: 2021-01-18 一 16:08</p>
 <p>Author: DreamAndDead</p>
 <p>Email: <a href="mailto:dreamanddead@foxmail.com">dreamanddead@foxmail.com</a></p>

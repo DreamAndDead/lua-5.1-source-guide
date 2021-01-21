@@ -1,8 +1,8 @@
 // swith theme
 
 var themes = [
-    "tomorrow-light.css",
     "tomorrow-dark.css",
+    "tomorrow-light.css",
 ];
 
 var theme_num = themes.length;

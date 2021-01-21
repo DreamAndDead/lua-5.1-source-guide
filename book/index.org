@@ -18,5 +18,5 @@
 | vm        | 虚拟机       |      80% | [[file:vm.org][preview]] |
 | c api     | 外部 api     |      70% | [[file:api.org][preview]] |
 | stdlib    | 标准库       |     100% | [[file:stdlib.org][read]]    |
-| gc        | gc 模块      |       5% | [[file:gc.org][preview]] |
+| gc        | gc 模块      |      70% | [[file:gc.org][preview]] |
 
