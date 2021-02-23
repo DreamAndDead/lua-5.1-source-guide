@@ -1,0 +1,26 @@
+#+hugo_base_dir: ~/project/lua51/site/
+#+hugo_section: .
+#+hugo_front_matter_format: yaml
+#+export_file_name: _index
+#+author: DreamAndDead
+#+hugo_auto_set_lastmod: t
+
+#+title: lua 5.1 source guide
+#+date: <2020-12-21 一 09:35>
+
+| subject   | desc         | progress |
+|-----------+--------------+----------|
+| overview  | 全书总览     |      70% |
+| object    | 关键数据结构 |      90% |
+| memory    | 内存分配     |     100% |
+| string    | 字符串       |     100% |
+| table     | 表           |      80% |
+| lexer     | 词法分析     |     100% |
+| opcode    | 字节码       |     100% |
+| parser    | 语法分析     |     100% |
+| generator | 字节码生成   |      80% |
+| vm        | 虚拟机       |      80% |
+| c api     | 外部 api     |      70% |
+| stdlib    | 标准库       |     100% |
+| gc        | gc 模块      |      70% |
+

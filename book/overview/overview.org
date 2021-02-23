@@ -1,7 +1,13 @@
-#+SETUPFILE: setup.org
+#+hugo_base_dir: ~/project/lua51/site/
+#+hugo_section: docs
+#+hugo_front_matter_format: yaml
+#+export_file_name: index
+#+author: DreamAndDead
+#+hugo_auto_set_lastmod: t
 
-#+TITLE: overview
-#+DATE: <2020-12-21 一 10:40>
+#+hugo_bundle: overview
+#+title: overview
+#+date: <2020-12-21 一 10:40>
 
 * goal
 
