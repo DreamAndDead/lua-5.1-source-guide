@@ -1,0 +1,529 @@
+<!doctype html><html lang=zh dir=ltr><head><meta name=generator content="Hugo 0.80.0"><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
+语言中定义了 8 种类型的值
+ nil bool number string table function userdata thread  虽然章节名称为 object，和源代码的名称相同。 但是通常都翻译为“对象”，容易与 OOP 中的对象概念混杂在一起。 在本章，更乐意将其译为“值”。
+从某种角度而言，程序就是“数据”与“操作数据的方法”。 所以第一步，先来了解 lua 中的值。
+tagged value #  章节开始就提到，类型存在于值本身。 在 lua 内部，用 TValue（tagged value）结构表示值的概念。
+67 68 69 70 71 72 73 74 75  /* ** Tagged Values */ #define TValuefields	Value value; int tt  typedef struct lua_TValue { TValuefields; } TValue;   Code Snippet 1: lobject.h  tt 表示值的类型，value 表示值的数据。 明显地，类型是值的一部分。"><meta name=theme-color content="#FFFFFF"><meta property="og:title" content="object"><meta property="og:description" content="lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
+语言中定义了 8 种类型的值
+ nil bool number string table function userdata thread  虽然章节名称为 object，和源代码的名称相同。 但是通常都翻译为“对象”，容易与 OOP 中的对象概念混杂在一起。 在本章，更乐意将其译为“值”。
+从某种角度而言，程序就是“数据”与“操作数据的方法”。 所以第一步，先来了解 lua 中的值。
+tagged value #  章节开始就提到，类型存在于值本身。 在 lua 内部，用 TValue（tagged value）结构表示值的概念。
+67 68 69 70 71 72 73 74 75  /* ** Tagged Values */ #define TValuefields	Value value; int tt  typedef struct lua_TValue { TValuefields; } TValue;   Code Snippet 1: lobject.h  tt 表示值的类型，value 表示值的数据。 明显地，类型是值的一部分。"><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/object/"><meta property="article:published_time" content="2020-12-23T11:59:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>object | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/ class=active>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
+<strong>object</strong>
+<label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#tagged-value>tagged value</a><ul><li><a href=#type>type</a></li><li><a href=#value>value</a></li></ul></li><li><a href=#detail>detail</a><ul><li><a href=#nil>nil</a></li><li><a href=#bool>bool</a></li><li><a href=#light-userdata>light userdata</a></li><li><a href=#number>number</a></li><li><a href=#collectable>collectable</a></li><li><a href=#internal>internal</a></li></ul></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><p>lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。</p><p>语言中定义了 8 种类型的值</p><ul><li>nil</li><li>bool</li><li>number</li><li>string</li><li>table</li><li>function</li><li>userdata</li><li>thread</li></ul><p>虽然章节名称为 object，和源代码的名称相同。
+但是通常都翻译为“对象”，容易与 OOP 中的对象概念混杂在一起。
+在本章，更乐意将其译为“值”。</p><p>从某种角度而言，程序就是“数据”与“操作数据的方法”。
+所以第一步，先来了解 lua 中的值。</p><h2 id=tagged-value>tagged value
+<a class=anchor href=#tagged-value>#</a></h2><p>章节开始就提到，类型存在于值本身。
+在 lua 内部，用 TValue（tagged value）结构表示值的概念。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">67
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">68
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">69
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">70
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">71
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">72
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">73
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">74
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">75
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Tagged Values
+</span><span style=color:#75715e>*/</span>
+
+<span style=color:#75715e>#define TValuefields	Value value; int tt
+</span><span style=color:#75715e></span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> lua_TValue {
+  TValuefields;
+} TValue;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
+lobject.h</div><p>tt 表示值的类型，value 表示值的数据。
+明显地，类型是值的一部分。</p><figure><img src=object-tvalue.png></figure><h3 id=type>type
+<a class=anchor href=#type>#</a></h3><p>在 TValue 中，类型 tt 用 int 来标识，可以在代码中看到所有基础类型的宏定义</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">69
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">70
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">71
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">72
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">73
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">74
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">75
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">76
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">77
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">78
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">79
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">80
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">81
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">82
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** basic types
+</span><span style=color:#75715e>*/</span>
+<span style=color:#75715e>#define LUA_TNONE		(-1)
+</span><span style=color:#75715e></span>
+<span style=color:#75715e>#define LUA_TNIL		0
+</span><span style=color:#75715e>#define LUA_TBOOLEAN		1
+</span><span style=color:#75715e>#define LUA_TLIGHTUSERDATA	2
+</span><span style=color:#75715e>#define LUA_TNUMBER		3
+</span><span style=color:#75715e>#define LUA_TSTRING		4
+</span><span style=color:#75715e>#define LUA_TTABLE		5
+</span><span style=color:#75715e>#define LUA_TFUNCTION		6
+</span><span style=color:#75715e>#define LUA_TUSERDATA		7
+</span><span style=color:#75715e>#define LUA_TTHREAD		8</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
+lua.h</div><p>完全对应 lua 中的 8 种类型。</p><p>同时定义了相应的宏，方便检测值的类型。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">78
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">79
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">80
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">81
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">82
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">83
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">84
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">85
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">86
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">87
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">88
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">89
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">90
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/* Macros to test type */</span>
+<span style=color:#75715e>#define ttisnil(o)	(ttype(o) == LUA_TNIL)
+</span><span style=color:#75715e>#define ttisnumber(o)	(ttype(o) == LUA_TNUMBER)
+</span><span style=color:#75715e>#define ttisstring(o)	(ttype(o) == LUA_TSTRING)
+</span><span style=color:#75715e>#define ttistable(o)	(ttype(o) == LUA_TTABLE)
+</span><span style=color:#75715e>#define ttisfunction(o)	(ttype(o) == LUA_TFUNCTION)
+</span><span style=color:#75715e>#define ttisboolean(o)	(ttype(o) == LUA_TBOOLEAN)
+</span><span style=color:#75715e>#define ttisuserdata(o)	(ttype(o) == LUA_TUSERDATA)
+</span><span style=color:#75715e>#define ttisthread(o)	(ttype(o) == LUA_TTHREAD)
+</span><span style=color:#75715e>#define ttislightuserdata(o)	(ttype(o) == LUA_TLIGHTUSERDATA)
+</span><span style=color:#75715e></span>
+<span style=color:#75715e>/* Macros to access values */</span>
+<span style=color:#75715e>#define ttype(o)	((o)-&gt;tt)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
+lobject.h</div><p>细心如你，一定发现多出了一种 lightuserdata 类型。
+这是由 userdata 细分出来的一种类型，目前先不做细致的解释，
+之后到相应章节再具体分析。</p><h3 id=value>value
+<a class=anchor href=#value>#</a></h3><p>TValue 中，数据 value 用 union Value 结构来表示，有效利用内存空间。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">56
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">57
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">58
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">59
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">60
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">61
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">62
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">63
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">64
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Union of all Lua values
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>union</span> {
+  GCObject <span style=color:#f92672>*</span>gc;
+  <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>p;
+  lua_Number n;
+  <span style=color:#66d9ef>int</span> b;
+} Value;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 4</span>:
+lobject.h</div><p>不同类型的数据使用不同的键值来存取。</p><figure><img src=object-value.png></figure><h2 id=detail>detail
+<a class=anchor href=#detail>#</a></h2><p>下面针对不同类型的值，详细分析。</p><h3 id=nil>nil
+<a class=anchor href=#nil>#</a></h3><p>nil 是最简单的值，表示没有值。
+由于只表示一个含义，故不需要 value，只用 tt 记录类型即可。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>const</span> TValue luaO_nilobject_ <span style=color:#f92672>=</span> {{NULL}, LUA_TNIL};</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 5</span>:
+lobject.c</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">363
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">364
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">365
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define luaO_nilobject		(&amp;luaO_nilobject_)
+</span><span style=color:#75715e></span>
+LUAI_DATA <span style=color:#66d9ef>const</span> TValue luaO_nilobject_;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 6</span>:
+lobject.h</div><p>可以看出，nil 值在内部是一个单例，所有使用 nil 的地方，都通过 <code>luaO_nilobject</code> 来引用。</p><figure><img src=object-nil.png></figure><h3 id=bool>bool
+<a class=anchor href=#bool>#</a></h3><p>和其它语言一样，bool 值记录 true 和 false。</p><p>在存储的安排上，使用 tt 记录类型，用 value 中的 int b = 1/0 表示 true/false。</p><figure><img src=object-bool.png></figure><h3 id=light-userdata>light userdata
+<a class=anchor href=#light-userdata>#</a></h3><p>light userdata 表示 c 和 lua 协同时，由 c 一方传入的数据。
+lua 内部只负责引用，而不负责其生命周期管理，什么时候应该释放，lua 不清楚也不过问。</p><p>所以内部在用 tt 记录类型之后，只用 value 中 void * p 引用即可。</p><figure><img src=object-userdata.png></figure><h3 id=number>number
+<a class=anchor href=#number>#</a></h3><p>在默认设置下，lua 语言中所有数字都用 double 来表示。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">495
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">496
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">497
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">498
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">499
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">500
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">501
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">502
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">503
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">504
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">505
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** {==================================================================
+</span><span style=color:#75715e>@@ LUA_NUMBER is the type of numbers in Lua.
+</span><span style=color:#75715e>** CHANGE the following definitions only if you want to build Lua
+</span><span style=color:#75715e>** with a number type different from double. You may also need to
+</span><span style=color:#75715e>** change lua_number2int &amp; lua_number2integer.
+</span><span style=color:#75715e>** ===================================================================
+</span><span style=color:#75715e>*/</span>
+
+<span style=color:#75715e>#define LUA_NUMBER_DOUBLE
+</span><span style=color:#75715e>#define LUA_NUMBER	double</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
+luaconf.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">98
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">99
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/* type of numbers in Lua */</span>
+<span style=color:#66d9ef>typedef</span> LUA_NUMBER lua_Number;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 8</span>:
+lua.h</div><p>类似的，用 tt 记录类型，用 value 中 <code>lua_Number n</code> 来记录 number 数值。</p><figure><img src=object-number.png></figure><h3 id=collectable>collectable
+<a class=anchor href=#collectable>#</a></h3><p>上面几种类型的值，内部表示都相对简单，剩余几种类型的数据就相对复杂一些。</p><ul><li>string</li><li>table</li><li>function</li><li>userdata</li><li>thread</li></ul><p>有一点是共通的，它们同属于可 gc 的值（iscollectable）。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">189
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define iscollectable(o)	(ttype(o) &gt;= LUA_TSTRING)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 9</span>:
+lobject.h</div><figure><img src=object-collectable.png></figure><p>lua 内建了 gc 机制，其中关键的结构是 <code>GCObject</code> ，
+用于表示所有 iscollectable 的值。</p><p>GCObject 是 union 结构，和 Value 结构类似，内部键值用于存取不同类型的数据。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">133
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">134
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">135
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">136
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">137
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">138
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">139
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">140
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">141
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">142
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">143
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">144
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">145
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Union of all collectable objects
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>union</span> GCObject {
+  GCheader gch;
+  <span style=color:#66d9ef>union</span> TString ts;
+  <span style=color:#66d9ef>union</span> Udata u;
+  <span style=color:#66d9ef>union</span> Closure cl;
+  <span style=color:#66d9ef>struct</span> Table h;
+  <span style=color:#66d9ef>struct</span> Proto p;
+  <span style=color:#66d9ef>struct</span> UpVal uv;
+  <span style=color:#66d9ef>struct</span> lua_State th;  <span style=color:#75715e>/* thread */</span>
+};</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 10</span>:
+lstate.h</div><p>如果仔细观察内部内存的安排，会发现这种方式是非常巧妙的。</p><figure><img src=object-gcobject.png></figure><p><code>gch h p uv th</code> 都是 struct，头部的字段都是 CommonHeader。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">50
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">51
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Common Header for all collectable objects (in macro form, to be
+</span><span style=color:#75715e>** included in other objects)
+</span><span style=color:#75715e>*/</span>
+<span style=color:#75715e>#define CommonHeader	GCObject *next; lu_byte tt; lu_byte marked
+</span><span style=color:#75715e></span>
+
+<span style=color:#75715e>/*
+</span><span style=color:#75715e>** Common header in struct form
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> GCheader {
+  CommonHeader;
+} GCheader;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 11</span>:
+lobject.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">338
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">339
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">340
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">341
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">342
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">343
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">344
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">345
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">346
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">347
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">348
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> Table {
+  CommonHeader;
+  lu_byte flags;  <span style=color:#75715e>/* 1&lt;&lt;p means tagmethod(p) is not present */</span>
+  lu_byte lsizenode;  <span style=color:#75715e>/* log2 of size of `node&#39; array */</span>
+  <span style=color:#66d9ef>struct</span> Table <span style=color:#f92672>*</span>metatable;
+  TValue <span style=color:#f92672>*</span>array;  <span style=color:#75715e>/* array part */</span>
+  Node <span style=color:#f92672>*</span>node;
+  Node <span style=color:#f92672>*</span>lastfree;  <span style=color:#75715e>/* any free position is before this position */</span>
+  GCObject <span style=color:#f92672>*</span>gclist;
+  <span style=color:#66d9ef>int</span> sizearray;  <span style=color:#75715e>/* size of `array&#39; array */</span>
+} Table;</code></pre></td></tr></table></div></div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">228
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">229
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">230
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">231
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">232
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">233
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">234
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">235
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">236
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">237
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">238
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">239
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">240
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">241
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">242
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">243
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">244
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">245
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">246
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">247
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">248
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">249
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">250
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">251
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">252
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">253
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Function Prototypes
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> Proto {
+  CommonHeader;
+  TValue <span style=color:#f92672>*</span>k;  <span style=color:#75715e>/* constants used by the function */</span>
+  Instruction <span style=color:#f92672>*</span>code;
+  <span style=color:#66d9ef>struct</span> Proto <span style=color:#f92672>**</span>p;  <span style=color:#75715e>/* functions defined inside the function */</span>
+  <span style=color:#66d9ef>int</span> <span style=color:#f92672>*</span>lineinfo;  <span style=color:#75715e>/* map from opcodes to source lines */</span>
+  <span style=color:#66d9ef>struct</span> LocVar <span style=color:#f92672>*</span>locvars;  <span style=color:#75715e>/* information about local variables */</span>
+  TString <span style=color:#f92672>**</span>upvalues;  <span style=color:#75715e>/* upvalue names */</span>
+  TString  <span style=color:#f92672>*</span>source;
+  <span style=color:#66d9ef>int</span> sizeupvalues;
+  <span style=color:#66d9ef>int</span> sizek;  <span style=color:#75715e>/* size of `k&#39; */</span>
+  <span style=color:#66d9ef>int</span> sizecode;
+  <span style=color:#66d9ef>int</span> sizelineinfo;
+  <span style=color:#66d9ef>int</span> sizep;  <span style=color:#75715e>/* size of `p&#39; */</span>
+  <span style=color:#66d9ef>int</span> sizelocvars;
+  <span style=color:#66d9ef>int</span> linedefined;
+  <span style=color:#66d9ef>int</span> lastlinedefined;
+  GCObject <span style=color:#f92672>*</span>gclist;
+  lu_byte nups;  <span style=color:#75715e>/* number of upvalues */</span>
+  lu_byte numparams;
+  lu_byte is_vararg;
+  lu_byte maxstacksize;
+} Proto;</code></pre></td></tr></table></div></div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">270
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">271
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">272
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">273
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">274
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">275
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">276
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">277
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">278
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">279
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">280
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">281
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">282
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">283
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">284
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Upvalues
+</span><span style=color:#75715e>*/</span>
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> UpVal {
+  CommonHeader;
+  TValue <span style=color:#f92672>*</span>v;  <span style=color:#75715e>/* points to stack or to its own value */</span>
+  <span style=color:#66d9ef>union</span> {
+    TValue value;  <span style=color:#75715e>/* the value (when closed) */</span>
+    <span style=color:#66d9ef>struct</span> {  <span style=color:#75715e>/* double linked list (when open) */</span>
+      <span style=color:#66d9ef>struct</span> UpVal <span style=color:#f92672>*</span>prev;
+      <span style=color:#66d9ef>struct</span> UpVal <span style=color:#f92672>*</span>next;
+    } l;
+  } u;
+} UpVal;</code></pre></td></tr></table></div></div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 97
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 98
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 99
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">100
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">101
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">102
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">103
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">104
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">105
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">106
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">107
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">108
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">109
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">110
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">111
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">112
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">113
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">114
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">115
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">116
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">117
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">118
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">119
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">120
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">121
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">122
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">123
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">124
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">125
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">126
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">127
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** `per thread&#39; state
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>struct</span> lua_State {
+  CommonHeader;
+  lu_byte status;
+  StkId top;  <span style=color:#75715e>/* first free slot in the stack */</span>
+  StkId base;  <span style=color:#75715e>/* base of current function */</span>
+  global_State <span style=color:#f92672>*</span>l_G;
+  CallInfo <span style=color:#f92672>*</span>ci;  <span style=color:#75715e>/* call info for current function */</span>
+  <span style=color:#66d9ef>const</span> Instruction <span style=color:#f92672>*</span>savedpc;  <span style=color:#75715e>/* `savedpc&#39; of current function */</span>
+  StkId stack_last;  <span style=color:#75715e>/* last free slot in the stack */</span>
+  StkId stack;  <span style=color:#75715e>/* stack base */</span>
+  CallInfo <span style=color:#f92672>*</span>end_ci;  <span style=color:#75715e>/* points after end of ci array*/</span>
+  CallInfo <span style=color:#f92672>*</span>base_ci;  <span style=color:#75715e>/* array of CallInfo&#39;s */</span>
+  <span style=color:#66d9ef>int</span> stacksize;
+  <span style=color:#66d9ef>int</span> size_ci;  <span style=color:#75715e>/* size of array `base_ci&#39; */</span>
+  <span style=color:#66d9ef>unsigned</span> <span style=color:#66d9ef>short</span> nCcalls;  <span style=color:#75715e>/* number of nested C calls */</span>
+  <span style=color:#66d9ef>unsigned</span> <span style=color:#66d9ef>short</span> baseCcalls;  <span style=color:#75715e>/* nested C calls when resuming coroutine */</span>
+  lu_byte hookmask;
+  lu_byte allowhook;
+  <span style=color:#66d9ef>int</span> basehookcount;
+  <span style=color:#66d9ef>int</span> hookcount;
+  lua_Hook hook;
+  TValue l_gt;  <span style=color:#75715e>/* table of globals */</span>
+  TValue env;  <span style=color:#75715e>/* temporary place for environments */</span>
+  GCObject <span style=color:#f92672>*</span>openupval;  <span style=color:#75715e>/* list of open upvalues in this stack */</span>
+  GCObject <span style=color:#f92672>*</span>gclist;
+  <span style=color:#66d9ef>struct</span> lua_longjmp <span style=color:#f92672>*</span>errorJmp;  <span style=color:#75715e>/* current error recover point */</span>
+  ptrdiff_t errfunc;  <span style=color:#75715e>/* current error handling function (stack index) */</span>
+};</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 12</span>:
+lstate.h</div><p><code>ts u cl</code> 虽然是 union，但是其中多余的字段是用于对齐的，实质还是 struct。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">196
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">197
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">198
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">199
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">200
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">201
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">202
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">203
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">204
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">205
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">206
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">207
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** String headers for string table
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>union</span> TString {
+  L_Umaxalign dummy;  <span style=color:#75715e>/* ensures maximum alignment for strings */</span>
+  <span style=color:#66d9ef>struct</span> {
+    CommonHeader;
+    lu_byte reserved;
+    <span style=color:#66d9ef>unsigned</span> <span style=color:#66d9ef>int</span> hash;
+    size_t len;
+  } tsv;
+} TString;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 13</span>:
+lobject.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">215
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">216
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">217
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">218
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">219
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">220
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">221
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">222
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">223
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>union</span> Udata {
+  L_Umaxalign dummy;  <span style=color:#75715e>/* ensures maximum alignment for `local&#39; udata */</span>
+  <span style=color:#66d9ef>struct</span> {
+    CommonHeader;
+    <span style=color:#66d9ef>struct</span> Table <span style=color:#f92672>*</span>metatable;
+    <span style=color:#66d9ef>struct</span> Table <span style=color:#f92672>*</span>env;
+    size_t len;
+  } uv;
+} Udata;</code></pre></td></tr></table></div></div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">287
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">288
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">289
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">290
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">291
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">292
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">293
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">294
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">295
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">296
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">297
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">298
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">299
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">300
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">301
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">302
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">303
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">304
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">305
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">306
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">307
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">308
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">309
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">310
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">311
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">312
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Closures
+</span><span style=color:#75715e>*/</span>
+
+<span style=color:#75715e>#define ClosureHeader \
+</span><span style=color:#75715e>	CommonHeader; lu_byte isC; lu_byte nupvalues; GCObject *gclist; \
+</span><span style=color:#75715e>	struct Table *env
+</span><span style=color:#75715e></span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> CClosure {
+  ClosureHeader;
+  lua_CFunction f;
+  TValue upvalue[<span style=color:#ae81ff>1</span>];
+} CClosure;
+
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> LClosure {
+  ClosureHeader;
+  <span style=color:#66d9ef>struct</span> Proto <span style=color:#f92672>*</span>p;
+  UpVal <span style=color:#f92672>*</span>upvals[<span style=color:#ae81ff>1</span>];
+} LClosure;
+
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>union</span> Closure {
+  CClosure c;
+  LClosure l;
+} Closure;</code></pre></td></tr></table></div></div><p>GCObject 将类型重新备份了一份，GCHeader 中的 tt 和 TValue 中的 tt 是相同的。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">105
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">106
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">107
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">108
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">109
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
+</span><span style=color:#75715e>** for internal debug only
+</span><span style=color:#75715e>*/</span>
+<span style=color:#75715e>#define checkconsistency(obj) \
+</span><span style=color:#75715e>  lua_assert(!iscollectable(obj) || (ttype(obj) == (obj)-&gt;value.gc-&gt;gch.tt))</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 14</span>:
+lobject.h</div><p>这样的话，GCObject 可以脱离 TValue，使用 GCHeader gch 先来读取 tt，再根据 tt 来使用不同的键值来引用数据。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">148
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">149
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">150
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">151
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">152
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">153
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">154
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">155
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">156
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">157
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">158
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">159
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/* macros to convert a GCObject into a specific value */</span>
+<span style=color:#75715e>#define rawgco2ts(o)	check_exp((o)-&gt;gch.tt == LUA_TSTRING, &amp;((o)-&gt;ts))
+</span><span style=color:#75715e>#define gco2ts(o)	(&amp;rawgco2ts(o)-&gt;tsv)
+</span><span style=color:#75715e>#define rawgco2u(o)	check_exp((o)-&gt;gch.tt == LUA_TUSERDATA, &amp;((o)-&gt;u))
+</span><span style=color:#75715e>#define gco2u(o)	(&amp;rawgco2u(o)-&gt;uv)
+</span><span style=color:#75715e>#define gco2cl(o)	check_exp((o)-&gt;gch.tt == LUA_TFUNCTION, &amp;((o)-&gt;cl))
+</span><span style=color:#75715e>#define gco2h(o)	check_exp((o)-&gt;gch.tt == LUA_TTABLE, &amp;((o)-&gt;h))
+</span><span style=color:#75715e>#define gco2p(o)	check_exp((o)-&gt;gch.tt == LUA_TPROTO, &amp;((o)-&gt;p))
+</span><span style=color:#75715e>#define gco2uv(o)	check_exp((o)-&gt;gch.tt == LUA_TUPVAL, &amp;((o)-&gt;uv))
+</span><span style=color:#75715e>#define ngcotouv(o) \
+</span><span style=color:#75715e>	check_exp((o) == NULL || (o)-&gt;gch.tt == LUA_TUPVAL, &amp;((o)-&gt;uv))
+</span><span style=color:#75715e>#define gco2th(o)	check_exp((o)-&gt;gch.tt == LUA_TTHREAD, &amp;((o)-&gt;th))</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 15</span>:
+lstate.h</div><p>至于不同类型的数据如何记录，在后面会分章节讨论。</p><h3 id=internal>internal
+<a class=anchor href=#internal>#</a></h3><p>细心如你，一定又发现了，GCObject 中除了 gch，多出了 p uv，是 8 种类型之外的。</p><p>事实上，在 thread 之后，新定义了 3 个类型，同属于 iscollectable，只用于内部使用</p><ul><li>proto</li><li>upval</li><li>deadkey</li></ul><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">28
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">29
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">30
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/* tags for values visible from Lua */</span>
+<span style=color:#75715e>#define LAST_TAG	LUA_TTHREAD
+</span><span style=color:#75715e></span>
+<span style=color:#75715e>#define NUM_TAGS	(LAST_TAG+1)
+</span><span style=color:#75715e></span>
+
+<span style=color:#75715e>/*
+</span><span style=color:#75715e>** Extra tags for non-values
+</span><span style=color:#75715e>*/</span>
+<span style=color:#75715e>#define LUA_TPROTO	(LAST_TAG+1)
+</span><span style=color:#75715e>#define LUA_TUPVAL	(LAST_TAG+2)
+</span><span style=color:#75715e>#define LUA_TDEADKEY	(LAST_TAG+3)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 16</span>:
+lobject.h</div><p>proto 和 upval 就对应 GCObject 中多出的 2 个键值 p uv，
+至于 deadkey，到特定章节再讨论。</p><h2 id=practice>practice
+<a class=anchor href=#practice>#</a></h2><table><thead><tr><th>文件</th><th>建议</th><th>描述</th></tr></thead><tbody><tr><td>lobject.h</td><td>仔细阅读</td><td>这个文件非常关键，除了定义了关键的数据结构之外，还定义了大量的宏辅助数据操作</td></tr><tr><td>lstate.h</td><td>浏览阅读</td><td>其中定义了和运行时状态相关的数据结构，尽量理解，加深印象</td></tr><tr><td>lobject.c</td><td>可以阅读</td><td>实现了 lobject.h 中声明的方法，并非核心内容</td></tr></tbody></table></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/commit/8c359ebae66c3a96c4a0c7ed6ba49ad52483055a title="最后修改者 DreamAndDead | February 23, 2021" target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/calendar.svg class=book-icon alt=Calendar>
+<span>February 23, 2021</span></a></div><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/edit/master/site/content/docs/object/index.md target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/edit.svg class=book-icon alt=Edit>
+<span>编辑本页</span></a></div></div></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><ul><li><a href=#tagged-value>tagged value</a><ul><li><a href=#type>type</a></li><li><a href=#value>value</a></li></ul></li><li><a href=#detail>detail</a><ul><li><a href=#nil>nil</a></li><li><a href=#bool>bool</a></li><li><a href=#light-userdata>light userdata</a></li><li><a href=#number>number</a></li><li><a href=#collectable>collectable</a></li><li><a href=#internal>internal</a></li></ul></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></div></aside></main></body></html>

@@ -1,0 +1,899 @@
+<!doctype html><html lang=zh dir=ltr><head><meta name=generator content="Hugo 0.80.0"><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="代码生成完成之后，整个文件分析成为一个单独的 Proto，交由 vm 来执行。
+和 parser 相比，vm 更容易琢磨，因为它只会从 Proto 中取出字节码， 并按照指令的含义一行一行来执行。
+所以各种指令的执行过程不是本章的重点，只需要参考 opcode 相应的注释就不难理解， 本章更关注 vm 内部各个组件的协同过程。
+model #  之前在 opcode 章节简单提到了 vm 内部的模型，这里来详细讨论各个部分。
+  code #  vm 所执行的代码来自 parser，即存储在 Proto 中。
+228 229 230 231 232 233 234 235 236 237  /* ** Function Prototypes */ typedef struct Proto { CommonHeader; TValue *k; /* constants used by the function */ Instruction *code; struct Proto **p; /* functions defined inside the function */ int *lineinfo; /* map from opcodes to source lines */ struct LocVar *locvars; /* information about local variables */   Code Snippet 1: lobject."><meta name=theme-color content="#FFFFFF"><meta property="og:title" content="vm"><meta property="og:description" content="代码生成完成之后，整个文件分析成为一个单独的 Proto，交由 vm 来执行。
+和 parser 相比，vm 更容易琢磨，因为它只会从 Proto 中取出字节码， 并按照指令的含义一行一行来执行。
+所以各种指令的执行过程不是本章的重点，只需要参考 opcode 相应的注释就不难理解， 本章更关注 vm 内部各个组件的协同过程。
+model #  之前在 opcode 章节简单提到了 vm 内部的模型，这里来详细讨论各个部分。
+  code #  vm 所执行的代码来自 parser，即存储在 Proto 中。
+228 229 230 231 232 233 234 235 236 237  /* ** Function Prototypes */ typedef struct Proto { CommonHeader; TValue *k; /* constants used by the function */ Instruction *code; struct Proto **p; /* functions defined inside the function */ int *lineinfo; /* map from opcodes to source lines */ struct LocVar *locvars; /* information about local variables */   Code Snippet 1: lobject."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/vm/"><meta property="article:published_time" content="2021-01-14T17:50:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>vm | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/ class=active>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
+<strong>vm</strong>
+<label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#model>model</a><ul><li><a href=#code>code</a></li><li><a href=#kst>kst</a></li><li><a href=#stack>stack</a></li><li><a href=#gbl>gbl</a></li><li><a href=#upvalue>upvalue</a></li></ul></li><li><a href=#the-loop>the loop</a></li><li><a href=#closure>closure</a><ul><li><a href=#def>def</a></li><li><a href=#call>call</a></li><li><a href=#return>return</a></li><li><a href=#upval>upval</a></li></ul></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><p>代码生成完成之后，整个文件分析成为一个单独的 Proto，交由 vm 来执行。</p><p>和 parser 相比，vm 更容易琢磨，因为它只会从 Proto 中取出字节码，
+并按照指令的含义一行一行来执行。</p><p>所以各种指令的执行过程不是本章的重点，只需要参考 opcode 相应的注释就不难理解，
+本章更关注 vm 内部各个组件的协同过程。</p><h2 id=model>model
+<a class=anchor href=#model>#</a></h2><p>之前在 opcode 章节简单提到了 vm 内部的模型，这里来详细讨论各个部分。</p><figure><img src=vm-model.png></figure><h3 id=code>code
+<a class=anchor href=#code>#</a></h3><p>vm 所执行的代码来自 parser，即存储在 Proto 中。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">228
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">229
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">230
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">231
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">232
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">233
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">234
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">235
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">236
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">237
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Function Prototypes
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> Proto {
+  CommonHeader;
+  TValue <span style=color:#f92672>*</span>k;  <span style=color:#75715e>/* constants used by the function */</span>
+  Instruction <span style=color:#f92672>*</span>code;
+  <span style=color:#66d9ef>struct</span> Proto <span style=color:#f92672>**</span>p;  <span style=color:#75715e>/* functions defined inside the function */</span>
+  <span style=color:#66d9ef>int</span> <span style=color:#f92672>*</span>lineinfo;  <span style=color:#75715e>/* map from opcodes to source lines */</span>
+  <span style=color:#66d9ef>struct</span> LocVar <span style=color:#f92672>*</span>locvars;  <span style=color:#75715e>/* information about local variables */</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
+lobject.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">84
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">85
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">86
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">87
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">88
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
+</span><span style=color:#75715e>** type for virtual-machine instructions
+</span><span style=color:#75715e>** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h)
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>typedef</span> lu_int32 Instruction;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
+llimits.h</div><p>Proto.code 是指令数组，索引从 0 开始，存储了所有生成的指令。</p><p>vm 在执行的时候，内部存在一个 pc 指针，指向当前要执行指令。</p><p>这个 pc 和代码生成阶段的 pc 是完全不同的，代码生成阶段的 pc 用来标识生成指令的下一个索引，
+而 vm 在运行阶段的 pc 是一个指针。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">377
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">378
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">379
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">380
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">381
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaV_execute</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>int</span> nexeccalls) {
+  LClosure <span style=color:#f92672>*</span>cl;
+  StkId base;
+  TValue <span style=color:#f92672>*</span>k;
+  <span style=color:#66d9ef>const</span> Instruction <span style=color:#f92672>*</span>pc;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
+lvm.c</div><h3 id=kst>kst
+<a class=anchor href=#kst>#</a></h3><p>k 表在分析阶段，收集了所有常量，并提供索引供指令使用。</p><p>所以在执行指令的时候，需要 k 表的配合来引用常量，vm 中直接用 <code>TValue *k</code> 引用 Proto 中的 k 表。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">377
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">378
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">379
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">380
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">381
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">382
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">383
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">384
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">385
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">386
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">387
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaV_execute</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>int</span> nexeccalls) {
+  LClosure <span style=color:#f92672>*</span>cl;
+  StkId base;
+  TValue <span style=color:#f92672>*</span>k;
+  <span style=color:#66d9ef>const</span> Instruction <span style=color:#f92672>*</span>pc;
+ reentry:  <span style=color:#75715e>/* entry point */</span>
+  lua_assert(isLua(L<span style=color:#f92672>-&gt;</span>ci));
+  pc <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>savedpc;
+  cl <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>clvalue(L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>-&gt;</span>func)<span style=color:#f92672>-&gt;</span>l;
+  base <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>base;
+  k <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>p<span style=color:#f92672>-&gt;</span>k;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 4</span>:
+lvm.c</div><h3 id=stack>stack
+<a class=anchor href=#stack>#</a></h3><p>在代码生成阶段，parser 只能操作一个“想象”中的栈，而在 vm 中则是具体实现了它。</p><p>stack 的本质是一个 TValue 数组，通过 StkId 引用栈中元素。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">193
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>typedef</span> TValue <span style=color:#f92672>*</span>StkId;  <span style=color:#75715e>/* index to stack elements */</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 5</span>:
+lobject.h</div><p>栈及栈的相应状态，存储在 <code>lua_State</code> 中，同 FuncState LexState 一样，
+<code>lua_State</code> 也是用于记录状态的结构，具体的说，就是用来记录线程运行时的状态。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 97
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 98
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 99
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">100
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">101
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">102
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">103
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">104
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">105
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">106
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">107
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">108
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">109
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">110
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">111
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">112
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">113
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">114
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">115
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">116
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">117
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">118
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">119
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">120
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">121
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">122
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">123
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">124
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">125
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">126
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">127
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
+</span><span style=color:#75715e>** `per thread&#39; state
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>struct</span> lua_State {
+  CommonHeader;
+  lu_byte status;
+  StkId top;  <span style=color:#75715e>/* first free slot in the stack */</span>
+  StkId base;  <span style=color:#75715e>/* base of current function */</span>
+  global_State <span style=color:#f92672>*</span>l_G;
+  CallInfo <span style=color:#f92672>*</span>ci;  <span style=color:#75715e>/* call info for current function */</span>
+  <span style=color:#66d9ef>const</span> Instruction <span style=color:#f92672>*</span>savedpc;  <span style=color:#75715e>/* `savedpc&#39; of current function */</span>
+  StkId stack_last;  <span style=color:#75715e>/* last free slot in the stack */</span>
+  StkId stack;  <span style=color:#75715e>/* stack base */</span>
+  CallInfo <span style=color:#f92672>*</span>end_ci;  <span style=color:#75715e>/* points after end of ci array*/</span>
+  CallInfo <span style=color:#f92672>*</span>base_ci;  <span style=color:#75715e>/* array of CallInfo&#39;s */</span>
+  <span style=color:#66d9ef>int</span> stacksize;
+  <span style=color:#66d9ef>int</span> size_ci;  <span style=color:#75715e>/* size of array `base_ci&#39; */</span>
+  <span style=color:#66d9ef>unsigned</span> <span style=color:#66d9ef>short</span> nCcalls;  <span style=color:#75715e>/* number of nested C calls */</span>
+  <span style=color:#66d9ef>unsigned</span> <span style=color:#66d9ef>short</span> baseCcalls;  <span style=color:#75715e>/* nested C calls when resuming coroutine */</span>
+  lu_byte hookmask;
+  lu_byte allowhook;
+  <span style=color:#66d9ef>int</span> basehookcount;
+  <span style=color:#66d9ef>int</span> hookcount;
+  lua_Hook hook;
+  TValue l_gt;  <span style=color:#75715e>/* table of globals */</span>
+  TValue env;  <span style=color:#75715e>/* temporary place for environments */</span>
+  GCObject <span style=color:#f92672>*</span>openupval;  <span style=color:#75715e>/* list of open upvalues in this stack */</span>
+  GCObject <span style=color:#f92672>*</span>gclist;
+  <span style=color:#66d9ef>struct</span> lua_longjmp <span style=color:#f92672>*</span>errorJmp;  <span style=color:#75715e>/* current error recover point */</span>
+  ptrdiff_t errfunc;  <span style=color:#75715e>/* current error handling function (stack index) */</span>
+};</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 6</span>:
+lstate.h</div><p>其中</p><ul><li><code>lu_byte status</code> ，线程状态</li><li><code>StkId top</code> ，函数调用时的栈顶指针</li><li><code>StkId base</code> ，函数调用时的栈基指针</li><li><code>global_State *l_G</code> ，指向 global state</li><li><code>CallInfo *ci</code> ，当前 CallInfo</li><li><code>const Instruction *savedpc</code> ，暂存指令位置</li><li><code>StkId stack_last</code> ，栈空间的最后</li><li><code>StkId stack</code> ，栈指针</li><li><code>CallInfo *end_ci</code> ，CallInfo 数组的最后</li><li><code>CallInfo *base_ci</code> ，CallInfo 数组的开始</li><li><code>int statcksize</code> ，栈空间大小</li><li><code>int size_ci</code> ，CallInfo 数组的大小</li><li><code>TValue l_gt</code> ，Gbl 表</li><li><code>TValue env</code> ，临时存储环境</li></ul><p>至于 CallInfo，在后续函数调用章节再讲解。</p><h3 id=gbl>gbl
+<a class=anchor href=#gbl>#</a></h3><p>Gbl 表用于记录 lua 线程的全局变量，存储在 <code>lua_State.l_gt</code> 中，
+是一个 table 结构。</p><p>setglobal/getglobal 指令就作用于这里。</p><h3 id=upvalue>upvalue
+<a class=anchor href=#upvalue>#</a></h3><p>upvalue 是一个数组，元素为 <code>UpVal *</code> ，存在于每一个 closure 中。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">302
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">303
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">304
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">305
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">306
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> LClosure {
+  ClosureHeader;
+  <span style=color:#66d9ef>struct</span> Proto <span style=color:#f92672>*</span>p;
+  UpVal <span style=color:#f92672>*</span>upvals[<span style=color:#ae81ff>1</span>];
+} LClosure;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
+lobject.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">270
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">271
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">272
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">273
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">274
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">275
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">276
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">277
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">278
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">279
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">280
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">281
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">282
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">283
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">284
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Upvalues
+</span><span style=color:#75715e>*/</span>
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> UpVal {
+  CommonHeader;
+  TValue <span style=color:#f92672>*</span>v;  <span style=color:#75715e>/* points to stack or to its own value */</span>
+  <span style=color:#66d9ef>union</span> {
+    TValue value;  <span style=color:#75715e>/* the value (when closed) */</span>
+    <span style=color:#66d9ef>struct</span> {  <span style=color:#75715e>/* double linked list (when open) */</span>
+      <span style=color:#66d9ef>struct</span> UpVal <span style=color:#f92672>*</span>prev;
+      <span style=color:#66d9ef>struct</span> UpVal <span style=color:#f92672>*</span>next;
+    } l;
+  } u;
+} UpVal;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 8</span>:
+lobject.h</div><p>对于每一个 Proto，在执行前都会封装为 closure，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">723
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">724
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">725
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">726
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">727
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">728
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">729
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">730
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">731
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">732
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">733
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">734
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">735
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">736
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">737
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">738
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">739
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">740
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">741
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>case</span> OP_CLOSURE: {
+  Proto <span style=color:#f92672>*</span>p;
+  Closure <span style=color:#f92672>*</span>ncl;
+  <span style=color:#66d9ef>int</span> nup, j;
+  p <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>p<span style=color:#f92672>-&gt;</span>p[GETARG_Bx(i)];
+  nup <span style=color:#f92672>=</span> p<span style=color:#f92672>-&gt;</span>nups;
+  ncl <span style=color:#f92672>=</span> luaF_newLclosure(L, nup, cl<span style=color:#f92672>-&gt;</span>env);
+  ncl<span style=color:#f92672>-&gt;</span>l.p <span style=color:#f92672>=</span> p;
+  <span style=color:#66d9ef>for</span> (j<span style=color:#f92672>=</span><span style=color:#ae81ff>0</span>; j<span style=color:#f92672>&lt;</span>nup; j<span style=color:#f92672>++</span>, pc<span style=color:#f92672>++</span>) {
+    <span style=color:#66d9ef>if</span> (GET_OPCODE(<span style=color:#f92672>*</span>pc) <span style=color:#f92672>==</span> OP_GETUPVAL)
+      ncl<span style=color:#f92672>-&gt;</span>l.upvals[j] <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>upvals[GETARG_B(<span style=color:#f92672>*</span>pc)];
+    <span style=color:#66d9ef>else</span> {
+      lua_assert(GET_OPCODE(<span style=color:#f92672>*</span>pc) <span style=color:#f92672>==</span> OP_MOVE);
+      ncl<span style=color:#f92672>-&gt;</span>l.upvals[j] <span style=color:#f92672>=</span> luaF_findupval(L, base <span style=color:#f92672>+</span> GETARG_B(<span style=color:#f92672>*</span>pc));
+    }
+  }
+  setclvalue(L, ra, ncl);
+  Protect(luaC_checkGC(L));
+  <span style=color:#66d9ef>continue</span>;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 9</span>:
+lvm.c</div><p>其中调用 <code>luaF_newLclosure</code> 来执行，其中为 upvalue 数组开辟了空间，
+数组元素是 <code>UpVal *</code> 指针类型，具体指向在运行时确定。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">33
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">38
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C>Closure <span style=color:#f92672>*</span><span style=color:#a6e22e>luaF_newLclosure</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>int</span> nelems, Table <span style=color:#f92672>*</span>e) {
+  Closure <span style=color:#f92672>*</span>c <span style=color:#f92672>=</span> cast(Closure <span style=color:#f92672>*</span>, luaM_malloc(L, sizeLclosure(nelems)));
+  luaC_link(L, obj2gco(c), LUA_TFUNCTION);
+  c<span style=color:#f92672>-&gt;</span>l.isC <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+  c<span style=color:#f92672>-&gt;</span>l.env <span style=color:#f92672>=</span> e;
+  c<span style=color:#f92672>-&gt;</span>l.nupvalues <span style=color:#f92672>=</span> cast_byte(nelems);
+  <span style=color:#66d9ef>while</span> (nelems<span style=color:#f92672>--</span>) c<span style=color:#f92672>-&gt;</span>l.upvals[nelems] <span style=color:#f92672>=</span> NULL;
+  <span style=color:#66d9ef>return</span> c;
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 10</span>:
+lfunc.c</div><p>前面提到，整个文件作为一个匿名函数来分析，最终得到 Proto 交由 vm 执行，
+同样的原则，这个 Proto 在执行之前，需要封装为 closure，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">491
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">492
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">493
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">494
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">495
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">496
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">497
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">498
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">499
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">500
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">501
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">502
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">503
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">504
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">505
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">506
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>f_parser</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>ud) {
+  <span style=color:#66d9ef>int</span> i;
+  Proto <span style=color:#f92672>*</span>tf;
+  Closure <span style=color:#f92672>*</span>cl;
+  <span style=color:#66d9ef>struct</span> SParser <span style=color:#f92672>*</span>p <span style=color:#f92672>=</span> cast(<span style=color:#66d9ef>struct</span> SParser <span style=color:#f92672>*</span>, ud);
+  <span style=color:#66d9ef>int</span> c <span style=color:#f92672>=</span> luaZ_lookahead(p<span style=color:#f92672>-&gt;</span>z);
+  luaC_checkGC(L);
+  tf <span style=color:#f92672>=</span> ((c <span style=color:#f92672>==</span> LUA_SIGNATURE[<span style=color:#ae81ff>0</span>]) <span style=color:#f92672>?</span> luaU_undump : luaY_parser)(L, p<span style=color:#f92672>-&gt;</span>z,
+							     <span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>buff, p<span style=color:#f92672>-&gt;</span>name);
+  cl <span style=color:#f92672>=</span> luaF_newLclosure(L, tf<span style=color:#f92672>-&gt;</span>nups, hvalue(gt(L)));
+  cl<span style=color:#f92672>-&gt;</span>l.p <span style=color:#f92672>=</span> tf;
+  <span style=color:#66d9ef>for</span> (i <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; i <span style=color:#f92672>&lt;</span> tf<span style=color:#f92672>-&gt;</span>nups; i<span style=color:#f92672>++</span>)  <span style=color:#75715e>/* initialize eventual upvalues */</span>
+    cl<span style=color:#f92672>-&gt;</span>l.upvals[i] <span style=color:#f92672>=</span> luaF_newupval(L);
+  setclvalue(L, L<span style=color:#f92672>-&gt;</span>top, cl);
+  incr_top(L);
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 11</span>:
+ldo.c</div><h2 id=the-loop>the loop
+<a class=anchor href=#the-loop>#</a></h2><p>vm 执行 closure 的入口为 <code>luaV_execute</code> ，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">377
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">378
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">379
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">380
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">381
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">382
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">383
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">384
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">385
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">386
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">387
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">388
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">389
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">390
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">391
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">392
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">393
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">394
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">395
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">396
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">397
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">398
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">399
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">400
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">401
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">402
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">403
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">404
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">405
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">406
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">407
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">408
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">409
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">410
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">411
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">412
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">413
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaV_execute</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>int</span> nexeccalls) {
+  LClosure <span style=color:#f92672>*</span>cl;
+  StkId base;
+  TValue <span style=color:#f92672>*</span>k;
+  <span style=color:#66d9ef>const</span> Instruction <span style=color:#f92672>*</span>pc;
+ reentry:  <span style=color:#75715e>/* entry point */</span>
+  lua_assert(isLua(L<span style=color:#f92672>-&gt;</span>ci));
+  pc <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>savedpc;
+  cl <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>clvalue(L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>-&gt;</span>func)<span style=color:#f92672>-&gt;</span>l;
+  base <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>base;
+  k <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>p<span style=color:#f92672>-&gt;</span>k;
+  <span style=color:#75715e>/* main loop of interpreter */</span>
+  <span style=color:#66d9ef>for</span> (;;) {
+    <span style=color:#66d9ef>const</span> Instruction i <span style=color:#f92672>=</span> <span style=color:#f92672>*</span>pc<span style=color:#f92672>++</span>;
+    StkId ra;
+    <span style=color:#66d9ef>if</span> ((L<span style=color:#f92672>-&gt;</span>hookmask <span style=color:#f92672>&amp;</span> (LUA_MASKLINE <span style=color:#f92672>|</span> LUA_MASKCOUNT)) <span style=color:#f92672>&amp;&amp;</span>
+	(<span style=color:#f92672>--</span>L<span style=color:#f92672>-&gt;</span>hookcount <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>||</span> L<span style=color:#f92672>-&gt;</span>hookmask <span style=color:#f92672>&amp;</span> LUA_MASKLINE)) {
+      traceexec(L, pc);
+      <span style=color:#66d9ef>if</span> (L<span style=color:#f92672>-&gt;</span>status <span style=color:#f92672>==</span> LUA_YIELD) {  <span style=color:#75715e>/* did hook yield? */</span>
+	L<span style=color:#f92672>-&gt;</span>savedpc <span style=color:#f92672>=</span> pc <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>;
+	<span style=color:#66d9ef>return</span>;
+      }
+      base <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>base;
+    }
+    <span style=color:#75715e>/* warning!! several calls may realloc the stack and invalidate `ra&#39; */</span>
+    ra <span style=color:#f92672>=</span> RA(i);
+    lua_assert(base <span style=color:#f92672>==</span> L<span style=color:#f92672>-&gt;</span>base <span style=color:#f92672>&amp;&amp;</span> L<span style=color:#f92672>-&gt;</span>base <span style=color:#f92672>==</span> L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>-&gt;</span>base);
+    lua_assert(base <span style=color:#f92672>&lt;=</span> L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>&amp;&amp;</span> L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>&lt;=</span> L<span style=color:#f92672>-&gt;</span>stack <span style=color:#f92672>+</span> L<span style=color:#f92672>-&gt;</span>stacksize);
+    lua_assert(L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>==</span> L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>||</span> luaG_checkopenop(i));
+    <span style=color:#66d9ef>switch</span> (GET_OPCODE(i)) {
+      <span style=color:#66d9ef>case</span> OP_MOVE: {
+	setobjs2s(L, ra, RB(i));
+	<span style=color:#66d9ef>continue</span>;
+      }
+      <span style=color:#66d9ef>case</span> OP_LOADK: {
+	setobj2s(L, ra, KBx(i));
+	<span style=color:#66d9ef>continue</span>;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 12</span>:
+lvm.c</div><ul><li>line 389，内部是一个死循环</li><li>line 390，默认自增 pc，从中取出指令</li><li>line 406，根据指令的类型，执行对应的操作</li></ul><p>大部分指令的操作都非常简单，对应 opcode 的语义注释就可以理解。</p><p>下面只针对重要的部分，vm 是如何运行 closure 的。</p><h2 id=closure>closure
+<a class=anchor href=#closure>#</a></h2><p>在编译时，并没有涉及到 closure 结构，作为 8 种基础类型之一，closure 结构在运行时发挥作用。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">287
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">288
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">289
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">290
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">291
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">292
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">293
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">294
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">295
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">296
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">297
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">298
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">299
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">300
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">301
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">302
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">303
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">304
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">305
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">306
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">307
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">308
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">309
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">310
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">311
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">312
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">313
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">314
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">315
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">316
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Closures
+</span><span style=color:#75715e>*/</span>
+
+<span style=color:#75715e>#define ClosureHeader \
+</span><span style=color:#75715e>	CommonHeader; lu_byte isC; lu_byte nupvalues; GCObject *gclist; \
+</span><span style=color:#75715e>	struct Table *env
+</span><span style=color:#75715e></span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> CClosure {
+  ClosureHeader;
+  lua_CFunction f;
+  TValue upvalue[<span style=color:#ae81ff>1</span>];
+} CClosure;
+
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> LClosure {
+  ClosureHeader;
+  <span style=color:#66d9ef>struct</span> Proto <span style=color:#f92672>*</span>p;
+  UpVal <span style=color:#f92672>*</span>upvals[<span style=color:#ae81ff>1</span>];
+} LClosure;
+
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>union</span> Closure {
+  CClosure c;
+  LClosure l;
+} Closure;
+
+
+<span style=color:#75715e>#define iscfunction(o)	(ttype(o) == LUA_TFUNCTION &amp;&amp; clvalue(o)-&gt;c.isC)
+</span><span style=color:#75715e>#define isLfunction(o)	(ttype(o) == LUA_TFUNCTION &amp;&amp; !clvalue(o)-&gt;c.isC)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 13</span>:
+lobject.h</div><p>Closure 是 union 类型，容纳 C Closure 和 Lua Closure 两种类型，C Closure 之后再讲解，
+这里只看 Lua Closure。</p><ul><li><code>lu_byte isC</code> ，标识 Closure 是 C 还是 Lua</li><li><code>lu_byte nupvalues</code> ，拥有 upvalue 的数量</li><li><code>struct Table *env</code> ，函数运行环境，等同于 gbl 表</li><li><code>struct Proto *p</code> ，指向 parser 生成的 Proto</li><li><code>Upval *upvals[1]</code> ，为 upvalue 分配的空间</li></ul><h3 id=def>def
+<a class=anchor href=#def>#</a></h3><p>回忆 parser 中 function 的定义过程，解析 function 定义的过程是递归，
+生成相应的 Proto 并链接到上层 Proto.p 中。</p><p>所以在 vm 中和 function 定义相关的功能，只有使用 closure 指令进行封装这一步。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">723
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">724
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">725
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">726
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">727
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">728
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">729
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">730
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">731
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">732
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">733
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">734
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">735
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">736
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">737
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">738
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">739
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">740
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">741
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">742
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>case</span> OP_CLOSURE: {
+  Proto <span style=color:#f92672>*</span>p;
+  Closure <span style=color:#f92672>*</span>ncl;
+  <span style=color:#66d9ef>int</span> nup, j;
+  p <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>p<span style=color:#f92672>-&gt;</span>p[GETARG_Bx(i)];
+  nup <span style=color:#f92672>=</span> p<span style=color:#f92672>-&gt;</span>nups;
+  ncl <span style=color:#f92672>=</span> luaF_newLclosure(L, nup, cl<span style=color:#f92672>-&gt;</span>env);
+  ncl<span style=color:#f92672>-&gt;</span>l.p <span style=color:#f92672>=</span> p;
+  <span style=color:#66d9ef>for</span> (j<span style=color:#f92672>=</span><span style=color:#ae81ff>0</span>; j<span style=color:#f92672>&lt;</span>nup; j<span style=color:#f92672>++</span>, pc<span style=color:#f92672>++</span>) {
+    <span style=color:#66d9ef>if</span> (GET_OPCODE(<span style=color:#f92672>*</span>pc) <span style=color:#f92672>==</span> OP_GETUPVAL)
+      ncl<span style=color:#f92672>-&gt;</span>l.upvals[j] <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>upvals[GETARG_B(<span style=color:#f92672>*</span>pc)];
+    <span style=color:#66d9ef>else</span> {
+      lua_assert(GET_OPCODE(<span style=color:#f92672>*</span>pc) <span style=color:#f92672>==</span> OP_MOVE);
+      ncl<span style=color:#f92672>-&gt;</span>l.upvals[j] <span style=color:#f92672>=</span> luaF_findupval(L, base <span style=color:#f92672>+</span> GETARG_B(<span style=color:#f92672>*</span>pc));
+    }
+  }
+  setclvalue(L, ra, ncl);
+  Protect(luaC_checkGC(L));
+  <span style=color:#66d9ef>continue</span>;
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 14</span>:
+lvm.c</div><p>line 729 为 closure 结构分配空间。</p><p>line 731 - 738 是比较有意思的地方，还记得指令生成时，对 upvalue 的约定吗？</p><p>VLOCAL 使用 move 指令，VUPVAL 使用 getupval 指令，这里根据 upvalue 的数量，
+向下读取相应数量的指令，初始化 upvalue。</p><p>详细到下面的 upval 小节解析。</p><p>line 739 将封装生成的 closure 赋值给变量。</p><h3 id=call>call
+<a class=anchor href=#call>#</a></h3><p>介绍函数调用之前，先来了解一下 CallInfo 结构。</p><p>整个线程的栈记录着计算的状态，函数调用具有天生的栈特性，
+调用前入栈，调用后出栈。</p><p>CallInfo 就是用来记录函数调用对应栈的位置的。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">50
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">51
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">52
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">53
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">54
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">55
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
+</span><span style=color:#75715e>** informations about a call
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> CallInfo {
+  StkId base;  <span style=color:#75715e>/* base for this function */</span>
+  StkId func;  <span style=color:#75715e>/* function index in the stack */</span>
+  StkId	top;  <span style=color:#75715e>/* top for this function */</span>
+  <span style=color:#66d9ef>const</span> Instruction <span style=color:#f92672>*</span>savedpc;
+  <span style=color:#66d9ef>int</span> nresults;  <span style=color:#75715e>/* expected number of results from this function */</span>
+  <span style=color:#66d9ef>int</span> tailcalls;  <span style=color:#75715e>/* number of tail calls lost under this entry */</span>
+} CallInfo;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 15</span>:
+lstate.h</div><ul><li>func，指向调用的函数本身</li><li>base，指向调用函数对应的栈基地址</li><li>top，指向调用函数对应的栈顶地址</li></ul><p><code>lua_State</code> 中，存在着一个 CallInfo 数组，索引从 0 开始，记录着函数调用的层次。</p><p><code>base_ci</code> 指向索引 0， <code>end_ci</code> 指向最后， <code>ci</code> 指向当前的函数调用层次。
+每当遇到新的函数调用，ci 自增；调用结束，ci 自减。</p><p>具体来看一个示例，</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-lua data-lang=lua><span style=color:#66d9ef>local</span> <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>f</span>()
+<span style=color:#66d9ef>end</span>
+
+f(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>2</span>, <span style=color:#ae81ff>3</span>)
+</code></pre></div><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>; function [0] definition (level 1)
+; 0 upvalues, 0 params, 2 is_vararg, 5 stacks
+.function  0 0 2 5
+.local  &#34;f&#34;  ; 0
+.const  1  ; 0
+.const  2  ; 1
+.const  3  ; 2
+
+  ; function [0] definition (level 2)
+  ; 0 upvalues, 0 params, 0 is_vararg, 2 stacks
+  .function  0 0 0 2
+  [1] return     0   1
+  ; end of function
+
+[1] closure    0   0        ; 0 upvalues
+[2] move       1   0
+[3] loadk      2   0        ; 1
+[4] loadk      3   1        ; 2
+[5] loadk      4   2        ; 3
+[6] call       1   4   1
+[7] return     0   1
+; end of function
+</code></pre></div><p>定义一个函数 f，并以参数 1 2 3 来调用它。</p><p>在调用 call 指令之前，整体的栈状态如下，</p><figure><img src=vm-stack-call.png></figure><p>被调用的函数，先入栈，其后再压入传入的参数，在调用时，新增 CallInfo 结构，
+ci->func 指向被调用的函数，ci->base 指向第一个参数，ci->top 指向取决于被调用的函数分配的空间大小。</p><p>上图指的是 vm 调用函数 chunk 对应的栈状态。</p><p>L->base L->top 永远指向当前正在被调用的函数的栈区域，代码生成过程中“想象”中的栈，就是由
+L->base L->top 指定的区域。</p><p>调用 call 指令之后，栈状态如下，</p><figure><img src=vm-stack-call-1.png></figure><p>新增 ci，用于管理 chunk 调用函数 f 对应的状态，原则和上面相同。</p><p>相应代码具体描述了对应的过程，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">586
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">587
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">588
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">589
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">590
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">591
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">592
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">593
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">594
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">595
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">596
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">597
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">598
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">599
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">600
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">601
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">602
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">603
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">604
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">605
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">606
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>case</span> OP_CALL: {
+  <span style=color:#66d9ef>int</span> b <span style=color:#f92672>=</span> GETARG_B(i);
+  <span style=color:#66d9ef>int</span> nresults <span style=color:#f92672>=</span> GETARG_C(i) <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>;
+  <span style=color:#66d9ef>if</span> (b <span style=color:#f92672>!=</span> <span style=color:#ae81ff>0</span>) L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> ra<span style=color:#f92672>+</span>b;  <span style=color:#75715e>/* else previous instruction set top */</span>
+  L<span style=color:#f92672>-&gt;</span>savedpc <span style=color:#f92672>=</span> pc;
+  <span style=color:#66d9ef>switch</span> (luaD_precall(L, ra, nresults)) {
+    <span style=color:#66d9ef>case</span> PCRLUA: {
+      nexeccalls<span style=color:#f92672>++</span>;
+      <span style=color:#66d9ef>goto</span> reentry;  <span style=color:#75715e>/* restart luaV_execute over new Lua function */</span>
+    }
+    <span style=color:#66d9ef>case</span> PCRC: {
+      <span style=color:#75715e>/* it was a C function (`precall&#39; called it); adjust results */</span>
+      <span style=color:#66d9ef>if</span> (nresults <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0</span>) L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>-&gt;</span>top;
+      base <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>base;
+      <span style=color:#66d9ef>continue</span>;
+    }
+    <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span> {
+      <span style=color:#66d9ef>return</span>;  <span style=color:#75715e>/* yield */</span>
+    }
+  }
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 16</span>:
+lvm.c</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">265
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">266
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">267
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">268
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">269
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">270
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">271
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">272
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">273
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">274
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">275
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">276
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">277
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">278
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">279
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">280
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">281
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">282
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">283
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">284
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">285
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">286
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">287
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">288
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">289
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">290
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">291
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">292
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">293
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">294
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">295
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">296
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">297
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">298
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">299
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">300
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">301
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">302
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">303
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">304
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">305
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">306
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>int</span> <span style=color:#a6e22e>luaD_precall</span> (lua_State <span style=color:#f92672>*</span>L, StkId func, <span style=color:#66d9ef>int</span> nresults) {
+  LClosure <span style=color:#f92672>*</span>cl;
+  ptrdiff_t funcr;
+  <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>ttisfunction(func)) <span style=color:#75715e>/* `func&#39; is not a function? */</span>
+    func <span style=color:#f92672>=</span> tryfuncTM(L, func);  <span style=color:#75715e>/* check the `function&#39; tag method */</span>
+  funcr <span style=color:#f92672>=</span> savestack(L, func);
+  cl <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>clvalue(func)<span style=color:#f92672>-&gt;</span>l;
+  L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>-&gt;</span>savedpc <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>savedpc;
+  <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>cl<span style=color:#f92672>-&gt;</span>isC) {  <span style=color:#75715e>/* Lua function? prepare its call */</span>
+    CallInfo <span style=color:#f92672>*</span>ci;
+    StkId st, base;
+    Proto <span style=color:#f92672>*</span>p <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>p;
+    luaD_checkstack(L, p<span style=color:#f92672>-&gt;</span>maxstacksize);
+    func <span style=color:#f92672>=</span> restorestack(L, funcr);
+    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>p<span style=color:#f92672>-&gt;</span>is_vararg) {  <span style=color:#75715e>/* no varargs? */</span>
+      base <span style=color:#f92672>=</span> func <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>;
+      <span style=color:#66d9ef>if</span> (L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>&gt;</span> base <span style=color:#f92672>+</span> p<span style=color:#f92672>-&gt;</span>numparams)
+	L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> base <span style=color:#f92672>+</span> p<span style=color:#f92672>-&gt;</span>numparams;
+    }
+    <span style=color:#66d9ef>else</span> {  <span style=color:#75715e>/* vararg function */</span>
+      <span style=color:#66d9ef>int</span> nargs <span style=color:#f92672>=</span> cast_int(L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>-</span> func) <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>;
+      base <span style=color:#f92672>=</span> adjust_varargs(L, p, nargs);
+      func <span style=color:#f92672>=</span> restorestack(L, funcr);  <span style=color:#75715e>/* previous call may change the stack */</span>
+    }
+    ci <span style=color:#f92672>=</span> inc_ci(L);  <span style=color:#75715e>/* now `enter&#39; new function */</span>
+    ci<span style=color:#f92672>-&gt;</span>func <span style=color:#f92672>=</span> func;
+    L<span style=color:#f92672>-&gt;</span>base <span style=color:#f92672>=</span> ci<span style=color:#f92672>-&gt;</span>base <span style=color:#f92672>=</span> base;
+    ci<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>base <span style=color:#f92672>+</span> p<span style=color:#f92672>-&gt;</span>maxstacksize;
+    lua_assert(ci<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>&lt;=</span> L<span style=color:#f92672>-&gt;</span>stack_last);
+    L<span style=color:#f92672>-&gt;</span>savedpc <span style=color:#f92672>=</span> p<span style=color:#f92672>-&gt;</span>code;  <span style=color:#75715e>/* starting point */</span>
+    ci<span style=color:#f92672>-&gt;</span>tailcalls <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+    ci<span style=color:#f92672>-&gt;</span>nresults <span style=color:#f92672>=</span> nresults;
+    <span style=color:#66d9ef>for</span> (st <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>top; st <span style=color:#f92672>&lt;</span> ci<span style=color:#f92672>-&gt;</span>top; st<span style=color:#f92672>++</span>)
+      setnilvalue(st);
+    L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> ci<span style=color:#f92672>-&gt;</span>top;
+    <span style=color:#66d9ef>if</span> (L<span style=color:#f92672>-&gt;</span>hookmask <span style=color:#f92672>&amp;</span> LUA_MASKCALL) {
+      L<span style=color:#f92672>-&gt;</span>savedpc<span style=color:#f92672>++</span>;  <span style=color:#75715e>/* hooks assume &#39;pc&#39; is already incremented */</span>
+      luaD_callhook(L, LUA_HOOKCALL, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>);
+      L<span style=color:#f92672>-&gt;</span>savedpc<span style=color:#f92672>--</span>;  <span style=color:#75715e>/* correct &#39;pc&#39; */</span>
+    }
+    <span style=color:#66d9ef>return</span> PCRLUA;
+  }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 17</span>:
+ldo.c</div><h3 id=return>return
+<a class=anchor href=#return>#</a></h3><p>return 的过程和 call 相反，收集相应的返回值，并将值从 ci->func 开始覆盖，
+销毁当前 ci，返回到上层 ci。</p><p>上层 ci 从调用函数的位置收集相应的返回值。</p><figure><img src=vm-stack-call-2.png></figure><p>还是上面的示例，调用 f 返回之后，没有返回值。</p><p>ci 回退到上层，不收集返回值。</p><p>相应实现的代码如下，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">639
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">640
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">641
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">642
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">643
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">644
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">645
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">646
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">647
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">648
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">649
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">650
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">651
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">652
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">653
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>case</span> OP_RETURN: {
+  <span style=color:#66d9ef>int</span> b <span style=color:#f92672>=</span> GETARG_B(i);
+  <span style=color:#66d9ef>if</span> (b <span style=color:#f92672>!=</span> <span style=color:#ae81ff>0</span>) L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> ra<span style=color:#f92672>+</span>b<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>;
+  <span style=color:#66d9ef>if</span> (L<span style=color:#f92672>-&gt;</span>openupval) luaF_close(L, base);
+  L<span style=color:#f92672>-&gt;</span>savedpc <span style=color:#f92672>=</span> pc;
+  b <span style=color:#f92672>=</span> luaD_poscall(L, ra);
+  <span style=color:#66d9ef>if</span> (<span style=color:#f92672>--</span>nexeccalls <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>)  <span style=color:#75715e>/* was previous function running `here&#39;? */</span>
+    <span style=color:#66d9ef>return</span>;  <span style=color:#75715e>/* no: return */</span>
+  <span style=color:#66d9ef>else</span> {  <span style=color:#75715e>/* yes: continue its execution */</span>
+    <span style=color:#66d9ef>if</span> (b) L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>-&gt;</span>top;
+    lua_assert(isLua(L<span style=color:#f92672>-&gt;</span>ci));
+    lua_assert(GET_OPCODE(<span style=color:#f92672>*</span>((L<span style=color:#f92672>-&gt;</span>ci)<span style=color:#f92672>-&gt;</span>savedpc <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>)) <span style=color:#f92672>==</span> OP_CALL);
+    <span style=color:#66d9ef>goto</span> reentry;
+  }
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 18</span>:
+lvm.c</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">343
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">344
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">345
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">346
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">347
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">348
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">349
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">350
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">351
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">352
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">353
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">354
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">355
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">356
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">357
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">358
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">359
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">360
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">361
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>int</span> <span style=color:#a6e22e>luaD_poscall</span> (lua_State <span style=color:#f92672>*</span>L, StkId firstResult) {
+  StkId res;
+  <span style=color:#66d9ef>int</span> wanted, i;
+  CallInfo <span style=color:#f92672>*</span>ci;
+  <span style=color:#66d9ef>if</span> (L<span style=color:#f92672>-&gt;</span>hookmask <span style=color:#f92672>&amp;</span> LUA_MASKRET)
+    firstResult <span style=color:#f92672>=</span> callrethooks(L, firstResult);
+  ci <span style=color:#f92672>=</span> L<span style=color:#f92672>-&gt;</span>ci<span style=color:#f92672>--</span>;
+  res <span style=color:#f92672>=</span> ci<span style=color:#f92672>-&gt;</span>func;  <span style=color:#75715e>/* res == final position of 1st result */</span>
+  wanted <span style=color:#f92672>=</span> ci<span style=color:#f92672>-&gt;</span>nresults;
+  L<span style=color:#f92672>-&gt;</span>base <span style=color:#f92672>=</span> (ci <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>)<span style=color:#f92672>-&gt;</span>base;  <span style=color:#75715e>/* restore base */</span>
+  L<span style=color:#f92672>-&gt;</span>savedpc <span style=color:#f92672>=</span> (ci <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>)<span style=color:#f92672>-&gt;</span>savedpc;  <span style=color:#75715e>/* restore savedpc */</span>
+  <span style=color:#75715e>/* move results to correct place */</span>
+  <span style=color:#66d9ef>for</span> (i <span style=color:#f92672>=</span> wanted; i <span style=color:#f92672>!=</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> firstResult <span style=color:#f92672>&lt;</span> L<span style=color:#f92672>-&gt;</span>top; i<span style=color:#f92672>--</span>)
+    setobjs2s(L, res<span style=color:#f92672>++</span>, firstResult<span style=color:#f92672>++</span>);
+  <span style=color:#66d9ef>while</span> (i<span style=color:#f92672>--</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>)
+    setnilvalue(res<span style=color:#f92672>++</span>);
+  L<span style=color:#f92672>-&gt;</span>top <span style=color:#f92672>=</span> res;
+  <span style=color:#66d9ef>return</span> (wanted <span style=color:#f92672>-</span> LUA_MULTRET);  <span style=color:#75715e>/* 0 iff wanted == LUA_MULTRET */</span>
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 19</span>:
+ldo.c</div><h3 id=upval>upval
+<a class=anchor href=#upval>#</a></h3><p>之前已经零碎的提到 upvalue 的几个方面，
+本节来详细讨论 vm 中是如何实现 upvalue 的。</p><p>先来看一段示例，</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-lua data-lang=lua><span style=color:#66d9ef>local</span> a
+
+<span style=color:#66d9ef>local</span> <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>f</span>()
+   <span style=color:#66d9ef>local</span> b
+
+   <span style=color:#66d9ef>local</span> <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>g</span>()
+      b <span style=color:#f92672>=</span> <span style=color:#ae81ff>20</span>
+      a <span style=color:#f92672>=</span> <span style=color:#ae81ff>10</span>
+   <span style=color:#66d9ef>end</span>
+
+   g()
+
+   <span style=color:#66d9ef>return</span> g
+<span style=color:#66d9ef>end</span>
+
+<span style=color:#66d9ef>local</span> h <span style=color:#f92672>=</span> f()
+
+h()
+</code></pre></div><p>a 和 b 都是函数 g 的 upval。</p><p>当函数 g 在 f 内部第一次调用时，修改了 a 和 b 值，此时 a 和 b 在栈上都是存活的，
+因为 a 是 chunk 的局部变量，b 是 f 的局部变量。</p><p>当调用 f，将 g 赋值与 h 时，此时调用 h，a 依然是存活的，但是由于离开了 f，b 在栈上已经被回收。</p><p>此时 g 如何访问到 upvalue b 呢？</p><p>lua 用一种灵巧的方法来解决这个问题。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">270
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">271
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">272
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">273
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">274
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">275
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">276
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">277
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">278
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">279
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">280
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">281
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">282
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">283
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">284
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
+</span><span style=color:#75715e>** Upvalues
+</span><span style=color:#75715e>*/</span>
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> UpVal {
+  CommonHeader;
+  TValue <span style=color:#f92672>*</span>v;  <span style=color:#75715e>/* points to stack or to its own value */</span>
+  <span style=color:#66d9ef>union</span> {
+    TValue value;  <span style=color:#75715e>/* the value (when closed) */</span>
+    <span style=color:#66d9ef>struct</span> {  <span style=color:#75715e>/* double linked list (when open) */</span>
+      <span style=color:#66d9ef>struct</span> UpVal <span style=color:#f92672>*</span>prev;
+      <span style=color:#66d9ef>struct</span> UpVal <span style=color:#f92672>*</span>next;
+    } l;
+  } u;
+} UpVal;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 20</span>:
+lobject.h</div><p>从注释中可以看到，upval 有两种状态，open 和 closed。</p><p>其中 v 指向 upval 所引用的值，当状态为 closed 时，指向自身的 u.value；
+当状态为 open 时，指向栈中元素。</p><p>比如上面的示例代码，当在函数 f 中调用 g 时，a 和 b 在栈上都是存活的，
+相应的 upval 处于 open 状态，分别指向栈中对应的地址。</p><figure><img src=vm-upval-open.png></figure><p>当离开函数 f 调用 h 时，已经离开了函数 f 的作用域，b 不再于栈上存活，
+于是进行 close 操作，将 b 的值拷贝到 u.value，并修改 v 的指向。</p><p>这里的操作对于 l->upvals 是完全透明的，因为其只通过 v 来访问 upval 的值。</p><figure><img src=vm-upval-close.png></figure><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">723
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">724
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">725
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">726
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">727
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">728
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">729
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">730
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">731
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">732
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">733
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">734
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">735
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">736
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">737
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">738
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">739
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">740
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">741
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">742
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>case</span> OP_CLOSURE: {
+  Proto <span style=color:#f92672>*</span>p;
+  Closure <span style=color:#f92672>*</span>ncl;
+  <span style=color:#66d9ef>int</span> nup, j;
+  p <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>p<span style=color:#f92672>-&gt;</span>p[GETARG_Bx(i)];
+  nup <span style=color:#f92672>=</span> p<span style=color:#f92672>-&gt;</span>nups;
+  ncl <span style=color:#f92672>=</span> luaF_newLclosure(L, nup, cl<span style=color:#f92672>-&gt;</span>env);
+  ncl<span style=color:#f92672>-&gt;</span>l.p <span style=color:#f92672>=</span> p;
+  <span style=color:#66d9ef>for</span> (j<span style=color:#f92672>=</span><span style=color:#ae81ff>0</span>; j<span style=color:#f92672>&lt;</span>nup; j<span style=color:#f92672>++</span>, pc<span style=color:#f92672>++</span>) {
+    <span style=color:#66d9ef>if</span> (GET_OPCODE(<span style=color:#f92672>*</span>pc) <span style=color:#f92672>==</span> OP_GETUPVAL)
+      ncl<span style=color:#f92672>-&gt;</span>l.upvals[j] <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>upvals[GETARG_B(<span style=color:#f92672>*</span>pc)];
+    <span style=color:#66d9ef>else</span> {
+      lua_assert(GET_OPCODE(<span style=color:#f92672>*</span>pc) <span style=color:#f92672>==</span> OP_MOVE);
+      ncl<span style=color:#f92672>-&gt;</span>l.upvals[j] <span style=color:#f92672>=</span> luaF_findupval(L, base <span style=color:#f92672>+</span> GETARG_B(<span style=color:#f92672>*</span>pc));
+    }
+  }
+  setclvalue(L, ra, ncl);
+  Protect(luaC_checkGC(L));
+  <span style=color:#66d9ef>continue</span>;
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 21</span>:
+lvm.c</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">53
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">54
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">55
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">56
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">57
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">58
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">59
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">60
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">61
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">62
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">63
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">64
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">66
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">67
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">68
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">69
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">70
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">71
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">72
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">73
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">74
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">75
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">76
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">77
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">78
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">79
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C>UpVal <span style=color:#f92672>*</span><span style=color:#a6e22e>luaF_findupval</span> (lua_State <span style=color:#f92672>*</span>L, StkId level) {
+  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
+  GCObject <span style=color:#f92672>**</span>pp <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>L<span style=color:#f92672>-&gt;</span>openupval;
+  UpVal <span style=color:#f92672>*</span>p;
+  UpVal <span style=color:#f92672>*</span>uv;
+  <span style=color:#66d9ef>while</span> (<span style=color:#f92672>*</span>pp <span style=color:#f92672>!=</span> NULL <span style=color:#f92672>&amp;&amp;</span> (p <span style=color:#f92672>=</span> ngcotouv(<span style=color:#f92672>*</span>pp))<span style=color:#f92672>-&gt;</span>v <span style=color:#f92672>&gt;=</span> level) {
+    lua_assert(p<span style=color:#f92672>-&gt;</span>v <span style=color:#f92672>!=</span> <span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>u.value);
+    <span style=color:#66d9ef>if</span> (p<span style=color:#f92672>-&gt;</span>v <span style=color:#f92672>==</span> level) {  <span style=color:#75715e>/* found a corresponding upvalue? */</span>
+      <span style=color:#66d9ef>if</span> (isdead(g, obj2gco(p)))  <span style=color:#75715e>/* is it dead? */</span>
+	changewhite(obj2gco(p));  <span style=color:#75715e>/* ressurect it */</span>
+      <span style=color:#66d9ef>return</span> p;
+    }
+    pp <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>p<span style=color:#f92672>-&gt;</span>next;
+  }
+  uv <span style=color:#f92672>=</span> luaM_new(L, UpVal);  <span style=color:#75715e>/* not found: create a new one */</span>
+  uv<span style=color:#f92672>-&gt;</span>tt <span style=color:#f92672>=</span> LUA_TUPVAL;
+  uv<span style=color:#f92672>-&gt;</span>marked <span style=color:#f92672>=</span> luaC_white(g);
+  uv<span style=color:#f92672>-&gt;</span>v <span style=color:#f92672>=</span> level;  <span style=color:#75715e>/* current value lives in the stack */</span>
+  uv<span style=color:#f92672>-&gt;</span>next <span style=color:#f92672>=</span> <span style=color:#f92672>*</span>pp;  <span style=color:#75715e>/* chain it in the proper position */</span>
+  <span style=color:#f92672>*</span>pp <span style=color:#f92672>=</span> obj2gco(uv);
+  uv<span style=color:#f92672>-&gt;</span>u.l.prev <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>g<span style=color:#f92672>-&gt;</span>uvhead;  <span style=color:#75715e>/* double link it in `uvhead&#39; list */</span>
+  uv<span style=color:#f92672>-&gt;</span>u.l.next <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>uvhead.u.l.next;
+  uv<span style=color:#f92672>-&gt;</span>u.l.next<span style=color:#f92672>-&gt;</span>u.l.prev <span style=color:#f92672>=</span> uv;
+  g<span style=color:#f92672>-&gt;</span>uvhead.u.l.next <span style=color:#f92672>=</span> uv;
+  lua_assert(uv<span style=color:#f92672>-&gt;</span>u.l.next<span style=color:#f92672>-&gt;</span>u.l.prev <span style=color:#f92672>==</span> uv <span style=color:#f92672>&amp;&amp;</span> uv<span style=color:#f92672>-&gt;</span>u.l.prev<span style=color:#f92672>-&gt;</span>u.l.next <span style=color:#f92672>==</span> uv);
+  <span style=color:#66d9ef>return</span> uv;
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 22</span>:
+lfunc.c</div><p>其中 closure 之后的 move 指令，意味着 upval 处于 open 状态，upvale 需要去链接到栈。
+而 getupval 指令，就直接引用上层 closure 相应的 upval 指向的地址就好。</p><p>L->openupval 是一个单向链表，其中链接着所有 open 状态的 upval，按栈的高地址到低地址的顺序排列。</p><p>注意 line 71 72，pp 是 &p->next，当 <code>*pp = obj2gco(uv)</code> 的时候，修改了 next 指针的值，
+得以将新的 upval 插入到链表中。</p><p>至于 close 操作也不难理解， <code>luaF_close</code> 将所有高于 level 栈地址的 open upval 全部变成 close 状态，
+即修改 v 指针指向自身，并从 L->openupval 中脱离。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 96
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 97
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 98
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 99
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">100
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">101
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">102
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">103
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">104
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">105
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">106
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">107
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">108
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">109
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">110
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">111
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">112
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaF_close</span> (lua_State <span style=color:#f92672>*</span>L, StkId level) {
+  UpVal <span style=color:#f92672>*</span>uv;
+  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
+  <span style=color:#66d9ef>while</span> (L<span style=color:#f92672>-&gt;</span>openupval <span style=color:#f92672>!=</span> NULL <span style=color:#f92672>&amp;&amp;</span> (uv <span style=color:#f92672>=</span> ngcotouv(L<span style=color:#f92672>-&gt;</span>openupval))<span style=color:#f92672>-&gt;</span>v <span style=color:#f92672>&gt;=</span> level) {
+    GCObject <span style=color:#f92672>*</span>o <span style=color:#f92672>=</span> obj2gco(uv);
+    lua_assert(<span style=color:#f92672>!</span>isblack(o) <span style=color:#f92672>&amp;&amp;</span> uv<span style=color:#f92672>-&gt;</span>v <span style=color:#f92672>!=</span> <span style=color:#f92672>&amp;</span>uv<span style=color:#f92672>-&gt;</span>u.value);
+    L<span style=color:#f92672>-&gt;</span>openupval <span style=color:#f92672>=</span> uv<span style=color:#f92672>-&gt;</span>next;  <span style=color:#75715e>/* remove from `open&#39; list */</span>
+    <span style=color:#66d9ef>if</span> (isdead(g, o))
+      luaF_freeupval(L, uv);  <span style=color:#75715e>/* free upvalue */</span>
+    <span style=color:#66d9ef>else</span> {
+      unlinkupval(uv);
+      setobj(L, <span style=color:#f92672>&amp;</span>uv<span style=color:#f92672>-&gt;</span>u.value, uv<span style=color:#f92672>-&gt;</span>v);
+      uv<span style=color:#f92672>-&gt;</span>v <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>uv<span style=color:#f92672>-&gt;</span>u.value;  <span style=color:#75715e>/* now current value lives here */</span>
+      luaC_linkupval(L, uv);  <span style=color:#75715e>/* link upvalue into `gcroot&#39; list */</span>
+    }
+  }
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 23</span>:
+lfunc.c</div><h2 id=practice>practice
+<a class=anchor href=#practice>#</a></h2><p>上面只提到了和 closure 相关的字节码逻辑，读者可以自行输入其它 lua 代码示例，
+探索其它字节码的实现。</p><table><thead><tr><th>文件</th><th>建议</th></tr></thead><tbody><tr><td>lvm.h</td><td>仔细阅读</td></tr><tr><td>lvm.h</td><td>仔细阅读</td></tr><tr><td>lfunc.h</td><td>仔细阅读</td></tr><tr><td>lfunc.c</td><td>仔细阅读</td></tr></tbody></table></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/commit/8c359ebae66c3a96c4a0c7ed6ba49ad52483055a title="最后修改者 DreamAndDead | February 23, 2021" target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/calendar.svg class=book-icon alt=Calendar>
+<span>February 23, 2021</span></a></div><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/edit/master/site/content/docs/vm/index.md target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/edit.svg class=book-icon alt=Edit>
+<span>编辑本页</span></a></div></div></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><ul><li><a href=#model>model</a><ul><li><a href=#code>code</a></li><li><a href=#kst>kst</a></li><li><a href=#stack>stack</a></li><li><a href=#gbl>gbl</a></li><li><a href=#upvalue>upvalue</a></li></ul></li><li><a href=#the-loop>the loop</a></li><li><a href=#closure>closure</a><ul><li><a href=#def>def</a></li><li><a href=#call>call</a></li><li><a href=#return>return</a></li><li><a href=#upval>upval</a></li></ul></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></div></aside></main></body></html>

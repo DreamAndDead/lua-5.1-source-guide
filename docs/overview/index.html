@@ -1,0 +1,123 @@
+<!doctype html><html lang=zh dir=ltr><head><meta name=generator content="Hugo 0.80.0"><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="goal #  这是一本关于 lua 5.1 源代码的小书。 主要探索 lua 源代码，从中研究 lua 语言的内部实现。
+起因是出于好奇和乐趣，同时希望对其它 source reader 有所启发。
+lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚还是要花费不少篇幅。 而且我也不自信自己的文字能力能将其含义描述清楚。
+所以在本书中，
+ 根据 2/8 原则，关注重点部分 一图胜千言，尽量使用图解 其余相关源代码，作为读者的练习  每一本书都有适合的读者，本书也是如此。
+希望读者你
+ 使用过 lua 语言，了解 lua 了解 Linux 基础使用 熟悉 C 语言  因为本书就是建立在相应的前提下书写的。
+project #  file structure #     file/dir desc     lua-5.1.5/ lua 源代码   install/ 编译 lua 源代码的结果，安装当前目录   tool/ 一些第三方辅助工具   draft/ 本书草稿   book/ 本书发布内容，org 格式   docs/ 本书发布内容，html 格式   opcode/ 关于 opcode 的测试代码   statement/ 关于 statement 的测试代码   test/ 关于其它功能的测试代码   helper."><meta name=theme-color content="#FFFFFF"><meta property="og:title" content="overview"><meta property="og:description" content="goal #  这是一本关于 lua 5.1 源代码的小书。 主要探索 lua 源代码，从中研究 lua 语言的内部实现。
+起因是出于好奇和乐趣，同时希望对其它 source reader 有所启发。
+lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚还是要花费不少篇幅。 而且我也不自信自己的文字能力能将其含义描述清楚。
+所以在本书中，
+ 根据 2/8 原则，关注重点部分 一图胜千言，尽量使用图解 其余相关源代码，作为读者的练习  每一本书都有适合的读者，本书也是如此。
+希望读者你
+ 使用过 lua 语言，了解 lua 了解 Linux 基础使用 熟悉 C 语言  因为本书就是建立在相应的前提下书写的。
+project #  file structure #     file/dir desc     lua-5.1.5/ lua 源代码   install/ 编译 lua 源代码的结果，安装当前目录   tool/ 一些第三方辅助工具   draft/ 本书草稿   book/ 本书发布内容，org 格式   docs/ 本书发布内容，html 格式   opcode/ 关于 opcode 的测试代码   statement/ 关于 statement 的测试代码   test/ 关于其它功能的测试代码   helper."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/overview/"><meta property="article:published_time" content="2020-12-21T10:40:00+08:00"><meta property="article:modified_time" content="2021-02-23T11:32:46+08:00"><title>overview | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/ class=active>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
+<strong>overview</strong>
+<label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#goal>goal</a></li><li><a href=#project>project</a><ul><li><a href=#file-structure>file structure</a></li><li><a href=#source-code>source code</a></li><li><a href=#tool>tool</a></li><li><a href=#usage>usage</a></li></ul></li><li><a href=#big-picture>big picture</a><ul><li><a href=#source-file>source file</a></li><li><a href=#execution>execution</a></li><li><a href=#a-little-tour><span class="org-todo todo TODO">TODO</span> a little tour</a></li></ul></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><h2 id=goal>goal
+<a class=anchor href=#goal>#</a></h2><p>这是一本关于 lua 5.1 源代码的小书。
+主要探索 lua 源代码，从中研究 lua 语言的内部实现。</p><p>起因是出于好奇和乐趣，同时希望对其它 source reader 有所启发。</p><p>lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚还是要花费不少篇幅。
+而且我也不自信自己的文字能力能将其含义描述清楚。</p><p>所以在本书中，</p><ul><li>根据 2/8 原则，关注重点部分</li><li>一图胜千言，尽量使用图解</li><li>其余相关源代码，作为读者的练习</li></ul><p>每一本书都有适合的读者，本书也是如此。</p><p>希望读者你</p><ul><li>使用过 lua 语言，了解 lua</li><li>了解 Linux 基础使用</li><li>熟悉 C 语言</li></ul><p>因为本书就是建立在相应的前提下书写的。</p><h2 id=project>project
+<a class=anchor href=#project>#</a></h2><h3 id=file-structure>file structure
+<a class=anchor href=#file-structure>#</a></h3><table><thead><tr><th>file/dir</th><th>desc</th></tr></thead><tbody><tr><td>lua-5.1.5/</td><td>lua 源代码</td></tr><tr><td>install/</td><td>编译 lua 源代码的结果，安装当前目录</td></tr><tr><td>tool/</td><td>一些第三方辅助工具</td></tr><tr><td>draft/</td><td>本书草稿</td></tr><tr><td>book/</td><td>本书发布内容，org 格式</td></tr><tr><td>docs/</td><td>本书发布内容，html 格式</td></tr><tr><td>opcode/</td><td>关于 opcode 的测试代码</td></tr><tr><td>statement/</td><td>关于 statement 的测试代码</td></tr><tr><td>test/</td><td>关于其它功能的测试代码</td></tr><tr><td>helper.py</td><td>gdb 脚本，辅助打印数据结构</td></tr><tr><td>init.gdb</td><td>gdb 脚本，用作调试入口</td></tr><tr><td>lex.gdb</td><td>gdb 脚本，实现粗糙的词法分析器</td></tr><tr><td>publish.el</td><td>org 生成 html 的配置文件</td></tr><tr><td>Makefile</td><td>makefile，简化一些命令调用</td></tr><tr><td>readme.org</td><td>readme</td></tr></tbody></table><h3 id=source-code>source code
+<a class=anchor href=#source-code>#</a></h3><p>出于方便修改源代码进行调试的原因，将
+<a href=https://www.lua.org/versions.html>lua 5.1 source code</a> 下载并保存在项目的 <code>lua-5.1.5/</code> 目录中，
+统一管理。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-diff data-lang=diff>diff -ur /home/manjaro/temp/lua-5.1.5/Makefile ../lua-5.1.5/Makefile
+<span style=color:#f92672>--- /home/manjaro/temp/lua-5.1.5/Makefile	2012-02-10 17:50:23.000000000 +0800
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+++ ../lua-5.1.5/Makefile	2020-09-16 16:59:20.010277348 +0800
+</span><span style=color:#a6e22e></span><span style=color:#75715e>@@ -9,7 +9,7 @@
+</span><span style=color:#75715e></span>
+ # Where to install. The installation starts in the src and doc directories,
+ # so take care if INSTALL_TOP is not an absolute path.
+<span style=color:#f92672>-INSTALL_TOP= /usr/local
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+INSTALL_TOP= $(CURDIR)/../install
+</span><span style=color:#a6e22e></span> INSTALL_BIN= $(INSTALL_TOP)/bin
+ INSTALL_INC= $(INSTALL_TOP)/include
+ INSTALL_LIB= $(INSTALL_TOP)/lib
+diff -ur /home/manjaro/temp/lua-5.1.5/src/Makefile ../lua-5.1.5/src/Makefile
+<span style=color:#f92672>--- /home/manjaro/temp/lua-5.1.5/src/Makefile	2012-02-14 04:41:22.000000000 +0800
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+++ ../lua-5.1.5/src/Makefile	2020-11-18 14:45:06.879322946 +0800
+</span><span style=color:#a6e22e></span><span style=color:#75715e>@@ -8,7 +8,7 @@
+</span><span style=color:#75715e></span> PLAT= none
+
+ CC= gcc
+<span style=color:#f92672>-CFLAGS= -O2 -Wall $(MYCFLAGS)
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+CFLAGS= -m32 -ggdb3 -O0 -Wall $(MYCFLAGS)
+</span><span style=color:#a6e22e></span> AR= ar rcu
+ RANLIB= ranlib
+ RM= rm -f
+<span style=color:#75715e>@@ -30,7 +30,7 @@
+</span><span style=color:#75715e></span>	lstrlib.o loadlib.o linit.o
+
+ LUA_T=	lua
+<span style=color:#f92672>-LUA_O=	lua.o
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+LUA_O=	lua.o print.o
+</span><span style=color:#a6e22e></span>
+ LUAC_T=	luac
+ LUAC_O=	luac.o print.o
+<span style=color:#75715e>@@ -52,10 +52,10 @@
+</span><span style=color:#75715e></span>	$(RANLIB) $@
+
+ $(LUA_T): $(LUA_O) $(LUA_A)
+<span style=color:#f92672>-	$(CC) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+	$(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
+</span><span style=color:#a6e22e></span>
+ $(LUAC_T): $(LUAC_O) $(LUA_A)
+<span style=color:#f92672>-	$(CC) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+	$(CC) $(CFLAGS) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
+</span><span style=color:#a6e22e></span>
+ clean:
+	$(RM) $(ALL_T) $(ALL_O)
+</code></pre></div><p>其中对 <code>./lua-5.1.5/Makefile</code> 做了 1 处修改，</p><ul><li>将 lua 安装目录修改到本地 <code>./install/</code></li></ul><p>其中对 <code>./lua-5.1.5/src/Makefile</code> 做了 4 处修改，</p><ul><li>增加编译选项<ul><li><code>-m32</code> 使用 32 位编译</li><li><code>-ggdb3 -O0</code> 提供更多调试信息，可调试 <code>#define</code> 宏</li></ul></li><li>将 <code>print.c</code> 编译到 lua 解释器中</li><li>使用新编译选项，编译 lua 解释器</li><li>使用新编译选项，编译 lua 编译器</li></ul><h3 id=tool>tool
+<a class=anchor href=#tool>#</a></h3><p>在分析代码的过程中，使用了一些三方工具。</p><p>出于方便环境配置的原因，将其拷贝放置在了 <code>tool/</code> 目录中。</p><p><a href=http://chunkspy.luaforge.net/>ChunkSpy</a> 是一个 lua 项目，用于分析并显示由 <code>luac</code> 编译得来的二进制 chunk 的内部结构，
+可以方便的了解编译结果，尤其是生成的字节码。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-diff data-lang=diff>只在 /home/manjaro/temp/ChunkSpy-0.9.8 存在：5.0.2
+diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua
+<span style=color:#f92672>--- /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua	2006-03-07 18:56:48.000000000 +0800
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+++ ../tool/ChunkSpy-0.9.8/5.1/ChunkSpy.lua	2020-10-30 11:55:50.229435825 +0800
+</span><span style=color:#a6e22e></span><span style=color:#75715e>@@ -1631,8 +1631,8 @@
+</span><span style=color:#75715e></span>     FormatLine(1, &#34;numparams (&#34;..func.numparams..&#34;)&#34;, pos + 1)
+     FormatLine(1, &#34;is_vararg (&#34;..func.is_vararg..&#34;)&#34;, pos + 2)
+     FormatLine(1, &#34;maxstacksize (&#34;..func.maxstacksize..&#34;)&#34;, pos + 3)
+<span style=color:#f92672>-    BriefLine(string.format(&#34;; %d upvalues, %d params, %d stacks&#34;,
+</span><span style=color:#f92672>-      func.nups, func.numparams, func.maxstacksize))
+</span><span style=color:#f92672></span><span style=color:#a6e22e>+    BriefLine(string.format(&#34;; %d upvalues, %d params, %d is_vararg, %d stacks&#34;,
+</span><span style=color:#a6e22e>+      func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+</span><span style=color:#a6e22e></span>     BriefLine(string.format(&#34;.function%s%d %d %d %d&#34;, config.DISPLAY_SEP,
+       func.nups, func.numparams, func.is_vararg, func.maxstacksize))
+</code></pre></div><p>同样的，对源代码做了些许修改</p><ul><li>删除不需要的 5.0.2 版本代码</li><li>增加显示 <code>is_vararg</code> 字段</li></ul><p><a href=http://ditaa.sourceforge.net/>ditaa</a> 是一个命令行工具，用于将 ascii art 图形转化为图片，用于辅助生成图解。</p><p><a href=https://github.com/mkottman/lua-gdb-helper>lua-gdb-helper</a> 是一个 gdb 脚本项目，用于辅助调试，打印关键数据结构。
+在进行本书编写过程中，借鉴了其中的思想，使用 gdb 提供的 python api，
+编写了 <code>helper.py</code> 来辅助显示数据结构。</p><h3 id=usage>usage
+<a class=anchor href=#usage>#</a></h3><p>在分析代码的过程，经常使用一些分析过程，全部整理在 <code>Makefile</code> 中。</p><p>在此做一些介绍，对理解代码是非常有用的。</p><h4 id=compile>compile
+<a class=anchor href=#compile>#</a></h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make compile
+</code></pre></div><p>在 linux 系统上，使用 gcc 编译 lua 源代码，生成</p><ul><li>lua 解释器 <code>./lua-5.1.5/src/lua</code></li><li>lua 编译器 <code>./lua-5.1.5/src/luac</code></li></ul><p>并将相关文件安装到 <code>./install</code> 目录</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make clean
+</code></pre></div><p>删除 gcc 编译生成结果</p><h4 id=run>run
+<a class=anchor href=#run>#</a></h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make lua
+</code></pre></div><p>交互模式，执行 lua 解释器</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make run source=opcode/move.lua
+</code></pre></div><p>使用 lua 解释器执行文件 <code>opcode/move.lua</code></p><h4 id=inspect>inspect
+<a class=anchor href=#inspect>#</a></h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make lex source=opcode/move.lua
+</code></pre></div><p>对文件进行词法分析</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make spy
+</code></pre></div><p>交互模式，执行 ChunkSpy</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make inspect source=opcode/move.lua
+</code></pre></div><p>使用 ChunkSpy 分析文件</p><h4 id=debug>debug
+<a class=anchor href=#debug>#</a></h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make debug source=opcode/move.lua
+</code></pre></div><p>开始调试文件，临时断点在 <code>function chunk()</code></p><h4 id=publish>publish
+<a class=anchor href=#publish>#</a></h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make publish
+</code></pre></div><p>将 <code>book/</code> 下 org 文件发布为 <code>docs/</code> 目录下的 html 文件</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make server
+</code></pre></div><p>在本地开启
+<a href=http://localhost:8000>http server</a>，阅读生成的 html 文件</p><h2 id=big-picture>big picture
+<a class=anchor href=#big-picture>#</a></h2><h3 id=source-file>source file
+<a class=anchor href=#source-file>#</a></h3><p>在阅读源代码之前，先对相关代码文件有一个总体感觉。</p><p>lua 源代码的核心文件都在 <code>./lua-5.1.5/src/</code> 目录，
+按照本书目录的顺序，将相关文件列示如下。</p><table><thead><tr><th>file</th><th>prefix</th><th>desc</th></tr></thead><tbody><tr><td>Makefile</td><td></td><td>makefile</td></tr><tr><td>llimits.h</td><td></td><td>部分常量与类型定义</td></tr><tr><td>luaconf.h</td><td></td><td>lua 核心配置文件，提供部分功能定制</td></tr><tr><td>lua.h</td><td>lua</td><td>主要头文件，提供对外的接口</td></tr><tr><td>lua.c</td><td></td><td>lua 解释器</td></tr><tr><td>luac.c</td><td></td><td>lua 编译器</td></tr><tr><td>print.c</td><td></td><td>提供打印 chunk 的方法，用于 <code>luac -l</code></td></tr><tr><td>lobject.h</td><td>luaO</td><td>定义基础数据类型，及相关宏操作</td></tr><tr><td>lobject.c</td><td>luaO</td><td>-</td></tr><tr><td>lmem.h</td><td>luaM</td><td>mem 功能</td></tr><tr><td>lmem.c</td><td>luaM</td><td>-</td></tr><tr><td>lstring.h</td><td>luaS</td><td>string 功能</td></tr><tr><td>lstring.c</td><td>luaS</td><td>-</td></tr><tr><td>ltable.h</td><td>luaH</td><td>table 功能</td></tr><tr><td>ltable.c</td><td>luaH</td><td>-</td></tr><tr><td>ltm.h</td><td>luaT</td><td>metatable(tag method) 功能</td></tr><tr><td>ltm.c</td><td>luaT</td><td>-</td></tr><tr><td>lzio.h</td><td>luaZ</td><td>buffer & stream 功能</td></tr><tr><td>lzio.c</td><td>luaZ</td><td>-</td></tr><tr><td>llex.h</td><td>luaX</td><td>lexer 功能</td></tr><tr><td>llex.c</td><td>luaX</td><td>-</td></tr><tr><td>lparser.h</td><td>luaY</td><td>parser 功能</td></tr><tr><td>lparser.c</td><td>luaY</td><td>-</td></tr><tr><td>lopcodes.h</td><td>luaP</td><td>opcode 定义及相关宏操作</td></tr><tr><td>lopcodes.c</td><td>luaP</td><td>-</td></tr><tr><td>lcode.h</td><td>luaK</td><td>code 模块，用于生成 opcode</td></tr><tr><td>lcode.c</td><td>luaK</td><td>-</td></tr><tr><td>lfunc.h</td><td>luaF</td><td>Proto, Closure, Upval 相关的基础操作</td></tr><tr><td>lfunc.c</td><td>luaF</td><td>-</td></tr><tr><td>ldo.h</td><td>luaD</td><td>调用 Lua/C Closure</td></tr><tr><td>ldo.c</td><td>luaD</td><td>-</td></tr><tr><td>lstate.h</td><td>luaE</td><td><code>lua_State</code>, <code>global_State</code> 相关定义与操作</td></tr><tr><td>lstate.c</td><td>luaE</td><td>-</td></tr><tr><td>lvm.h</td><td>luaV</td><td>vm 功能</td></tr><tr><td>lvm.c</td><td>luaV</td><td>-</td></tr><tr><td>lapi.h</td><td>luaA</td><td>api 功能，提供对外 api 接口的实现</td></tr><tr><td>lapi.c</td><td>luaA</td><td>-</td></tr><tr><td>lauxlib.h</td><td>luaL</td><td>为 lua lib 提供基础方法</td></tr><tr><td>lauxlib.c</td><td>luaL</td><td>-</td></tr><tr><td>lualib.h</td><td></td><td>定义 lua std lib 的注册接口</td></tr><tr><td>linit.c</td><td>luaL</td><td>实现注册所有 std lib 方法</td></tr><tr><td>lbaselib.c</td><td>luaB</td><td>base lib，实现 print, next, etc 及 coroutine.* 接口</td></tr><tr><td>loadlib.c</td><td></td><td>package lib，实现 require, moduel 及 package.* 接口</td></tr><tr><td>ltablib.c</td><td></td><td>table lib，实现 table.* 接口</td></tr><tr><td>liolib.c</td><td></td><td>io lib，实现 io.* 接口</td></tr><tr><td>loslib.c</td><td></td><td>os lib，实现 os.* 接口</td></tr><tr><td>lstrlib.c</td><td></td><td>string lib，实现 string.* 接口</td></tr><tr><td>lmathlib.c</td><td></td><td>math lib，实现 math.* 接口</td></tr><tr><td>ldblib.c</td><td></td><td>debug lib，实现 debug.* 接口</td></tr><tr><td>ldebug.h</td><td>luaG</td><td>debug 功能，用于自省</td></tr><tr><td>ldebug.c</td><td>luaG</td><td>-</td></tr><tr><td>lgc.h</td><td>luaC</td><td>gc 功能</td></tr><tr><td>lgc.c</td><td>luaC</td><td>-</td></tr><tr><td>lundump.h</td><td>luaU</td><td>dump/undump 功能，chunk 的保存与加载</td></tr><tr><td>lundump.c</td><td>luaU</td><td>-</td></tr><tr><td>ldump.c</td><td>luaU</td><td>-</td></tr></tbody></table><p>大部分模块，都有对应的 <code>.h .c</code> 文件，
+大致来看， <code>.h</code> 定义数据结构，宏操作，及函数接口， <code>.c</code> 实现函数接口。
+两者协同提供一个模块功能，所以相关的文件描述用 <code>-</code> 来代替了。</p><p>模块 <code>.h</code> 文件中定义的函数接口，是可以被其它模块引用的。
+lua 内部使用了一种命名约定，不同模块的函数接口用不同的前缀来标识，
+在上表中的 prefix 列已经列示。</p><p>当然，上面的规则不是绝对的，存在部分例外，在阅读时不必严格拘束于此。</p><h3 id=execution>execution
+<a class=anchor href=#execution>#</a></h3><p>同是编程语言，必定有相似的地方。
+下面从 C 语言的角度，粗略类比 Lua 语言的执行过程。</p><figure><img src=overview-c-process.png></figure><p>C 代码通过编译过程，生成可执行文件；可执行文件被机器执行，达成 C 代码描述的语义。</p><figure><img src=overview-lua-process.png></figure><p>Lua 语言通过 compile dump 过程，生成特定格式的二进制文件；
+二进制文件可以被加载，并在 VM 中执行，达成 Lua 代码描述的语义。</p><p>如果抽象来看，编程语言是一种语言，一种文本约定，描述程序的语义。
+实现语义的程序，称之为编程语言的实现。</p><p>C（语言）通过 gcc（实现）来达成语义，同样地，Lua（语言）需要一个（实现），才能达成语义。</p><p><code>./lua-5.1.5/src/</code> 就是这个实现的全部内容。</p><p>虽然大体流程相似，作为编译型语言的 C 和解释型的 Lua 还是存在些许不同。</p><p>C 语言直接编译为面向机器的指令，整体是静态的，一次性全部编译完成，整体加载运行。</p><p>Lua 语言的编译面向 VM，生成 opcode 交由 VM 来执行，VM 则由 Machine 来执行，整体多了一层中间层 VM。</p><p>lua 源代码 make 之后，生成两个可执行文件</p><ul><li><code>lua, lua standalone interpreter</code></li><li><code>luac, lua compiler</code></li></ul><p><code>luac</code> 程序执行的就是 compile + dump 的过程</p><p><code>lua</code> 程序根据参数不同，可能会执行</p><ul><li>compile + executed 过程</li><li>undump + executed 过程</li><li>VM 常驻内存，使用 REPL 的方式，不断输入 lua code，执行 compile + executed 的解释过程</li></ul><p>这即是上文中两个程序分别称为编译器 和 解释器 的命名来源，以后的行文中也使用这种约定。</p><h3 id=a-little-tour><span class="org-todo todo TODO">TODO</span> a little tour
+<a class=anchor href=#a-little-tour>#</a></h3><p>chain all subject</p><ul><li>big picture of internal</li><li>talk about lua state and global state, state scope</li></ul><h2 id=practice>practice
+<a class=anchor href=#practice>#</a></h2><ul><li>按照
+<a href=/lua-5.1-source-guide/#source-file>source file</a> 章节中提到的文件顺序，粗略浏览所有代码</li></ul></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/commit/bd61054b784741c003ddccec6f74ef512f0c96f6 title="最后修改者 DreamAndDead | February 23, 2021" target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/calendar.svg class=book-icon alt=Calendar>
+<span>February 23, 2021</span></a></div><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/edit/master/site/content/docs/overview/index.md target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/edit.svg class=book-icon alt=Edit>
+<span>编辑本页</span></a></div></div></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><ul><li><a href=#goal>goal</a></li><li><a href=#project>project</a><ul><li><a href=#file-structure>file structure</a></li><li><a href=#source-code>source code</a></li><li><a href=#tool>tool</a></li><li><a href=#usage>usage</a></li></ul></li><li><a href=#big-picture>big picture</a><ul><li><a href=#source-file>source file</a></li><li><a href=#execution>execution</a></li><li><a href=#a-little-tour><span class="org-todo todo TODO">TODO</span> a little tour</a></li></ul></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></div></aside></main></body></html>

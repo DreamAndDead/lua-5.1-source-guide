@@ -1,0 +1,522 @@
+<!doctype html><html lang=zh dir=ltr><head><meta name=generator content="Hugo 0.80.0"><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="之前的章节，关注的是内部的一些实现，为后续打基础。
+后续的章节关注 lua 是如何从文本代码到最终实际运行起来的。
+本章关注 lua 中的词法分析部分，即 lexer，这通常是编译过程的第一步。
+lexer #  传统的编译过程大家都不陌生。
+  lua 是解释型语言，但同样存在从源码到字节码的编译过程，区别在于其运行在 VM 上。
+经过历史的演变，lua 的内部实现为了效率，遵从如下的过程。
+  AST 使用虚线表示，是因为内部没有显式的 AST 结构。
+综合来看，lexer 完成了从 code 到 token 的过程， parser 孤身一人完成了从 token 到 opcode 的过程。
+  单纯从从文件角度看，lua 代码只是文本文件，由字符组成。 文本形式的编程语言由机器理解并执行，需要经过一系列组件的处理过程。 不同组件有明确的分工，不同的组件有不同的输入和输出，组成上下游关系。
+lexer 通常是第一个组件，将源代码转换为 token，将字符流转化为 token 流，作为后续 parser 的输入。
+  Token #  简单的说，token 就是多个字符组成的有序序列。
+lua 内部用 struct 表示 token，
+43 44 45 46 47 48 49 50 51 52  typedef union { lua_Number r; TString *ts; } SemInfo; /* semantics information */ typedef struct Token { int token; SemInfo seminfo; } Token;   Code Snippet 1: llex."><meta name=theme-color content="#FFFFFF"><meta property="og:title" content="lexer"><meta property="og:description" content="之前的章节，关注的是内部的一些实现，为后续打基础。
+后续的章节关注 lua 是如何从文本代码到最终实际运行起来的。
+本章关注 lua 中的词法分析部分，即 lexer，这通常是编译过程的第一步。
+lexer #  传统的编译过程大家都不陌生。
+  lua 是解释型语言，但同样存在从源码到字节码的编译过程，区别在于其运行在 VM 上。
+经过历史的演变，lua 的内部实现为了效率，遵从如下的过程。
+  AST 使用虚线表示，是因为内部没有显式的 AST 结构。
+综合来看，lexer 完成了从 code 到 token 的过程， parser 孤身一人完成了从 token 到 opcode 的过程。
+  单纯从从文件角度看，lua 代码只是文本文件，由字符组成。 文本形式的编程语言由机器理解并执行，需要经过一系列组件的处理过程。 不同组件有明确的分工，不同的组件有不同的输入和输出，组成上下游关系。
+lexer 通常是第一个组件，将源代码转换为 token，将字符流转化为 token 流，作为后续 parser 的输入。
+  Token #  简单的说，token 就是多个字符组成的有序序列。
+lua 内部用 struct 表示 token，
+43 44 45 46 47 48 49 50 51 52  typedef union { lua_Number r; TString *ts; } SemInfo; /* semantics information */ typedef struct Token { int token; SemInfo seminfo; } Token;   Code Snippet 1: llex."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/lexer/"><meta property="og:image" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/lexer/lexer-feature.png"><meta property="article:published_time" content="2021-01-05T16:40:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>lexer | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/ class=active>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
+<strong>lexer</strong>
+<label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#lexer>lexer</a></li><li><a href=#token>Token</a><ul><li><a href=#int-token>int token</a></li><li><a href=#seminfo>Seminfo</a></li></ul></li><li><a href=#lexstate>LexState</a></li><li><a href=#method>method</a><ul><li><a href=#luax-init><code>luaX_init</code></a></li><li><a href=#llex><code>llex</code></a></li><li><a href=#luax-lookahead><code>luaX_lookahead</code></a></li><li><a href=#luax-next><code>luaX_next</code></a></li></ul></li><li><a href=#a-little-lexer>a little lexer</a></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><p>之前的章节，关注的是内部的一些实现，为后续打基础。</p><p>后续的章节关注 lua 是如何从文本代码到最终实际运行起来的。</p><p>本章关注 lua 中的词法分析部分，即 lexer，这通常是编译过程的第一步。</p><h2 id=lexer>lexer
+<a class=anchor href=#lexer>#</a></h2><p>传统的编译过程大家都不陌生。</p><figure><img src=compiler-trandition.png></figure><p>lua 是解释型语言，但同样存在从源码到字节码的编译过程，区别在于其运行在 VM 上。</p><p>经过历史的演变，lua 的内部实现为了效率，遵从如下的过程。</p><figure><img src=compiler-lua-detail-process.png></figure><p>AST 使用虚线表示，是因为内部没有显式的 AST 结构。</p><p>综合来看，lexer 完成了从 code 到 token 的过程，
+parser 孤身一人完成了从 token 到 opcode 的过程。</p><figure><img src=lexer-feature.png></figure><p>单纯从从文件角度看，lua 代码只是文本文件，由字符组成。
+文本形式的编程语言由机器理解并执行，需要经过一系列组件的处理过程。
+不同组件有明确的分工，不同的组件有不同的输入和输出，组成上下游关系。</p><p>lexer 通常是第一个组件，将源代码转换为 token，将字符流转化为 token 流，作为后续 parser 的输入。</p><figure><img src=lexer-stream.png></figure><h2 id=token>Token
+<a class=anchor href=#token>#</a></h2><p>简单的说，token 就是多个字符组成的有序序列。</p><p>lua 内部用 struct 表示 token，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">50
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">51
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">52
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>union</span> {
+  lua_Number r;
+  TString <span style=color:#f92672>*</span>ts;
+} SemInfo;  <span style=color:#75715e>/* semantics information */</span>
+
+
+<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> Token {
+  <span style=color:#66d9ef>int</span> token;
+  SemInfo seminfo;
+} Token;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
+llex.h</div><h3 id=int-token>int token
+<a class=anchor href=#int-token>#</a></h3><p>token 定义为 int，表示 Token 的类型，所有类型定义在 enum 结构中。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">28
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">29
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">30
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">32
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">33
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define FIRST_RESERVED	257
+</span><span style=color:#75715e></span>
+<span style=color:#75715e>/* maximum length of a reserved word */</span>
+<span style=color:#75715e>#define TOKEN_LEN	(sizeof(&#34;function&#34;)/sizeof(char))
+</span><span style=color:#75715e></span>
+
+<span style=color:#75715e>/*
+</span><span style=color:#75715e>* WARNING: if you change the order of this enumeration,
+</span><span style=color:#75715e>* grep &#34;ORDER RESERVED&#34;
+</span><span style=color:#75715e>*/</span>
+<span style=color:#66d9ef>enum</span> RESERVED {
+  <span style=color:#75715e>/* terminal symbols denoted by reserved words */</span>
+  TK_AND <span style=color:#f92672>=</span> FIRST_RESERVED, TK_BREAK,
+  TK_DO, TK_ELSE, TK_ELSEIF, TK_END, TK_FALSE, TK_FOR, TK_FUNCTION,
+  TK_IF, TK_IN, TK_LOCAL, TK_NIL, TK_NOT, TK_OR, TK_REPEAT,
+  TK_RETURN, TK_THEN, TK_TRUE, TK_UNTIL, TK_WHILE,
+  <span style=color:#75715e>/* other terminal symbols */</span>
+  TK_CONCAT, TK_DOTS, TK_EQ, TK_GE, TK_LE, TK_NE, TK_NUMBER,
+  TK_NAME, TK_STRING, TK_EOS
+};</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
+llex.h</div><p>每个 token 类型都有对应的文本表示，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">38
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/* ORDER RESERVED */</span>
+<span style=color:#66d9ef>const</span> <span style=color:#66d9ef>char</span> <span style=color:#f92672>*</span><span style=color:#66d9ef>const</span> luaX_tokens [] <span style=color:#f92672>=</span> {
+    <span style=color:#e6db74>&#34;and&#34;</span>, <span style=color:#e6db74>&#34;break&#34;</span>, <span style=color:#e6db74>&#34;do&#34;</span>, <span style=color:#e6db74>&#34;else&#34;</span>, <span style=color:#e6db74>&#34;elseif&#34;</span>,
+    <span style=color:#e6db74>&#34;end&#34;</span>, <span style=color:#e6db74>&#34;false&#34;</span>, <span style=color:#e6db74>&#34;for&#34;</span>, <span style=color:#e6db74>&#34;function&#34;</span>, <span style=color:#e6db74>&#34;if&#34;</span>,
+    <span style=color:#e6db74>&#34;in&#34;</span>, <span style=color:#e6db74>&#34;local&#34;</span>, <span style=color:#e6db74>&#34;nil&#34;</span>, <span style=color:#e6db74>&#34;not&#34;</span>, <span style=color:#e6db74>&#34;or&#34;</span>, <span style=color:#e6db74>&#34;repeat&#34;</span>,
+    <span style=color:#e6db74>&#34;return&#34;</span>, <span style=color:#e6db74>&#34;then&#34;</span>, <span style=color:#e6db74>&#34;true&#34;</span>, <span style=color:#e6db74>&#34;until&#34;</span>, <span style=color:#e6db74>&#34;while&#34;</span>,
+    <span style=color:#e6db74>&#34;..&#34;</span>, <span style=color:#e6db74>&#34;...&#34;</span>, <span style=color:#e6db74>&#34;==&#34;</span>, <span style=color:#e6db74>&#34;&gt;=&#34;</span>, <span style=color:#e6db74>&#34;&lt;=&#34;</span>, <span style=color:#e6db74>&#34;~=&#34;</span>,
+    <span style=color:#e6db74>&#34;&lt;number&gt;&#34;</span>, <span style=color:#e6db74>&#34;&lt;name&gt;&#34;</span>, <span style=color:#e6db74>&#34;&lt;string&gt;&#34;</span>, <span style=color:#e6db74>&#34;&lt;eof&gt;&#34;</span>,
+    NULL
+};</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
+llex.c</div><ul><li><code>and</code> 到 <code>while</code> 之间是所有关键字</li><li><code>..</code> 到 <code>~=</code> 之间是二元运算符</li><li><code>&lt;number></code> 表示数字字面量</li><li><code>&lt;name></code> 表示变量名称</li><li><code>&lt;string></code> 表示字符串字面量</li><li><code>&lt;eof></code> 表示文件结束符</li></ul><p>在上面所有类型中，看不到单字符 token 的影子，如 <code>( , . ; [</code> 。
+这是因为单字符用单字节 ascii 码表示（0 - 255），可以直接用自身来表示，记录在 int token 中。
+这也是多字符 token 从 <code>FIRST_RESERVED 257</code> 开始的原因，巧妙的将两者分开。</p><h3 id=seminfo>Seminfo
+<a class=anchor href=#seminfo>#</a></h3><p>Seminfo 用于存储 token 类型对应的内容。</p><p>对于单字符，关键字和二元运算符，不需要记录额外内容，因为类型的文本表示是唯一的。
+<code>&lt;number> &lt;name> &lt;string></code> 则不同，相应类型下存在无数可能的内容，这就是 seminfo 的作用。</p><ul><li><code>lua_Number r</code> 用来记录 <code>&lt;number></code> 相应的内容</li><li><code>TString *ts</code> 用来记录 <code>&lt;name></code> 变量的名称， <code>&lt;string></code> 字符串内容</li></ul><h2 id=lexstate>LexState
+<a class=anchor href=#lexstate>#</a></h2><p>lex 是一个过程，过程中需要记录当下所处的状态，比如文件读取的位置，匹配的结果等，
+这个关键的数据结构就是 LexState。</p><p>整个 lex 过程围绕 LexState 展开，这样说毫不为过，清楚其有非常大的助益。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">55
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">56
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">57
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">58
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">59
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">60
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">61
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">62
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">63
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">64
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">66
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">67
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> LexState {
+  <span style=color:#66d9ef>int</span> current;  <span style=color:#75715e>/* current character (charint) */</span>
+  <span style=color:#66d9ef>int</span> linenumber;  <span style=color:#75715e>/* input line counter */</span>
+  <span style=color:#66d9ef>int</span> lastline;  <span style=color:#75715e>/* line of last token `consumed&#39; */</span>
+  Token t;  <span style=color:#75715e>/* current token */</span>
+  Token lookahead;  <span style=color:#75715e>/* look ahead token */</span>
+  <span style=color:#66d9ef>struct</span> FuncState <span style=color:#f92672>*</span>fs;  <span style=color:#75715e>/* `FuncState&#39; is private to the parser */</span>
+  <span style=color:#66d9ef>struct</span> lua_State <span style=color:#f92672>*</span>L;
+  ZIO <span style=color:#f92672>*</span>z;  <span style=color:#75715e>/* input stream */</span>
+  Mbuffer <span style=color:#f92672>*</span>buff;  <span style=color:#75715e>/* buffer for tokens */</span>
+  TString <span style=color:#f92672>*</span>source;  <span style=color:#75715e>/* current source name */</span>
+  <span style=color:#66d9ef>char</span> decpoint;  <span style=color:#75715e>/* locale decimal point */</span>
+} LexState;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 4</span>:
+llex.h</div><p>将其中所有字段分为 3 部分</p><p>lex 过程的重要部分</p><ul><li><code>ZIO *z</code> ，源代码文件流</li><li><code>Mbuffer *buff</code> ，lex 匹配过程中的 buffer</li><li><code>int current</code> ，当前 token 之后紧跟的字符</li><li><code>Token t</code> ，当前 token</li><li><code>Token lookahead</code> ，前瞻的下一个 token</li></ul><p>在 parser 章节再讨论</p><ul><li><code>struct FuncState *fs</code></li><li><code>struct lua_State *L</code></li></ul><p>非重点，暂不讨论</p><ul><li><code>int linenumber</code> ，当前 current 所处行号</li><li><code>int lastline</code> ，上一个 token 所处行号</li><li><code>TString *source</code> ，源代码的名称</li><li><code>char decpoint</code> ，和数字的 l10n 相关</li></ul><figure><img src=lexer-lexstate-inside.png></figure><p>内部数据间的协同，在 method 小节继续讲述。</p><h2 id=method>method
+<a class=anchor href=#method>#</a></h2><h3 id=luax-init><code>luaX_init</code>
+<a class=anchor href=#luax-init>#</a></h3><p>前面在 string 章节，关于其中 reserved 字段的作用没有讲述，刚好在 lexer 章节补上。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/* number of reserved words */</span>
+<span style=color:#75715e>#define NUM_RESERVED	(cast(int, TK_WHILE-FIRST_RESERVED+1))</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 5</span>:
+llex.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">64
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">66
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">67
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">68
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">69
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">70
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">71
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">72
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaX_init</span> (lua_State <span style=color:#f92672>*</span>L) {
+  <span style=color:#66d9ef>int</span> i;
+  <span style=color:#66d9ef>for</span> (i<span style=color:#f92672>=</span><span style=color:#ae81ff>0</span>; i<span style=color:#f92672>&lt;</span>NUM_RESERVED; i<span style=color:#f92672>++</span>) {
+    TString <span style=color:#f92672>*</span>ts <span style=color:#f92672>=</span> luaS_new(L, luaX_tokens[i]);
+    luaS_fix(ts);  <span style=color:#75715e>/* reserved words are never collected */</span>
+    lua_assert(strlen(luaX_tokens[i])<span style=color:#f92672>+</span><span style=color:#ae81ff>1</span> <span style=color:#f92672>&lt;=</span> TOKEN_LEN);
+    ts<span style=color:#f92672>-&gt;</span>tsv.reserved <span style=color:#f92672>=</span> cast_byte(i<span style=color:#f92672>+</span><span style=color:#ae81ff>1</span>);  <span style=color:#75715e>/* reserved word */</span>
+  }
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 6</span>:
+llex.c</div><p>之前提到，string 在 lua 内部只保存一份，是不可修改的。</p><p><code>luaX_init</code> 将所有关键字（如 <code>local function end</code> 等）预先分配，存储入全局表。
+特别的，在其 reserved 字段上记录其在 <code>enum RESERVED</code> 中的序号，从 1 开始。</p><p>这样带来的效果是，所有 reserved != 0 的 string 都是关键字，且可以由 reserved 来判断出关键字的 token 类型。</p><p>这一点间接方便了 <code>luaX_next</code> 中，关键字类型 token 的判断过程。</p><h3 id=llex><code>llex</code>
+<a class=anchor href=#llex>#</a></h3><p>本质上来看，lexer 就是遵循些许模式，从字符流的头部开始匹配，找到并返回相匹配的 token。</p><p>不同 token 的模式通常用 regex 来描述，将所有的模式转化为代码的形式，就是 lex 过程。</p><p>一般而言，这是一个相对枯燥又考验耐心的工作，好在有 lexer generator 这样的工具，如 flex，
+它可以直接将 regex 规则转化为 lex 代码。</p><p>一般而言，一个语言的诞生初期，都会使用 lexer generator，方便快速迭代，
+到了后期语言本身相对稳定的时候，为了提升效率，都会将 lex 过程重写，python ruby lua 都是如此。</p><p>这也意味着，阅读 lua 中 lex 过程的代码不如同义的 flex 代码<sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>轻松。</p><p>lex 过程看似随意，底层其实有充足的数学理论支撑， <code>regex NFA DFA</code> 的同义转化，最终用代码方式呈现。
+这一点远有更专业的书来讲解，具体细节就不再赘述。</p><p>lexer 内部的核心方法就是 llex。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">334
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">335
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">336
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">337
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">338
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">339
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">340
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">341
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">342
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">343
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">344
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">345
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">346
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">347
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">348
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">349
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">350
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">351
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">352
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">353
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">354
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">355
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">356
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">357
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">358
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">359
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">360
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">361
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">362
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">363
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">364
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">365
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">366
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">367
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">368
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">369
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">370
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">371
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">372
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">373
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">374
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">375
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">376
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">377
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">378
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">379
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">380
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">381
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">382
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">383
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">384
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">385
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">386
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">387
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">388
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">389
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">390
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">391
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">392
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">393
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">394
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">395
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">396
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">397
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">398
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">399
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">400
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">401
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">402
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">403
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">404
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">405
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">406
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">407
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">408
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">409
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">410
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">411
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">412
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">413
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">414
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">415
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">416
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">417
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">418
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">419
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">420
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">421
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">422
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">423
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">424
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">425
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">426
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">427
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">428
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">429
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">430
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">431
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">432
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">433
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">434
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">435
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">436
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">437
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">438
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">439
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">440
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">441
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">442
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">443
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">444
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">445
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>static</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>llex</span> (LexState <span style=color:#f92672>*</span>ls, SemInfo <span style=color:#f92672>*</span>seminfo) {
+  luaZ_resetbuffer(ls<span style=color:#f92672>-&gt;</span>buff);
+  <span style=color:#66d9ef>for</span> (;;) {
+    <span style=color:#66d9ef>switch</span> (ls<span style=color:#f92672>-&gt;</span>current) {
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;\n&#39;</span><span style=color:#f92672>:</span>
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;\r&#39;</span><span style=color:#f92672>:</span> {
+	inclinenumber(ls);
+	<span style=color:#66d9ef>continue</span>;
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;-&#39;</span><span style=color:#f92672>:</span> {
+	next(ls);
+	<span style=color:#66d9ef>if</span> (ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#39;-&#39;</span>) <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#39;-&#39;</span>;
+	<span style=color:#75715e>/* else is a comment */</span>
+	next(ls);
+	<span style=color:#66d9ef>if</span> (ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;[&#39;</span>) {
+	  <span style=color:#66d9ef>int</span> sep <span style=color:#f92672>=</span> skip_sep(ls);
+	  luaZ_resetbuffer(ls<span style=color:#f92672>-&gt;</span>buff);  <span style=color:#75715e>/* `skip_sep&#39; may dirty the buffer */</span>
+	  <span style=color:#66d9ef>if</span> (sep <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0</span>) {
+	    read_long_string(ls, NULL, sep);  <span style=color:#75715e>/* long comment */</span>
+	    luaZ_resetbuffer(ls<span style=color:#f92672>-&gt;</span>buff);
+	    <span style=color:#66d9ef>continue</span>;
+	  }
+	}
+	<span style=color:#75715e>/* else short comment */</span>
+	<span style=color:#66d9ef>while</span> (<span style=color:#f92672>!</span>currIsNewline(ls) <span style=color:#f92672>&amp;&amp;</span> ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>!=</span> EOZ)
+	  next(ls);
+	<span style=color:#66d9ef>continue</span>;
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;[&#39;</span><span style=color:#f92672>:</span> {
+	<span style=color:#66d9ef>int</span> sep <span style=color:#f92672>=</span> skip_sep(ls);
+	<span style=color:#66d9ef>if</span> (sep <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0</span>) {
+	  read_long_string(ls, seminfo, sep);
+	  <span style=color:#66d9ef>return</span> TK_STRING;
+	}
+	<span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (sep <span style=color:#f92672>==</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>) <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#39;[&#39;</span>;
+	<span style=color:#66d9ef>else</span> luaX_lexerror(ls, <span style=color:#e6db74>&#34;invalid long string delimiter&#34;</span>, TK_STRING);
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;=&#39;</span><span style=color:#f92672>:</span> {
+	next(ls);
+	<span style=color:#66d9ef>if</span> (ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#39;=&#39;</span>) <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#39;=&#39;</span>;
+	<span style=color:#66d9ef>else</span> { next(ls); <span style=color:#66d9ef>return</span> TK_EQ; }
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;&lt;&#39;</span><span style=color:#f92672>:</span> {
+	next(ls);
+	<span style=color:#66d9ef>if</span> (ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#39;=&#39;</span>) <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#39;&lt;&#39;</span>;
+	<span style=color:#66d9ef>else</span> { next(ls); <span style=color:#66d9ef>return</span> TK_LE; }
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;&gt;&#39;</span><span style=color:#f92672>:</span> {
+	next(ls);
+	<span style=color:#66d9ef>if</span> (ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#39;=&#39;</span>) <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#39;&gt;&#39;</span>;
+	<span style=color:#66d9ef>else</span> { next(ls); <span style=color:#66d9ef>return</span> TK_GE; }
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;~&#39;</span><span style=color:#f92672>:</span> {
+	next(ls);
+	<span style=color:#66d9ef>if</span> (ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#39;=&#39;</span>) <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#39;~&#39;</span>;
+	<span style=color:#66d9ef>else</span> { next(ls); <span style=color:#66d9ef>return</span> TK_NE; }
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;&#34;&#39;</span><span style=color:#f92672>:</span>
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span><span style=color:#f92672>:</span> {
+	read_string(ls, ls<span style=color:#f92672>-&gt;</span>current, seminfo);
+	<span style=color:#66d9ef>return</span> TK_STRING;
+      }
+      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#39;.&#39;</span><span style=color:#f92672>:</span> {
+	save_and_next(ls);
+	<span style=color:#66d9ef>if</span> (check_next(ls, <span style=color:#e6db74>&#34;.&#34;</span>)) {
+	  <span style=color:#66d9ef>if</span> (check_next(ls, <span style=color:#e6db74>&#34;.&#34;</span>))
+	    <span style=color:#66d9ef>return</span> TK_DOTS;   <span style=color:#75715e>/* ... */</span>
+	  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>return</span> TK_CONCAT;   <span style=color:#75715e>/* .. */</span>
+	}
+	<span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>isdigit(ls<span style=color:#f92672>-&gt;</span>current)) <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#39;.&#39;</span>;
+	<span style=color:#66d9ef>else</span> {
+	  read_numeral(ls, seminfo);
+	  <span style=color:#66d9ef>return</span> TK_NUMBER;
+	}
+      }
+      <span style=color:#66d9ef>case</span> EOZ: {
+	<span style=color:#66d9ef>return</span> TK_EOS;
+      }
+      <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span> {
+	<span style=color:#66d9ef>if</span> (isspace(ls<span style=color:#f92672>-&gt;</span>current)) {
+	  lua_assert(<span style=color:#f92672>!</span>currIsNewline(ls));
+	  next(ls);
+	  <span style=color:#66d9ef>continue</span>;
+	}
+	<span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (isdigit(ls<span style=color:#f92672>-&gt;</span>current)) {
+	  read_numeral(ls, seminfo);
+	  <span style=color:#66d9ef>return</span> TK_NUMBER;
+	}
+	<span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (isalpha(ls<span style=color:#f92672>-&gt;</span>current) <span style=color:#f92672>||</span> ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;_&#39;</span>) {
+	  <span style=color:#75715e>/* identifier or reserved word */</span>
+	  TString <span style=color:#f92672>*</span>ts;
+	  <span style=color:#66d9ef>do</span> {
+	    save_and_next(ls);
+	  } <span style=color:#66d9ef>while</span> (isalnum(ls<span style=color:#f92672>-&gt;</span>current) <span style=color:#f92672>||</span> ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;_&#39;</span>);
+	  ts <span style=color:#f92672>=</span> luaX_newstring(ls, luaZ_buffer(ls<span style=color:#f92672>-&gt;</span>buff),
+				  luaZ_bufflen(ls<span style=color:#f92672>-&gt;</span>buff));
+	  <span style=color:#66d9ef>if</span> (ts<span style=color:#f92672>-&gt;</span>tsv.reserved <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>)  <span style=color:#75715e>/* reserved word? */</span>
+	    <span style=color:#66d9ef>return</span> ts<span style=color:#f92672>-&gt;</span>tsv.reserved <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>+</span> FIRST_RESERVED;
+	  <span style=color:#66d9ef>else</span> {
+	    seminfo<span style=color:#f92672>-&gt;</span>ts <span style=color:#f92672>=</span> ts;
+	    <span style=color:#66d9ef>return</span> TK_NAME;
+	  }
+	}
+	<span style=color:#66d9ef>else</span> {
+	  <span style=color:#66d9ef>int</span> c <span style=color:#f92672>=</span> ls<span style=color:#f92672>-&gt;</span>current;
+	  next(ls);
+	  <span style=color:#66d9ef>return</span> c;  <span style=color:#75715e>/* single-char tokens (+ - / ...) */</span>
+	}
+      }
+    }
+  }
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
+llex.c</div><p>它的功能非常纯粹，从字符流的开始，进行模式匹配，找到相应的 token，并返回相应的类型和内容。</p><figure><img src=lexer-matching-process-0.png></figure><figure><img src=lexer-matching-process-1.png></figure><figure><img src=lexer-matching-process-2.png></figure><p>llex 的具体过程不再赘述，读者可以打开调试器，用一些代码示例来针对性的阅读。</p><p>这里只略微提几个值得关注的点。</p><h4 id=keyword>keyword
+<a class=anchor href=#keyword>#</a></h4><p>关键字的匹配过程，和 <code>&lt;name></code> 的匹配过程统一在一起。</p><p>不过是在最终得到匹配结果时，通过 reserved 字段来判断，是否是关键字。
+之所以可以做到这一点是因为，所有 string 在全局表中都是唯一的，
+而且 <code>luaX_init</code> 已经提前设置了所有的关键字。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">422
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">423
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">424
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">425
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">426
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">427
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">428
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">429
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">430
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">431
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">432
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">433
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">434
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">435
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">436
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>else</span> <span style=color:#a6e22e>if</span> (isalpha(ls<span style=color:#f92672>-&gt;</span>current) <span style=color:#f92672>||</span> ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;_&#39;</span>) {
+  <span style=color:#75715e>/* identifier or reserved word */</span>
+  TString <span style=color:#f92672>*</span>ts;
+  <span style=color:#66d9ef>do</span> {
+    save_and_next(ls);
+  } <span style=color:#66d9ef>while</span> (isalnum(ls<span style=color:#f92672>-&gt;</span>current) <span style=color:#f92672>||</span> ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;_&#39;</span>);
+  ts <span style=color:#f92672>=</span> luaX_newstring(ls, luaZ_buffer(ls<span style=color:#f92672>-&gt;</span>buff),
+			  luaZ_bufflen(ls<span style=color:#f92672>-&gt;</span>buff));
+  <span style=color:#66d9ef>if</span> (ts<span style=color:#f92672>-&gt;</span>tsv.reserved <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>)  <span style=color:#75715e>/* reserved word? */</span>
+    <span style=color:#66d9ef>return</span> ts<span style=color:#f92672>-&gt;</span>tsv.reserved <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>+</span> FIRST_RESERVED;
+  <span style=color:#66d9ef>else</span> {
+    seminfo<span style=color:#f92672>-&gt;</span>ts <span style=color:#f92672>=</span> ts;
+    <span style=color:#66d9ef>return</span> TK_NAME;
+  }
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 8</span>:
+llex.c</div><p>这个巧妙的过程，意味着关键字的优先级高于标识符。</p><p>定义与关键字同名的变量是不可能的，因为它会被辨别为是关键字，引发语法错误。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-lua data-lang=lua><span style=color:#66d9ef>local</span> <span style=color:#66d9ef>end</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>
+</code></pre></div><h4 id=number>number
+<a class=anchor href=#number>#</a></h4><p>理想情况下，token 类型的识别在前，类型确定后，再来提取相应的内容。</p><p>但是对于 <code>&lt;number></code> 并不是这样来处理的。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">193
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">194
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">195
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">196
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">197
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">198
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">199
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">200
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">201
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">202
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">203
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">204
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">205
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">206
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">207
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/* LUA_NUMBER */</span>
+<span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>read_numeral</span> (LexState <span style=color:#f92672>*</span>ls, SemInfo <span style=color:#f92672>*</span>seminfo) {
+  lua_assert(isdigit(ls<span style=color:#f92672>-&gt;</span>current));
+  <span style=color:#66d9ef>do</span> {
+    save_and_next(ls);
+  } <span style=color:#66d9ef>while</span> (isdigit(ls<span style=color:#f92672>-&gt;</span>current) <span style=color:#f92672>||</span> ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;.&#39;</span>);
+  <span style=color:#66d9ef>if</span> (check_next(ls, <span style=color:#e6db74>&#34;Ee&#34;</span>))  <span style=color:#75715e>/* `E&#39;? */</span>
+    check_next(ls, <span style=color:#e6db74>&#34;+-&#34;</span>);  <span style=color:#75715e>/* optional exponent sign */</span>
+  <span style=color:#66d9ef>while</span> (isalnum(ls<span style=color:#f92672>-&gt;</span>current) <span style=color:#f92672>||</span> ls<span style=color:#f92672>-&gt;</span>current <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;_&#39;</span>)
+    save_and_next(ls);
+  save(ls, <span style=color:#e6db74>&#39;\0&#39;</span>);
+  buffreplace(ls, <span style=color:#e6db74>&#39;.&#39;</span>, ls<span style=color:#f92672>-&gt;</span>decpoint);  <span style=color:#75715e>/* follow locale for decimal point */</span>
+  <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>luaO_str2d(luaZ_buffer(ls<span style=color:#f92672>-&gt;</span>buff), <span style=color:#f92672>&amp;</span>seminfo<span style=color:#f92672>-&gt;</span>r))  <span style=color:#75715e>/* format error? */</span>
+    trydecpoint(ls, seminfo); <span style=color:#75715e>/* try to update decimal point separator */</span>
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 9</span>:
+llex.c</div><p>如果用 regex 来表示这个过程，则是 <code>[\.[:digit:]]+[Ee[+-]?]?[[:alnum:]_]*</code> ，
+这个模式并不能完全匹配数字。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-lua data-lang=lua><span style=color:#66d9ef>local</span> i <span style=color:#f92672>=</span> <span style=color:#ae81ff>.3.3.3</span>
+</code></pre></div><p><code>.3.3.3</code> 可以匹配相应模式，但是并不是数字。</p><p>庆幸的是 lua 依旧发现这个错误，</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>malformed number near &#39;.3.3.3&#39;
+</code></pre></div><p>lua 内部使用 <code>&lt;stdlib.h></code> 中的 strtod 来尝试进行 string 到 number 的转换。
+如果发生错误，则说明不是数字。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">525
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define lua_str2number(s,p)	strtod((s), (p))</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 10</span>:
+luaconf.h</div><p>看起来这并不合常规，因为 lua 只是粗略匹配了一段“像是 number”的内容，通过 strtod 来做最终判断，
+感觉有些取巧。</p><h4 id=long-string>long string
+<a class=anchor href=#long-string>#</a></h4><p>lua 中可以用 <code>[[]]</code> 来表示长字符串，但是存在一种变体，比较少见，
+形式如 <code>[===[ ]===]</code> 也是长字符串， <code>=</code> 的数量要完全相同。</p><p>长字符串的规则，加上 <code>--</code> 就可以扩充到长注释。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-lua data-lang=lua><span style=color:#66d9ef>local</span> long_str <span style=color:#f92672>=</span> <span style=color:#e6db74>[[
+</span><span style=color:#e6db74>this is a long string.
+</span><span style=color:#e6db74>]]</span>
+
+<span style=color:#66d9ef>local</span> another_str <span style=color:#f92672>=</span> <span style=color:#e6db74>[===[
+</span><span style=color:#e6db74>another long string.
+</span><span style=color:#e6db74>]===]</span>
+
+<span style=color:#75715e>--[[
+</span><span style=color:#75715e>comment this line
+</span><span style=color:#75715e>]]</span>
+
+<span style=color:#75715e>--[====[
+</span><span style=color:#75715e>comment this line
+</span><span style=color:#75715e>]====]</span>
+</code></pre></div><p>这一点在阅读代码时要注意。</p><h4 id=builtin>builtin
+<a class=anchor href=#builtin>#</a></h4><p><code>next, require</code> 等不是关键字，而是运行环境中提供的函数，它们的功能是在 VM 中实现的。</p><p>这一点在后续 api 章节会讲到。</p><h3 id=luax-lookahead><code>luaX_lookahead</code>
+<a class=anchor href=#luax-lookahead>#</a></h3><p>在语法分析的过程中，存在少数情况，需要下一个 token 来去除多个模式间的歧义。</p><p><code>luaX_lookahead</code> 就是在这个时候使用，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">459
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">460
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">461
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">462
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaX_lookahead</span> (LexState <span style=color:#f92672>*</span>ls) {
+  lua_assert(ls<span style=color:#f92672>-&gt;</span>lookahead.token <span style=color:#f92672>==</span> TK_EOS);
+  ls<span style=color:#f92672>-&gt;</span>lookahead.token <span style=color:#f92672>=</span> llex(ls, <span style=color:#f92672>&amp;</span>ls<span style=color:#f92672>-&gt;</span>lookahead.seminfo);
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 11</span>:
+llex.c</div><p>过程很简单，使用 <code>llex</code> 方法，将 token 存储在 LexState.lookahead 中。</p><figure><img src=lexer-lookahead.png></figure><h3 id=luax-next><code>luaX_next</code>
+<a class=anchor href=#luax-next>#</a></h3><p><code>luaX_next</code> 和 <code>luaX_lookahead</code> 相同，不过是将 token 存储在 LexState.t 中。</p><p>如果 lookahead 中存在 token，则直接拿过来使用，并重置 lookahead。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">448
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">449
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">450
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">451
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">452
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">453
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">454
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">455
+</span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">456
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaX_next</span> (LexState <span style=color:#f92672>*</span>ls) {
+  ls<span style=color:#f92672>-&gt;</span>lastline <span style=color:#f92672>=</span> ls<span style=color:#f92672>-&gt;</span>linenumber;
+  <span style=color:#66d9ef>if</span> (ls<span style=color:#f92672>-&gt;</span>lookahead.token <span style=color:#f92672>!=</span> TK_EOS) {  <span style=color:#75715e>/* is there a look-ahead token? */</span>
+    ls<span style=color:#f92672>-&gt;</span>t <span style=color:#f92672>=</span> ls<span style=color:#f92672>-&gt;</span>lookahead;  <span style=color:#75715e>/* use this one */</span>
+    ls<span style=color:#f92672>-&gt;</span>lookahead.token <span style=color:#f92672>=</span> TK_EOS;  <span style=color:#75715e>/* and discharge it */</span>
+  }
+  <span style=color:#66d9ef>else</span>
+    ls<span style=color:#f92672>-&gt;</span>t.token <span style=color:#f92672>=</span> llex(ls, <span style=color:#f92672>&amp;</span>ls<span style=color:#f92672>-&gt;</span>t.seminfo);  <span style=color:#75715e>/* read next token */</span>
+}</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 12</span>:
+llex.c</div><figure><img src=lexer-next.png></figure><figure><img src=lexer-next-next.png></figure><h2 id=a-little-lexer>a little lexer
+<a class=anchor href=#a-little-lexer>#</a></h2><p>根据对 lex 模块的理解，可以做一个简单的 lexer 分析器。</p><p>它不是一个独立的程序，而是一段 gdb 脚本，gdb 可以在 lua 在运行时进行 inspect。</p><p>在 <code>luaX_next</code> 方法加上断点，每次触发的时候，就输出相应的 token，就可以实现一个简单的 lexer 工具。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ make -s lex source<span style=color:#f92672>=</span>./test/co.lua
+</code></pre></div><p>这种做法有些许弱点，如果中途出现语法错误，过程就会中断，所以它只能分析语法分析正确的代码。</p><h2 id=practice>practice
+<a class=anchor href=#practice>#</a></h2><table><thead><tr><th>文件</th><th>建议</th></tr></thead><tbody><tr><td>lzio.h</td><td>zio 模块中实现了 zio 和 mbuffer 结构，对字符流和 buffer 进行了封装，感兴趣的读者可仔细阅读</td></tr><tr><td>lzio.c</td><td>同上</td></tr><tr><td>llex.h</td><td>仔细阅读</td></tr><tr><td>llex.c</td><td>浏览阅读，配合调试器会更轻松</td></tr></tbody></table><section class=footnotes role=doc-endnotes><hr><ol><li id=fn:1 role=doc-endnote><p>: <a href=http://lua-users.org/lists/lua-l/2005-12/msg00091.html>http://lua-users.org/lists/lua-l/2005-12/msg00091.html</a> <a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li></ol></section></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/commit/8c359ebae66c3a96c4a0c7ed6ba49ad52483055a title="最后修改者 DreamAndDead | February 23, 2021" target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/calendar.svg class=book-icon alt=Calendar>
+<span>February 23, 2021</span></a></div><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/edit/master/site/content/docs/lexer/index.md target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/edit.svg class=book-icon alt=Edit>
+<span>编辑本页</span></a></div></div></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><ul><li><a href=#lexer>lexer</a></li><li><a href=#token>Token</a><ul><li><a href=#int-token>int token</a></li><li><a href=#seminfo>Seminfo</a></li></ul></li><li><a href=#lexstate>LexState</a></li><li><a href=#method>method</a><ul><li><a href=#luax-init><code>luaX_init</code></a></li><li><a href=#llex><code>llex</code></a></li><li><a href=#luax-lookahead><code>luaX_lookahead</code></a></li><li><a href=#luax-next><code>luaX_next</code></a></li></ul></li><li><a href=#a-little-lexer>a little lexer</a></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></div></aside></main></body></html>

@@ -1,0 +1,1 @@
+if(navigator.serviceWorker){navigator.serviceWorker.register("/lua-5.1-source-guide/sw.js",{scope:"/lua-5.1-source-guide/"});}
