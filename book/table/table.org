@@ -1,7 +1,9 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
-#+TITLE: table
-#+DATE: <2020-12-30 三 11:53>
+#+hugo_bundle: table
+#+title: table
+#+date: <2020-12-30 三 11:53>
 
 初次接触 lua 的人都有困惑，
 多数动态语言都会内建 dict 和 array 的概念，而 lua 用 table 同时表示这两个概念。
@@ -159,10 +161,10 @@ digraph {
 有了上面的理解，相关的宏也就容易理解了。
 
 #+caption: ltable.h
-#+INCLUDE: ../lua-5.1.5/src/ltable.h src c -n 13 :lines "13-19"
+#+INCLUDE: ../../lua-5.1.5/src/ltable.h src c -n 13 :lines "13-19"
 
 #+caption: lobject.h
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 352 :lines "352-361"
+#+INCLUDE: ../../lua-5.1.5/src/lobject.h src c -n 352 :lines "352-361"
 
 ** main position
 
@@ -329,7 +331,7 @@ printf("%d %d\n", n.i[1], n.i[0]);
 
 根据代码中的注释，dict 部分的实现 use a mix of chained scatter table with brent's variation。
 
-#+include: ../lua-5.1.5/src/ltable.c src c -n 8 :lines "8-20"
+#+include: ../../lua-5.1.5/src/ltable.c src c -n 8 :lines "8-20"
 
 有兴趣的可以研究论文[fn:1]，这里仅从代码方面解析其实现。
 
@@ -337,7 +339,7 @@ printf("%d %d\n", n.i[1], n.i[0]);
 table 模块中提供了 =luaH_set= 实现 kv 存储。
 
 #+caption: ltable.c
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-506"
+#+INCLUDE: ../../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-506"
 
 可以观察到，其中只有 k 参数，而没有 v 参数。
 这是因为这个方法只返回参数 k 在 table 中对应 =node.i_val= 的指针，由外部调用者自行进行 v 的赋值。
@@ -633,7 +635,7 @@ digraph {
 在 set 小节明确了 node 内部组织的方法之后，get 方法就很容易理解了。
 
 #+caption: ltable.c
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
+#+INCLUDE: ../../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
 
 核心就是先计算得到 main position，再一路通过 next 向下查找，
 如果 k 匹配，就返回相应的 v；否则返回 nil。
@@ -732,9 +734,9 @@ digraph {
 不在这个范围内的 kv，依旧按照 dict 来处理，从代码中可以明确看到这一点。
 
 #+caption: ltable.c
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
+#+INCLUDE: ../../lua-5.1.5/src/ltable.c src c -n 466 :lines "466-492"
 
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 432 :lines "432-450"
+#+INCLUDE: ../../lua-5.1.5/src/ltable.c src c -n 432 :lines "432-450"
 
 ** set
 
@@ -744,7 +746,7 @@ set 的逻辑也很简单，不过其中有一点需要注意。
 则不需要 newkey 过程，直接返回相应的 array 位置即可。
 
 #+caption: ltable.c
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-518"
+#+INCLUDE: ../../lua-5.1.5/src/ltable.c src c -n 494 :lines "494-518"
 
 先调用 get 方法，得到结果 p， ~if (p != luaO_nilobject)~ 非常关键。
 
@@ -901,7 +903,7 @@ digraph {
 语言中使用的 next 是在 api 层面定义的，而底层使用的方法正是 =luaH_next= 。
 
 #+caption: ltable.c
-#+INCLUDE: ../lua-5.1.5/src/ltable.c src c -n 132 :lines "132-180"
+#+INCLUDE: ../../lua-5.1.5/src/ltable.c src c -n 132 :lines "132-180"
 
 =luaH_next= 输入的是 k，
 - 首先，通过 findindex 找到 k 在 array/node 数组中的索引，

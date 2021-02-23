@@ -1,15 +1,17 @@
-#+AUTHOR: DreamAndDead
-#+EMAIL: dreamanddead@foxmail.com
+#+author: DreamAndDead
+#+email: dreamanddead@foxmail.com
 
+#+hugo_base_dir: ~/project/lua51/site/
+#+hugo_front_matter_format: yaml
+#+hugo_auto_set_lastmod: t
+#+hugo_section: docs
 
-#+STARTUP: logdrawer inlineimages
-# #+LANGUAGE: zh_cn
-#+OPTIONS: toc:nil
-
+#+startup: logdrawer inlineimages
+#+options: toc:nil
 # don't export TODO section
-#+OPTIONS: tasks:nil
+#+options: tasks:nil
 
-#+TODO: TODO(t) DRAFT(d) | DONE(o)
+#+todo: TODO(t) DRAFT(d) | DONE(o)
 
 #+LATEX_COMPILER: xelatex
 # #+LATEX_HEADER: \usepackage{xeCJK}

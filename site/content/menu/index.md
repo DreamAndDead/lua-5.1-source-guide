@@ -4,20 +4,20 @@ headless: true
 
 - [overview]({{< relref "/docs/overview" >}})
 - basic
-  - [object]({{< relref "/docs/overview" >}})
-  - [mem]({{< relref "/docs/overview" >}})
-  - [string]({{< relref "/docs/overview" >}})
-  - [table]({{< relref "/docs/overview" >}})
+  - [object]({{< relref "/docs/object" >}})
+  - [memory]({{< relref "/docs/memory" >}})
+  - [string]({{< relref "/docs/string" >}})
+  - [table]({{< relref "/docs/table" >}})
 - compiler
-  - [lexer]({{< relref "/docs/overview" >}})
-  - [opcode]({{< relref "/docs/overview" >}})
-  - [parser]({{< relref "/docs/overview" >}})
-  - [generator]({{< relref "/docs/overview" >}})
+  - [lexer]({{< relref "/docs/lexer" >}})
+  - [opcode]({{< relref "/docs/opcode" >}})
+  - [parser]({{< relref "/docs/parser" >}})
+  - [generator]({{< relref "/docs/generator" >}})
 - vm
-  - [vm]({{< relref "/docs/overview" >}})
-  - [c api]({{< relref "/docs/overview" >}})
-  - [stdlib]({{< relref "/docs/overview" >}})
-  - [gc]({{< relref "/docs/overview" >}})
+  - [vm]({{< relref "/docs/vm" >}})
+  - [c api]({{< relref "/docs/api" >}})
+  - [stdlib]({{< relref "/docs/stdlib" >}})
+  - [gc]({{< relref "/docs/gc" >}})
 
 <br />
 

@@ -1,7 +1,9 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
-#+TITLE: opcode
-#+DATE: <2021-01-06 三 16:12>
+#+hugo_bundle: opcode
+#+title: opcode
+#+date: <2021-01-06 三 16:12>
 
 按顺序，本章应该讲解 parser 相关的内容。
 
@@ -19,12 +21,12 @@ opcode 字节码，是编译阶段的最终结果。
 所有 opcode 都是定长的，4 bytes 32 bits，单个指令用 unsigned int 表示。
 
 #+caption: llimits.h
-#+INCLUDE: ../lua-5.1.5/src/llimits.h src C -n 84 :lines "84-89"
+#+INCLUDE: ../../lua-5.1.5/src/llimits.h src C -n 84 :lines "84-89"
 
 指令内部可分为类型和参数两部分，根据参数的安排方式，所有指令可分为 3 类操作模式。
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 31 :lines "31-32"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 31 :lines "31-32"
 
 - iABC，接受 A B C 三个参数
 - iABx，接受 A Bx 两个参数
@@ -106,7 +108,7 @@ digraph {
 - sBx 和 Bx 占据的空间相同，不过解析为有符号数
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src C -n 34 :lines "34-49"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src C -n 34 :lines "34-49"
 
 * param
 
@@ -125,8 +127,8 @@ sBx 和 Bx 占据同一空间，但是解析为有符号数。
 | sBx   |        18 | -(2^17 - 1) -> 2^17 - 1 |
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 65 :lines "65-68"
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 57 :lines "57-59"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 65 :lines "65-68"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 57 :lines "57-59"
 
 lua 并不用反码补码的逻辑来理解 sBx，而只是将同样字节表示的 Bx 减去 offset 得到 sBx。
 
@@ -152,7 +154,7 @@ offset 就是 sBx 的最大值，所以 =1111 1..1 1111= 对于 sBx 是没有意
 指令类型共有 38 种，用 enum OpCode 标识，
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 146 :lines "146-212"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 146 :lines "146-212"
 
 注释描述了相应类型的指令所接受的参数和功能。
 
@@ -480,7 +482,7 @@ A B C 三个参数，长度分别为 8 9 9 bits。
 这样，相应的宏也就不难理解。
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 114 :lines "114-131"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 114 :lines "114-131"
 
 =Gbl= 是全局表，Stack 和 Kst 都以数组来实现，所以只需要整数索引，而 Gbl 是真正的表，
 用 table 来实现，这意味着索引可以是除 nil 外的任意值。
@@ -593,7 +595,7 @@ digraph {
 ** move
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 154 :lines "154-155"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 154 :lines "154-155"
 
 move 很容易理解，直接进行寄存器间的赋值。
 
@@ -662,7 +664,7 @@ digraph {
 ** getglobal
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 160 :lines "160-161"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 160 :lines "160-161"
 
 Gbl 因为不使用整数索引，所以在引用其中元素时，需要 Kst 作间接的引用。
 
@@ -758,7 +760,7 @@ digraph {
 ** add
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c -n 171 :lines "171-172"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c -n 171 :lines "171-172"
 
 add 是二元运算，其中使用 RK 来引用。
 
@@ -839,7 +841,7 @@ ChunkSpy 的作者对于 opcode 有更深刻的理解，在其发布 ChunkSpy �
 opcode 模块除了定义指令的类型和格式，同时也记录了指令的其它信息，用于辅助代码生成。
 
 #+caption: lopcodes.c
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.c src C -n 59 :lines "59-102"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.c src C -n 59 :lines "59-102"
 
 这些信息用 1 byte 8 bits 来记录，其中
 - T，表示指令是否有 test 操作
@@ -852,12 +854,12 @@ opcode 模块除了定义指令的类型和格式，同时也记录了指令的�
   - OpArgK，作为常量索引/RK索引
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c 236 :lines "236-251"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c 236 :lines "236-251"
 
 相应地，相关的宏就不难理解。
 
 #+caption: lopcodes.h
-#+INCLUDE: ../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
+#+INCLUDE: ../../lua-5.1.5/src/lopcodes.h src c :lines "254-259"
 
 * practice
 

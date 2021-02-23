@@ -1,5 +1,7 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
+#+hugo_bundle: stdlib
 #+TITLE: std lib
 #+DATE: <2021-01-18 一 16:08>
 
@@ -14,13 +16,13 @@
 标准库可以说是多种功能函数的集合，在被使用之前，必须先被注册。
 
 #+caption: lualib.h
-#+include: ../lua-5.1.5/src/lualib.h src C -n 18 :lines "18-45"
+#+include: ../../lua-5.1.5/src/lualib.h src C -n 18 :lines "18-45"
 
 #+caption: lauxlib.h
-#+include: ../lua-5.1.5/src/lauxlib.h src C -n 35 :lines "35-39"
+#+include: ../../lua-5.1.5/src/lauxlib.h src C -n 35 :lines "35-39"
 
 #+caption: linit.c
-#+include: ../lua-5.1.5/src/linit.c src C -n 17 :lines "17-38"
+#+include: ../../lua-5.1.5/src/linit.c src C -n 17 :lines "17-38"
 
 各个模块实现了各自的功能，分别注册到不同的模块名中。
 
@@ -38,12 +40,12 @@
 同时每个模块各自实现注册方法，由 =luaL_openlibs= 统一调用。
 
 #+caption: lauxlib.c
-#+include: ../lua-5.1.5/src/lauxlib.c src C -n 229 :lines "229-269"
+#+include: ../../lua-5.1.5/src/lauxlib.c src C -n 229 :lines "229-269"
 
 首先进行注册的是全局方法和 coroutine 模块，
 
 #+caption: lbaselib.c
-#+include: ../lua-5.1.5/src/lbaselib.c src C -n 626 :lines "626-653"
+#+include: ../../lua-5.1.5/src/lbaselib.c src C -n 626 :lines "626-653"
 
 line 628 629 在全局表中添加 _G，指向全局表自身。
 
@@ -101,7 +103,7 @@ $ make -s registry
 base 模块注册了所有基础全局函数，
 
 #+caption: lbaselib.c
-#+include: ../lua-5.1.5/src/lbaselib.c src C -n 447 :lines "447-474"
+#+include: ../../lua-5.1.5/src/lbaselib.c src C -n 447 :lines "447-474"
 
 其中每个函数都对应一个 C 函数实现，函数使用 api 接口与 Lua 进行数据交互，
 然后将函数注册到 Lua 的全局表中，在运行 Lua 代码时就可以平滑调用。
@@ -116,7 +118,7 @@ base 模块注册了所有基础全局函数，
 coroutine 模块一并在 baselib 中注册，
 
 #+caption: lbaselib.c
-#+include: ../lua-5.1.5/src/lbaselib.c src C -n 605 :lines "605-614"
+#+include: ../../lua-5.1.5/src/lbaselib.c src C -n 605 :lines "605-614"
 
 其中的方法，正是在 lua 代码中使用的 coroutine.* 方法。
 
@@ -181,7 +183,7 @@ lua 内部默认存在“主线程” main thread，就是多次出现在代码�
 主线程可通过 resume 重新进入协程的中断点，继续执行。
 
 #+caption: lbaselib.c
-#+include: ../lua-5.1.5/src/lbaselib.c src C -n 576 :lines "576-584"
+#+include: ../../lua-5.1.5/src/lbaselib.c src C -n 576 :lines "576-584"
 
 #+begin_src ditaa :file stdlib-create.png :cmdline -E
 
@@ -215,7 +217,7 @@ lua 内部通过 coroutine.create(f) 来创建协程，在主线程 L 的栈底�
 =lua_newthead= 最终调用了 =luaE_newthread= ，
 
 #+caption: lstate.c
-#+include: ../lua-5.1.5/src/lstate.c src C -n 119 :lines "119-132"
+#+include: ../../lua-5.1.5/src/lstate.c src C -n 119 :lines "119-132"
 
 在 line 124 表明，协程是共享全局表的，即在协程中修改全局变量是相互影响的。
 
@@ -224,14 +226,14 @@ lua 内部通过 coroutine.create(f) 来创建协程，在主线程 L 的栈底�
 resume 函数开始执行/恢复协程的运行，第一个参数为协程本身，后续参数为传递入协程的参数，
 
 #+caption: lbaselib.c
-#+include: ../lua-5.1.5/src/lbaselib.c src C -n 518 :lines "518-559"
+#+include: ../../lua-5.1.5/src/lbaselib.c src C -n 518 :lines "518-559"
 
 line 544 先找到协程，
 line 526 再通过 xmove 将参数传递到相应的栈中，
 line 528 恢复其执行，
 
 #+caption: ldo.c
-#+include: ../lua-5.1.5/src/ldo.c src C -n 418 :lines "418-442"
+#+include: ../../lua-5.1.5/src/ldo.c src C -n 418 :lines "418-442"
 
 执行协程之后，最终返回其状态值。
 
@@ -240,10 +242,10 @@ line 529 判断状态为 yield 时，回收其栈上的返回值，通过 xmove 
 与之相配合的，yield 函数则直接准备参数数量，重置 =lua_State= 的状态为 yield 即可。
 
 #+caption: lbaselib.c
-#+include: ../lua-5.1.5/src/lbaselib.c src C -n 593 :lines "593-596"
+#+include: ../../lua-5.1.5/src/lbaselib.c src C -n 593 :lines "593-596"
 
 #+caption: ldo.c
-#+include: ../lua-5.1.5/src/ldo.c src C -n 444 :lines "444-454"
+#+include: ../../lua-5.1.5/src/ldo.c src C -n 444 :lines "444-454"
 
 比如如下示例代码，
 
@@ -378,12 +380,12 @@ print(coroutine.resume(co))
 在 lua.h 中，定义线程状态有如下几种，
 
 #+caption: lua.h
-#+include: ../lua-5.1.5/src/lua.h src C -n 42 :lines "42-48"
+#+include: ../../lua-5.1.5/src/lua.h src C -n 42 :lines "42-48"
 
 在线程运行没有出错的情况下，对协程状态的检测会更加细致，
 
 #+caption: lbaselib.c
-#+include: ../lua-5.1.5/src/lbaselib.c src C -n 482 :lines "482-516"
+#+include: ../../lua-5.1.5/src/lbaselib.c src C -n 482 :lines "482-516"
 
 在调用 =luaB_costatus= 时要明确一点，正在调用的线程，正是拥有控制权而正在运行的线程。
 
@@ -466,7 +468,7 @@ debug 库内部的实现可以印证之前所有的描述，这一章就来了�
  debug 库提供了如下函数，
 
  #+caption: ldblib.c
- #+include: ../lua-5.1.5/src/ldblib.c src C -n 375 :lines "375-392"
+ #+include: ../../lua-5.1.5/src/ldblib.c src C -n 375 :lines "375-392"
 
  getinfo 用于运行时自省，可以得到很多运行时的信息。
 
@@ -479,10 +481,10 @@ debug 库内部的实现可以印证之前所有的描述，这一章就来了�
  在实现中，
 
  #+caption: ldblib.c
- #+include: ../lua-5.1.5/src/ldblib.c src C -n 76 :lines "76-86"
+ #+include: ../../lua-5.1.5/src/ldblib.c src C -n 76 :lines "76-86"
 
  #+caption: ldblib.c
- #+include: ../lua-5.1.5/src/ldblib.c src C -n 99 :lines "99-142"
+ #+include: ../../lua-5.1.5/src/ldblib.c src C -n 99 :lines "99-142"
 
  如果没有 thread，则从当前线程获取信息；如果没有 what，默认为 "flnSu"。
 
@@ -492,12 +494,12 @@ debug 库内部的实现可以印证之前所有的描述，这一章就来了�
  不同的缩写对应不同的字段。
 
  #+caption: lua.h
- #+include: ../lua-5.1.5/src/lua.h src C -n 346 :lines "346-360"
+ #+include: ../../lua-5.1.5/src/lua.h src C -n 346 :lines "346-360"
 
  在 =lua_getinfo= 内部，就是分别获取不同信息再整合到 =lua_Debug= 的过程。
 
  #+caption: ldebug.c
- #+include: ../lua-5.1.5/src/ldebug.c src C -n 193 :lines "193-260"
+ #+include: ../../lua-5.1.5/src/ldebug.c src C -n 193 :lines "193-260"
 
  结合官方文档[fn:3]，不难理解 getinfo 的行为。
 
@@ -506,10 +508,10 @@ debug 库内部的实现可以印证之前所有的描述，这一章就来了�
  getlocal 方法，最终深入到 func 模块中的 =luaF_getlocalname= 函数，
 
  #+caption: ldebug.c
- #+include: ../lua-5.1.5/src/ldebug.c src C -n 112 :lines "112-136"
+ #+include: ../../lua-5.1.5/src/ldebug.c src C -n 112 :lines "112-136"
 
  #+caption: lfunc.c
- #+include: ../lua-5.1.5/src/lfunc.c src C -n 159 :lines "159-174"
+ #+include: ../../lua-5.1.5/src/lfunc.c src C -n 159 :lines "159-174"
 
  其中正是通过 =f->locvars= 来进行寻找，这和 generator 章节是相同的。
 
@@ -518,7 +520,7 @@ debug 库内部的实现可以印证之前所有的描述，这一章就来了�
  getupval 方法，最终调用 api 模块中的 =lua_getupvalue= 函数，
 
  #+caption: lapi.c
- #+include: ../lua-5.1.5/src/lapi.c src C -n 1039 :lines "1039-1069"
+ #+include: ../../lua-5.1.5/src/lapi.c src C -n 1039 :lines "1039-1069"
 
  其中正是通过 =Closure.upvalues= 来寻找 upval 的。
 
@@ -530,25 +532,25 @@ debug 库内部的实现可以印证之前所有的描述，这一章就来了�
 
 
  #+caption: lua.h
- #+include: ../lua-5.1.5/src/lua.h src C -n 308 :lines "308-325"
+ #+include: ../../lua-5.1.5/src/lua.h src C -n 308 :lines "308-325"
 
  sethook 先解析 mask 和 count，再调用 =lua_sethook= 设置 hook。
 
  #+caption: ldblib.c
- #+include: ../lua-5.1.5/src/ldblib.c src C -n 225 :lines "225-233"
+ #+include: ../../lua-5.1.5/src/ldblib.c src C -n 225 :lines "225-233"
 
  #+caption: ldblib.c
- #+include: ../lua-5.1.5/src/ldblib.c src C -n 258 :lines "258-280"
+ #+include: ../../lua-5.1.5/src/ldblib.c src C -n 258 :lines "258-280"
 
  #+caption: ldebug.c
- #+include: ../lua-5.1.5/src/ldebug.c src C -n 53 :lines "53-67"
+ #+include: ../../lua-5.1.5/src/ldebug.c src C -n 53 :lines "53-67"
 
  其中将所有 hook 信息存储到当前 =lua_State= 中。
 
  hook 调用的时间点散落在 lvm.c 和 ldo.c 中，全部通过 =luaD_callhook= 来调用。
 
  #+caption: ldo.c
- #+include: ../lua-5.1.5/src/ldo.c src C -n 181 :lines "181-206"
+ #+include: ../../lua-5.1.5/src/ldo.c src C -n 181 :lines "181-206"
 
  可能通过搜索 =luaD_callhook= 的调用位置，确认不同的 mask 对应的调用时机，
  这一点和 vm 的运行相关，细节就不再赘述。

@@ -1,7 +1,9 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
-#+TITLE: parser
-#+DATE: <2021-01-07 四 15:46>
+#+hugo_bundle: parser
+#+title: parser
+#+date: <2021-01-07 四 15:46>
 
 在 lexer 章节提到，lua 为了效率，将语法分析到代码生成的所有功能封装在 parser 模块中。
 在过程中，没有 AST IR 等中间产物，直接从 token 到 opcode，一步到位。
@@ -144,7 +146,7 @@ parser 模块使用 LL(1) 递归下降法进行语法分析。
 每个非终结符都对应一个同名函数来实现，如 =chunk() statement()= 等。
 
 #+caption: lparser.c
-#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 1271 :lines "1271-1338"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.c src c -n 1271 :lines "1271-1338"
 
 这些函数都有一个共性，全部都接收参数 =LexState *ls= ，从其得到 token。
 部分函数接收参数 =expdesc* v= ，表示当前过程之后，得到的表达式结果。
@@ -152,7 +154,7 @@ parser 模块使用 LL(1) 递归下降法进行语法分析。
 =expdesc= 结构非常关键，在代码生成章节再详细描述。
 
 #+caption: lparser.h
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c -n 15 :lines "15-46"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.h src c -n 15 :lines "15-46"
 
 如此对照 EBNF 的语法描述，就可以方便地对语法分析的过程有大体的了解。
 
@@ -207,7 +209,7 @@ digraph {
 =luaY_parser= 是 parser 模块的入口，
 
 #+caption: lparser.c
-#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 383 :lines "383-399"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.c src c -n 383 :lines "383-399"
 
 Line 391 调用 chunk，开始递归向下的分析。
 

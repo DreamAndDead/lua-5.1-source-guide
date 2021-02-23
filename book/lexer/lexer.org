@@ -1,7 +1,9 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
-#+TITLE: lexer
-#+DATE: <2021-01-05 二 16:40>
+#+hugo_bundle: lexer
+#+title: lexer
+#+date: <2021-01-05 二 16:40>
 
 之前的章节，关注的是内部的一些实现，为后续打基础。
 
@@ -138,19 +140,19 @@ digraph {
 lua 内部用 struct 表示 token，
 
 #+caption: llex.h
-#+INCLUDE: ../lua-5.1.5/src/llex.h src c -n 43 :lines "43-53"
+#+INCLUDE: ../../lua-5.1.5/src/llex.h src c -n 43 :lines "43-53"
 
 ** int token
    
 token 定义为 int，表示 Token 的类型，所有类型定义在 enum 结构中。
 
 #+caption: llex.h
-#+INCLUDE: ../lua-5.1.5/src/llex.h src c -n 14 :lines "14-34"
+#+INCLUDE: ../../lua-5.1.5/src/llex.h src c -n 14 :lines "14-34"
 
 每个 token 类型都有对应的文本表示，
 
 #+caption: llex.c
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 36 :lines "36-46"
+#+INCLUDE: ../../lua-5.1.5/src/llex.c src c -n 36 :lines "36-46"
 
 - =and= 到 =while= 之间是所有关键字
 - =..= 到 =~== 之间是二元运算符
@@ -181,7 +183,7 @@ lex 是一个过程，过程中需要记录当下所处的状态，比如文件�
 整个 lex 过程围绕 LexState 展开，这样说毫不为过，清楚其有非常大的助益。
 
 #+caption: llex.h
-#+INCLUDE: ../lua-5.1.5/src/llex.h src C -n 55 :lines "55-68"
+#+INCLUDE: ../../lua-5.1.5/src/llex.h src C -n 55 :lines "55-68"
 
 将其中所有字段分为 3 部分
 
@@ -287,10 +289,10 @@ digraph {
 前面在 string 章节，关于其中 reserved 字段的作用没有讲述，刚好在 lexer 章节补上。
 
 #+caption: llex.h
-#+INCLUDE: ../lua-5.1.5/src/llex.h src c -n 35 :lines "35-37"
+#+INCLUDE: ../../lua-5.1.5/src/llex.h src c -n 35 :lines "35-37"
 
 #+caption: llex.c
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 64 :lines "64-73"
+#+INCLUDE: ../../lua-5.1.5/src/llex.c src c -n 64 :lines "64-73"
 
 之前提到，string 在 lua 内部只保存一份，是不可修改的。
 
@@ -321,7 +323,7 @@ lex 过程看似随意，底层其实有充足的数学理论支撑， =regex NF
 lexer 内部的核心方法就是 llex。
 
 #+caption: llex.c
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 334 :lines "334-446"
+#+INCLUDE: ../../lua-5.1.5/src/llex.c src c -n 334 :lines "334-446"
 
 它的功能非常纯粹，从字符流的开始，进行模式匹配，找到相应的 token，并返回相应的类型和内容。
 
@@ -576,7 +578,7 @@ llex 的具体过程不再赘述，读者可以打开调试器，用一些代码
 而且 =luaX_init= 已经提前设置了所有的关键字。
 
 #+caption: llex.c
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 422 :lines "422-437"
+#+INCLUDE: ../../lua-5.1.5/src/llex.c src c -n 422 :lines "422-437"
 
 这个巧妙的过程，意味着关键字的优先级高于标识符。
 
@@ -611,7 +613,7 @@ local end = 1
 但是对于 =<number>= 并不是这样来处理的。
 
 #+caption: llex.c
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 193 :lines "193-208"
+#+INCLUDE: ../../lua-5.1.5/src/llex.c src c -n 193 :lines "193-208"
 
 如果用 regex 来表示这个过程，则是 =[\.[:digit:]]+[Ee[+-]?]?[[:alnum:]_]*= ，
 这个模式并不能完全匹配数字。
@@ -632,7 +634,7 @@ lua 内部使用 =<stdlib.h>= 中的 strtod 来尝试进行 string 到 number �
 如果发生错误，则说明不是数字。
 
 #+caption: luaconf.h
-#+INCLUDE: ../lua-5.1.5/src/luaconf.h src c -n 525 :lines "525-526"
+#+INCLUDE: ../../lua-5.1.5/src/luaconf.h src c -n 525 :lines "525-526"
 
 看起来这并不合常规，因为 lua 只是粗略匹配了一段“像是 number”的内容，通过 strtod 来做最终判断，
 感觉有些取巧。
@@ -677,7 +679,7 @@ comment this line
 =luaX_lookahead= 就是在这个时候使用，
 
 #+caption: llex.c
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 459 :lines "459-463"
+#+INCLUDE: ../../lua-5.1.5/src/llex.c src c -n 459 :lines "459-463"
 
 过程很简单，使用 =llex= 方法，将 token 存储在 LexState.lookahead 中。
 
@@ -767,7 +769,7 @@ digraph {
 如果 lookahead 中存在 token，则直接拿过来使用，并重置 lookahead。
 
 #+caption: llex.c
-#+INCLUDE: ../lua-5.1.5/src/llex.c src c -n 448 :lines "448-457"
+#+INCLUDE: ../../lua-5.1.5/src/llex.c src c -n 448 :lines "448-457"
 
 #+begin_src dot :file lexer-next.png
 digraph {

@@ -1,5 +1,7 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
+#+hugo_bundle: api
 #+TITLE: c api
 #+DATE: <2021-01-15 五 17:48>
 
@@ -51,7 +53,7 @@ api 在外部使用，可以将 Lua 作为 C lib 来使用；
 实际上，几乎全部 api 都是对栈的操作。
 
 #+caption: lua.h
-#+include: ../lua-5.1.5/src/lua.h src C -n 107 :lines "107-216"
+#+include: ../../lua-5.1.5/src/lua.h src C -n 107 :lines "107-216"
 
 在官方文档[fn:1]中，有对所有 api 功能的绝佳描述。
 
@@ -65,7 +67,7 @@ api 在外部使用，可以将 Lua 作为 C lib 来使用；
 api 内部使用一种自定义的映射关系，将整数映射到元素的栈位置。
 
 #+caption: lapi.c
-#+include: ../lua-5.1.5/src/lapi.c src C -n 49 :lines "49-77"
+#+include: ../../lua-5.1.5/src/lapi.c src C -n 49 :lines "49-77"
 
 #+begin_src dot :file api-index2addr.png
 digraph {
@@ -170,7 +172,7 @@ digraph {
 在上面的规则之外，api 内部使用几个特别定义的索引值，
 
 #+caption: lua.h
-#+include: ../lua-5.1.5/src/lua.h src C -n 33 :lines "33-40"
+#+include: ../../lua-5.1.5/src/lua.h src C -n 33 :lines "33-40"
 
 - =LUA_REGISTRYINDEX= 索引全局状态的 =l_registry=
 - =LUA_ENVIRONINDEX= 索引当前 closure 的环境
@@ -188,7 +190,7 @@ LClosure 即从 Lua 代码编译得到的函数，而 CClosure 是通过 C api �
 首先，CClosure 在 C 语言中需要定义为 =lua_CFunction= 类型，
 
 #+caption: lua.h
-#+include: ../lua-5.1.5/src/lua.h src C -n 52 :lines "52-53"
+#+include: ../../lua-5.1.5/src/lua.h src C -n 52 :lines "52-53"
 
 其中，在调用时，从 base 到 top 都是 CClosure 的参数，
 

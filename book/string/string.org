@@ -1,7 +1,9 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
-#+TITLE: string
-#+DATE: <2020-12-29 二 11:57>
+#+hugo_bundle: string
+#+title: string
+#+date: <2020-12-29 二 11:57>
 
 string 是多数编程语言内建的类型，lua 也不例外。
 
@@ -17,7 +19,7 @@ lua 代码中使用字符串是非常方便的，呼之即来，使用后也可�
 在 [[file:object.org][object]] 章节中已经提到，string 类型在 GCObject 中用 TString ts 表示。
 
 #+caption: lobject.h
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
+#+INCLUDE: ../../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
 
 TString 看上去是 union 结构，但是 dummy 只用来做对齐，并不用作实际用途，
 所以考虑这一点，TString 本质还是一个 struct 结构。
@@ -81,12 +83,12 @@ meta 部分，用新增的 3 个字段来记录，
 明确了这种结构之后，相关的宏就很容易理解。
 
 #+caption: lobject.h
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 210 :lines "210-211"
+#+INCLUDE: ../../lua-5.1.5/src/lobject.h src c -n 210 :lines "210-211"
 
 使用 ts + 1 来索引到 data 的位置，并取到 data 数据。
 
 #+caption: lstring.h
-#+INCLUDE: ../lua-5.1.5/src/lstring.h src c -n 16 :lines "16-17"
+#+INCLUDE: ../../lua-5.1.5/src/lstring.h src c -n 16 :lines "16-17"
 
 TString 的空间大小就是 meta + data 的大小，+1 是因为要计入末尾的 '\0'。
 
@@ -139,8 +141,8 @@ digraph {
 实际上，所有新建的 TString 都集合存储在 =global_State= 中的 stringtable。
 
 #+caption: lstate.h
-#+INCLUDE: ../lua-5.1.5/src/lstate.h src c -n 65 :lines "65-70"
-#+INCLUDE: ../lua-5.1.5/src/lstate.h src c -n 38 :lines "38-43"
+#+INCLUDE: ../../lua-5.1.5/src/lstate.h src c -n 65 :lines "65-70"
+#+INCLUDE: ../../lua-5.1.5/src/lstate.h src c -n 38 :lines "38-43"
 
 stringtable 就是教科书式的 hash table 实现。
 - hash，元素为 =GCObject *= 的桶数组
@@ -310,7 +312,7 @@ static TString *newlstr (lua_State *L, const char *str, size_t l,
 理解了上述方法，余下的两个宏自然也容易理解
 
 #+caption: lstring.h
-#+INCLUDE: ../lua-5.1.5/src/lstring.h src c -n 20 :lines "20-23"
+#+INCLUDE: ../../lua-5.1.5/src/lstring.h src c -n 20 :lines "20-23"
 
 两者的区别在于 =luaS_literal= 只能接受字面量参数。
 因为如果 =sizeof(s)= 中的 s 是 =char *= ，得到的是指针类型的长度，而不是字符串的长度。
@@ -326,10 +328,10 @@ resize 方法的作用是用于动态调整 hash table 中桶的数量，
 - 当元素数量小于 1/4 桶的个数，则 2 倍收缩
 
 #+caption: lstring.c
-#+INCLUDE: ../lua-5.1.5/src/lstring.c src c -n 69 :lines "69-71"
+#+INCLUDE: ../../lua-5.1.5/src/lstring.c src c -n 69 :lines "69-71"
 
 #+caption: lgc.c
-#+INCLUDE: ../lua-5.1.5/src/lgc.c src c -n 433 :lines "433-437"
+#+INCLUDE: ../../lua-5.1.5/src/lgc.c src c -n 433 :lines "433-437"
 
 * practice
 

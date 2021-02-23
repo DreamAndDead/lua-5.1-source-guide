@@ -1,8 +1,9 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
-#+TITLE: memory
-#+DATE: <2020-12-23 三 11:59>
-
+#+hugo_bundle: memory
+#+title: memory
+#+date: <2020-12-23 三 11:59>
 
 内存管理对所有程序都很关键，对于动态语言更是如此。
 
@@ -24,12 +25,12 @@ lua 是单线程程序，即使在内部实现了协程，但内存还是统一�
 lua 内部将其简化为 1 个 api，定义原型为 =lua_Alloc=
 
 #+CAPTION: lua.h
-#+INCLUDE: ../lua-5.1.5/src/lua.h src c -n 63 :lines "63-67"
+#+INCLUDE: ../../lua-5.1.5/src/lua.h src c -n 63 :lines "63-67"
 
 这是一个函数指针，规定其行为需遵从如下约定
 
 #+CAPTION: lmem.c
-#+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 23 :lines "23-40"
+#+INCLUDE: ../../lua-5.1.5/src/lmem.c src c -n 23 :lines "23-40"
 
 简单的说，就是根据参数的不同，将 3 个基础 api 的功能用 1 个 api 来表示
 - malloc， ~frealloc(ud, NULL, 0, ns)~ ，分配大小为 ns 的内存，返回头地址
@@ -39,7 +40,7 @@ lua 内部将其简化为 1 个 api，定义原型为 =lua_Alloc=
 lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看到它是非常纯粹的
 
 #+caption: lauxlib.c
-#+INCLUDE: ../lua-5.1.5/src/lauxlib.c src c -n 627 :lines "627-637"
+#+INCLUDE: ../../lua-5.1.5/src/lauxlib.c src c -n 627 :lines "627-637"
 
 ** about global state
 
@@ -89,7 +90,7 @@ typedef struct global_State {
 使用户自定义内存管理函数。
 
 #+caption: lapi.c
-#+INCLUDE: ../lua-5.1.5/src/lapi.c src c -n 1007 :lines "1007-1023"
+#+INCLUDE: ../../lua-5.1.5/src/lapi.c src c -n 1007 :lines "1007-1023"
 
 * generic api
 
@@ -133,7 +134,7 @@ lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要�
 对核心 api 进行了封装，检测函数错误，以及计算 totalbytes，为其它方法提供了基础。
 
 #+caption: lmem.c
-#+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 73 :lines "73-86"
+#+INCLUDE: ../../lua-5.1.5/src/lmem.c src c -n 73 :lines "73-86"
 
 ** =luaM_rellocv=
 
@@ -145,7 +146,7 @@ lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要�
 - e -> elem size
 
 #+caption: lmem.h
-#+INCLUDE: ../lua-5.1.5/src/lmem.h src c -n 19 :lines "19-23"
+#+INCLUDE: ../../lua-5.1.5/src/lmem.h src c -n 19 :lines "19-23"
 
 可以看出，这个宏在 =luaM_realloc_= 的基础上，方便对多元素数组进行内存分配，省去重复手动计算内存大小的困扰。
 
@@ -159,7 +160,7 @@ lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要�
 最小不能小于 4， 最大不能超过 limit，按 2 倍速度进行内存 grow，适用于管理 *类 vector 结构* 。
 
 #+caption: lmem.c
-#+INCLUDE: ../lua-5.1.5/src/lmem.c src c -n 46 :lines "46-64"
+#+INCLUDE: ../../lua-5.1.5/src/lmem.c src c -n 46 :lines "46-64"
 
 * practice
 

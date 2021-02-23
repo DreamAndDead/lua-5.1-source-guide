@@ -1,5 +1,7 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
+#+hugo_bundle: gc
 #+TITLE: gc
 #+DATE: <2021-01-19 二 15:16>
 
@@ -324,12 +326,12 @@ digraph {
 回忆 object 章节，
 
 #+caption: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src C -n 39 :lines "39-44"
+#+include: ../../lua-5.1.5/src/lobject.h src C -n 39 :lines "39-44"
 
 每一个 GCObject 都有共同的 CommonHeader 字段，其中 marked 就是用来标识对象在 gc 过程中的状态。
 
 #+caption: lgc.h
-#+include: ../lua-5.1.5/src/lgc.h src C -n 41 :lines "41-62"
+#+include: ../../lua-5.1.5/src/lgc.h src C -n 41 :lines "41-62"
 
 #+begin_src dot :file gc-bit-mark.png
 digraph {
@@ -357,7 +359,7 @@ marked 字节中，前 3 位标识了颜色，任意时刻最多只有 1 位为 
 Lua 内部的 gc 过程分为如下几个状态，
 
 #+caption: lgc.h
-#+include: ../lua-5.1.5/src/lgc.h src C -n 14 :lines "14-22"
+#+include: ../../lua-5.1.5/src/lgc.h src C -n 14 :lines "14-22"
 
 不同状态间执行不同阶段的 gc 操作，
 
@@ -384,20 +386,20 @@ Lua 内部通过 =g->gcstate= 来记录当前的状态。
 gc 模块内部通过 =luaC_step= 来推动整个 gc 过程，
 
 #+caption: lgc.c
-#+include: ../lua-5.1.5/src/lgc.c src C -n 610 :lines "610-633"
+#+include: ../../lua-5.1.5/src/lgc.c src C -n 610 :lines "610-633"
 
 其中调用 singlestep 来进行每个 phase 操作，其中统计处理的对象空间大小的和，
 达到阈值就结束此次增量 gc 过程。
 
 #+caption: lgc.c
-#+include: ../lua-5.1.5/src/lgc.c src C -n 556 :lines "556-608"
+#+include: ../../lua-5.1.5/src/lgc.c src C -n 556 :lines "556-608"
   
 ** push
 
 push 阶段从 root 开始，
 
 #+caption: lgc.c
-#+include: ../lua-5.1.5/src/lgc.c src C -n 500 :lines "500-513"
+#+include: ../../lua-5.1.5/src/lgc.c src C -n 500 :lines "500-513"
    
 从 markroot 可以看出，gc 中的 root 从 mainthread registry globalState 开始。
 
@@ -406,7 +408,7 @@ push 阶段从 root 开始，
 pop 阶段的主要入口在 propagatemark，
 
 #+caption: lgc.c
-#+include: ../lua-5.1.5/src/lgc.c src C -n 273 :lines "273-321"
+#+include: ../../lua-5.1.5/src/lgc.c src C -n 273 :lines "273-321"
 
 其中针对不同的对象类型，进行不同的处理。
 
@@ -415,19 +417,19 @@ pop 阶段的主要入口在 propagatemark，
 sweep 阶段通过 sweeplist 遍历并回收白色对象，
 
 #+caption: lgc.c
-#+include: ../lua-5.1.5/src/lgc.c src C -n 404 :lines "404-429"
+#+include: ../../lua-5.1.5/src/lgc.c src C -n 404 :lines "404-429"
 
 最终通过 freeobj 回收相应内存空间，
 
 #+caption: lgc.c
-#+include: ../lua-5.1.5/src/lgc.c src C -n 378 :lines "378-401"
+#+include: ../../lua-5.1.5/src/lgc.c src C -n 378 :lines "378-401"
 
 * barrier
 
 =luaC_barrierf= 和 =luaC_barrierback= 提供了 forward barrier 和 backward barrier 的实现。
 
 #+caption: lgc.c
-#+include: ../lua-5.1.5/src/lgc.c src C -n 661 :lines "661-683"
+#+include: ../../lua-5.1.5/src/lgc.c src C -n 661 :lines "661-683"
 
 在 Lua 内部，只有 table 对象使用 backward barrier，因为其作为容器，
 引用其它可变动的对象比较多，置为灰色就不用一直触发写屏障，提高效率。

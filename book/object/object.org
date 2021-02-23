@@ -1,7 +1,9 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
-#+TITLE: object
-#+DATE: <2020-12-23 三 11:59>
+#+hugo_bundle: object
+#+title: object
+#+date: <2020-12-23 三 11:59>
 
 lua 是一种动态类型语言，类型不存在于变量中，而存在于值本身。
 
@@ -81,7 +83,7 @@ printf("sizeof(void*) = %d\n", sizeof(void*));
 在 lua 内部，用 TValue（tagged value）结构表示值的概念。
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 67 :lines "67-76"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 67 :lines "67-76"
 
 tt 表示值的类型，value 表示值的数据。
 明显地，类型是值的一部分。
@@ -104,14 +106,14 @@ Box val = Box((70, 70), (120, 40), "Value value");
 在 TValue 中，类型 tt 用 int 来标识，可以在代码中看到所有基础类型的宏定义
 
 #+CAPTION: lua.h
-#+include: ../lua-5.1.5/src/lua.h src c -n 69 :lines "69-83"
+#+include: ../../lua-5.1.5/src/lua.h src c -n 69 :lines "69-83"
 
 完全对应 lua 中的 8 种类型。
 
 同时定义了相应的宏，方便检测值的类型。
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 78 :lines "78-91"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 78 :lines "78-91"
 
 细心如你，一定发现多出了一种 lightuserdata 类型。
 这是由 userdata 细分出来的一种类型，目前先不做细致的解释，
@@ -122,7 +124,7 @@ Box val = Box((70, 70), (120, 40), "Value value");
 TValue 中，数据 value 用 union Value 结构来表示，有效利用内存空间。
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 56 :lines "56-65"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 56 :lines "56-65"
 
 不同类型的数据使用不同的键值来存取。
 
@@ -155,10 +157,10 @@ nil 是最简单的值，表示没有值。
 由于只表示一个含义，故不需要 value，只用 tt 记录类型即可。
 
 #+CAPTION: lobject.c
-#+include: ../lua-5.1.5/src/lobject.c src c -n 27 :lines "27-28"
+#+include: ../../lua-5.1.5/src/lobject.c src c -n 27 :lines "27-28"
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 363 :lines "363-366"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 363 :lines "363-366"
 
 可以看出，nil 值在内部是一个单例，所有使用 nil 的地方，都通过 ~luaO_nilobject~ 来引用。
 
@@ -227,10 +229,10 @@ draw_tvalue("void* p = <address>", "int tt = LUA\_TLIGHTUSERDATA");
 在默认设置下，lua 语言中所有数字都用 double 来表示。
 
 #+CAPTION: luaconf.h
-#+include: ../lua-5.1.5/src/luaconf.h src c -n 495 :lines "495-506"
+#+include: ../../lua-5.1.5/src/luaconf.h src c -n 495 :lines "495-506"
 
 #+CAPTION: lua.h
-#+include: ../lua-5.1.5/src/lua.h src c -n 98 :lines "98-100"
+#+include: ../../lua-5.1.5/src/lua.h src c -n 98 :lines "98-100"
 
 类似的，用 tt 记录类型，用 value 中 =lua_Number n= 来记录 number 数值。
 
@@ -255,7 +257,7 @@ draw_tvalue("lua\_Number n = <number>", "int tt = LUA\_TNUMBER");
 有一点是共通的，它们同属于可 gc 的值（iscollectable）。
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 189 :lines "189-190"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 189 :lines "189-190"
 
 #+begin_src asymptote :noweb eval :file object-collectable.png
 <<tvalue>>
@@ -272,7 +274,7 @@ lua 内建了 gc 机制，其中关键的结构是 =GCObject= ，
 GCObject 是 union 结构，和 Value 结构类似，内部键值用于存取不同类型的数据。
 
 #+CAPTION: lstate.h
-#+include: ../lua-5.1.5/src/lstate.h src c -n 133 :lines "133-146"
+#+include: ../../lua-5.1.5/src/lstate.h src c -n 133 :lines "133-146"
 
 如果仔细观察内部内存的安排，会发现这种方式是非常巧妙的。
 
@@ -326,30 +328,30 @@ draw_key((1760, 180), (160, 320), "th");
 =gch h p uv th= 都是 struct，头部的字段都是 CommonHeader。
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 39 :lines "39-52"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 338 :lines "338-349"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 228 :lines "228-254"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 270 :lines "270-285"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 39 :lines "39-52"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 338 :lines "338-349"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 228 :lines "228-254"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 270 :lines "270-285"
 
 #+CAPTION: lstate.h
-#+include: ../lua-5.1.5/src/lstate.h src c -n 97 :lines "97-128"
+#+include: ../../lua-5.1.5/src/lstate.h src c -n 97 :lines "97-128"
 
 =ts u cl= 虽然是 union，但是其中多余的字段是用于对齐的，实质还是 struct。
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 215 :lines "215-224"
-#+include: ../lua-5.1.5/src/lobject.h src c -n 287 :lines "287-313"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 196 :lines "196-208"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 215 :lines "215-224"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 287 :lines "287-313"
 
 GCObject 将类型重新备份了一份，GCHeader 中的 tt 和 TValue 中的 tt 是相同的。
 
 #+CAPTION: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 105 :lines "105-110"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 105 :lines "105-110"
 
 这样的话，GCObject 可以脱离 TValue，使用 GCHeader gch 先来读取 tt，再根据 tt 来使用不同的键值来引用数据。
 
 #+CAPTION: lstate.h
-#+include: ../lua-5.1.5/src/lstate.h src c -n 148 :lines "148-160"
+#+include: ../../lua-5.1.5/src/lstate.h src c -n 148 :lines "148-160"
 
 至于不同类型的数据如何记录，在后面会分章节讨论。
 
@@ -363,7 +365,7 @@ GCObject 将类型重新备份了一份，GCHeader 中的 tt 和 TValue 中的 t
 - deadkey
 
 #+caption: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 19 :lines "19-31"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 19 :lines "19-31"
 
 proto 和 upval 就对应 GCObject 中多出的 2 个键值 p uv，
 至于 deadkey，到特定章节再讨论。

@@ -1,9 +1,5 @@
-#+hugo_base_dir: ~/project/lua51/site/
-#+hugo_section: docs
-#+hugo_front_matter_format: yaml
+#+setupfile: ../setup.org
 #+export_file_name: index
-#+author: DreamAndDead
-#+hugo_auto_set_lastmod: t
 
 #+hugo_bundle: overview
 #+title: overview

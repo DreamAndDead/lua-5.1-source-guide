@@ -1,5 +1,7 @@
-#+SETUPFILE: setup.org
+#+setupfile: ../setup.org
+#+export_file_name: index
 
+#+hugo_bundle: generator
 #+TITLE: generator
 #+DATE: <2021-01-08 五 11:34>
 
@@ -54,7 +56,7 @@ lua 内部使用了一种巧妙的实现，在编译时，将整个文件当做�
 相当于文件头加了 =function ()= ，文件尾加了 =end= 。
 
 #+caption: lparser.c
-#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 383 :lines "383-399"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.c src c -n 383 :lines "383-399"
 
 可以看到， =luaY_parser= 读取文件，最终生成并返回 =Proto *= 。
 
@@ -137,7 +139,7 @@ digraph {
 Proto 结构中使用 struct Proto * 数组 p（Line 235）来记录其直接包含的 Proto。
 
 #+caption: lobject.h
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-254"
+#+INCLUDE: ../../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-254"
 
 ** FuncState
 
@@ -151,7 +153,7 @@ chunk 作为解析 function 的入口，得到 Proto，这个过程在遇到 fun
 在了解这个过程之前，要先介绍另一个重要的结构 FuncState 。
 
 #+caption: lparser.h
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c -n 57 :lines "57-76"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.h src c -n 57 :lines "57-76"
 
 从名称可以看出，和 LexState 相似，也用于记录中间状态。
 FuncState 用于记录 function 分析过程中的状态，和 function 定义一一对应，
@@ -364,7 +366,7 @@ digraph {
 在 parser 内部，上面描述的过程发生在 =open_func() close_func()= 中，读者可仔细体会其细节。
 
 #+caption: lparser.c
-#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 328 :lines "328-381"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.c src c -n 328 :lines "328-381"
 
 ** FuncState vs Proto
    :LOGBOOK:
@@ -393,7 +395,7 @@ FuncState 和 Proto 作为分析过程中两个最重要的结构，值得详细
 先来看 Proto。
 
 #+caption: lobject.h
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-254"
+#+INCLUDE: ../../lua-5.1.5/src/lobject.h src C -n 228 :lines "228-254"
 
 其中字段分为 3 部分来看
 
@@ -540,7 +542,7 @@ digraph  {
 相同的视角，来观察 FuncState。
 
 #+caption: lparser.h
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c -n 57 :lines "57-76"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.h src c -n 57 :lines "57-76"
 
 暂不讨论
 - =Proto *f=
@@ -771,14 +773,14 @@ digraph {
 索引数组 =f->locvars= 中的元素，其中元素类型为 =struct LocVar *= 。
 
 #+caption: lobject.h
-#+INCLUDE: ../lua-5.1.5/src/lobject.h src c -n 262 :lines "262-267"
+#+INCLUDE: ../../lua-5.1.5/src/lobject.h src c -n 262 :lines "262-267"
 
 LocVar 主要记录变量的名字， =startpc endpc= 在字节码层面记录其活动范围。
 
 宏 getlocvar 精确描述了图示过程。
 
 #+caption: lparser.c
-#+INCLUDE: ../lua-5.1.5/src/lparser.c src c -n 32 :lines "32-33"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.c src c -n 32 :lines "32-33"
 
 *** upvalue
     :LOGBOOK:
@@ -1274,12 +1276,12 @@ freereg 就是用来记录栈顶的变量。
 当存储新的寄存器值时，freereg 就会自增，为寄存器开出空间；
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 209 :lines "209-213"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 209 :lines "209-213"
 
 相应的，如果寄存器不再使用，freereg 会自减，回收相应的空间。
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 215 :lines "215-221"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 215 :lines "215-221"
 
 从中可以看出，freereg 将栈分为两部分，在栈底为 local 变量保留空间（reg >= fs->nactvar），
 上层用于计算中间结果。
@@ -1306,7 +1308,7 @@ digraph {
 
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 414 :lines "414-420"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 414 :lines "414-420"
 
 在 luaK_exp2nextreg 中，先找出下一个可用的栈/寄存器空间，然后将表达式的值解析到寄存器中，
 即生成字节码。
@@ -1318,7 +1320,7 @@ digraph {
 因为其类型为数字，所以调用的是 luaK_numberK。
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 229 :lines "229-278"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 229 :lines "229-278"
 
 所有操作 k 表的方法，最终都使用 addk 操作，其作用也很简单，
 在 k 表中搜索，如果存在，则直接返回相应索引，其中使用 table fs->h 做 k 表元素的反向索引，加快搜索过程；
@@ -1355,7 +1357,7 @@ digraph  {
 将其作为 VK 类型来对待。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 133 :lines "133-136"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 133 :lines "133-136"
 
 #+begin_src dot :file generator-stringk-second.png
 digraph  {
@@ -1406,7 +1408,7 @@ local a, b, c = ..., ..., ...
 其中 expdesc 的作用是非常重要的，将一些属性附加到文法符号上，辅助代码生成过程。
 
 #+caption: lparser.h
-#+INCLUDE: ../lua-5.1.5/src/lparser.h src c :lines "15-46"
+#+INCLUDE: ../../lua-5.1.5/src/lparser.h src c :lines "15-46"
 
 expdesc 用于记录 exp 表达式的相关信息。
 
@@ -1489,7 +1491,7 @@ a, b, c = 10, 20, 30
 从 ebnf 描述中可以看出，assignment 是一个递归的过程。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 931 :lines "931-963"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 931 :lines "931-963"
 
 在遇到 ~=~ 之前，执行 if 语句块，递归调用 primaryexp 分析变量；
 遇到 ~=~ 之后，执行 else 语句块，分析表达式。
@@ -1498,12 +1500,12 @@ a, b, c = 10, 20, 30
 因为示例代码中变量都很简单，primaryexp 主要调用 prefixexp 进行分析。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 667 :lines "667-688"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 667 :lines "667-688"
 
 对应其中的 =TK_NAME= 类型，调用 singlevar 确定变量的类型，内容调用 singlevaraux 来实现。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 224 :lines "224-254"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 224 :lines "224-254"
 
 singlevaraux 是非常关键的过程，回忆之前在分析过程中，关于嵌套的 function 定义和 fs->prev 的链条，
 singlevaraux 就顺着 fs->prev 不断向上层作用域寻找变量。
@@ -1519,7 +1521,7 @@ singlevaraux 就顺着 fs->prev 不断向上层作用域寻找变量。
 最终赋值阶段，在每个递归层次，用 luaK_storevar 来存储。
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 472 :lines "472-501"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 472 :lines "472-501"
 
 对应 case VGLOBAL，生成 setglobal 指令。
 
@@ -1622,7 +1624,7 @@ VINDEXED 的分析分为两部分，singlevar 分析 t 为 local 变量，
 最终使用 =luaK_indexed= 确定 expdesc 的类型及相关数据。
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 621 :lines "621-625"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 621 :lines "621-625"
 
 在最终赋值时，生成 gettable 指令。
 
@@ -1695,7 +1697,7 @@ end
 参数部分由 parlist 处理，分为固定参数和可变参数。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 543 :lines "543-574"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 543 :lines "543-574"
 
 固定参数的处理方法，和 local 变量相同，不再赘述。
 
@@ -1721,7 +1723,7 @@ lua5.1 默认提供了对变量 arg 的兼容性，所以才会出现注册 arg 
 =fs->is_vararg= 是用来记录可变参数状态的变量，含义由 3 个二进制位综合表示。
 
 #+caption: lobject.h
-#+include: ../lua-5.1.5/src/lobject.h src c -n 256 :lines "256-260"
+#+include: ../../lua-5.1.5/src/lobject.h src c -n 256 :lines "256-260"
 
 | macro              | number | desc                                                |
 |--------------------+--------+-----------------------------------------------------|
@@ -1838,13 +1840,13 @@ digraph {
 首先分析变量 b，
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 183 :lines "224-246"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 183 :lines "224-246"
 
 在 fs g() 中搜索无果，搜索上层 fs f()，在 fs f() 的 local 变量中找到 b，
 调用 indexupvalue，然后标识为 VUPVAL 类型返回。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 183 :lines "183-205"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 183 :lines "183-205"
 
 在 indexupvalue 中，先搜索是否已经存在 upvalue b，若没有则存储到 upvalues 数组中。
 
@@ -1897,7 +1899,7 @@ upvalue 其实可分为两种情况，一种是 VLOCAL，一种是 VUPVAL。
 b 属于 VLOCAL 的情况，因为 b 和 g() 在一个层级，g() 内部只需要向上查找一个层级便可定位 b。
 
 #+caption: lparser.h
-#+include: ../lua-5.1.5/src/lparser.h src c -n 48 :lines "48-52"
+#+include: ../../lua-5.1.5/src/lparser.h src c -n 48 :lines "48-52"
 
 fs->upvalues 在记录 VLOCAL 的同时，也记录其对应的寄存器位置。
 
@@ -2066,7 +2068,7 @@ end
 在 block() 方法中，
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 881 :lines "881-890"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 881 :lines "881-890"
 
 先后调用 enterblock 和 leaveblock 方法，操作 fs->bl。
 
@@ -2074,7 +2076,7 @@ end
 fs->prev 形成链状结构，所以 block() 的行为主要是由 enterblock leaveblock 决定的。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 37 :lines "37-47"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 37 :lines "37-47"
 
 BlockCnt 的结构并不复杂，
 - =struct BlockCnt *previous= ，指向父 block
@@ -2084,7 +2086,7 @@ BlockCnt 的结构并不复杂，
 - =lu_byte isbreakable= ，是否是一个循环语句块，在 while 章节讲解。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 285 :lines "285-308"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 285 :lines "285-308"
 
 enterblock 新建 BlockCnt，指向父 block，并记录当前 nactvar。
 leaveblock 则相反，删除顶层 block，将 fs->freereg 重置回原来的 nactvar。
@@ -2254,21 +2256,21 @@ jmp 指令之后紧接着 True 语句块。
 对照示例代码，内部使用 ifstat() 来分析 if 语句。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 1130 :lines "1130-1163"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 1130 :lines "1130-1163"
 
 使用 =test_then_block()= 分析 =IF cond THEN block= 的部分，
 使用 cond() 分析条件部分，
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 965 :lines "965-973"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 965 :lines "965-973"
 
 进入 =luaK_goiftrue()= ，调用 =jumponcond= 和 =condjump= ，生成了 test 指令和 jmp 指令，
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 524 :lines "524-561"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 524 :lines "524-561"
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 74 :lines "74-78"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 74 :lines "74-78"
 
 最终 =cond()= 返回 jmp 指令的索引，在 ifstat() 中由 flist 保存。
 
@@ -2304,7 +2306,7 @@ jmp 指令之后紧接着 True 语句块。
 因为其后没有 else/elseif 语句，直接执行 line 1159，
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 185 :lines "185-197"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 185 :lines "185-197"
 
 将 flist 链接到 escapelist 上，
 
@@ -2335,7 +2337,7 @@ jmp 指令之后紧接着 True 语句块。
 其后执行 line 1160，执行 patch 过程，
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 179 :lines "179-183"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 179 :lines "179-183"
 
 将 escapelist 链接到 fs->jpc 上，
 
@@ -2366,10 +2368,10 @@ jmp 指令之后紧接着 True 语句块。
 最终在生成 TRUE 之后的语句时，执行 dischargejpc 过程，
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 789 :lines "789-802"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 789 :lines "789-802"
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 150 :lines "150-167"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 150 :lines "150-167"
 
 #+begin_src ditaa :file generator-if-3.png
 
@@ -2489,7 +2491,7 @@ end
 
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 1141 :lines "1141-1163"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 1141 :lines "1141-1163"
 
 在 if else 语句中，解析 cond 和 true block 之后，要继续解析 else false block 部分。
 
@@ -2685,7 +2687,7 @@ end
 [[file:generator-if-else-if-0.png]]
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 1141 :lines "1141-1163"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 1141 :lines "1141-1163"
 
 elseif 结构是不限数量的，相比之下，if 和 else 只能有一个，
 所以这里用 while 循环来重复检测所有 elseif 块。
@@ -2750,7 +2752,7 @@ elseif 结构是不限数量的，相比之下，if 和 else 只能有一个，
 在生成最终的 return 之前，在 line 1159 将 flist 链接到 escapelist 上，因为它们有同样的终点。
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src c -n 185 :lines "185-197"
+#+include: ../../lua-5.1.5/src/lcode.c src c -n 185 :lines "185-197"
 
 其中将 4 jmp 指令，跳转到 6 jmp，相当于将 jmp 链接起来，以 escapelist 为索引链的开始。
 
@@ -2894,7 +2896,7 @@ end
 其后是循环体，最后的 jmp 指令用于跳转到循环开始，只有 test 为 false 的时候才会跳出循环体。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 991 :lines "991-1008"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 991 :lines "991-1008"
 
 生成的过程并不难理解，根据对 concat 和 patch 的理解，
 
@@ -3027,7 +3029,7 @@ end
 可以看出，break 在循环体生成了 jmp 指令，跳转到循环外，这个过程由以下几点协同来实现。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 975 :lines "975-1008"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 975 :lines "975-1008"
 
 line 1000，调用 enterblock 新建了 ~breakable = 1~ 的 BlockCnt，
 
@@ -3037,7 +3039,7 @@ line 979，break 语句不断向上层的 BlockCnt 检测是否存在 breakable 
 找到相应的 BlockCnt 之后，line 987 将 break 生成的 jmp 指令链接到 bl->breaklist 上，
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src c -n 296 :lines "296-308"
+#+include: ../../lua-5.1.5/src/lparser.c src c -n 296 :lines "296-308"
 
 最终在 line 1005 leaveblock 的时候，line 306 将 bl->breaklist 上的 jmp 重定位。
 
@@ -3178,7 +3180,7 @@ forprep 先将循环变量减去间隔值，再跳转到 forloop。
 如果继续循环，则将循环值赋给循环变量；否则跳出循环。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src C -n 1046 :lines "1046-1087"
+#+include: ../../lua-5.1.5/src/lparser.c src C -n 1046 :lines "1046-1087"
 
 生成的过程并不难理解，值得关注的是变量部分。
 
@@ -3333,10 +3335,10 @@ OP_TFORLOOP,/*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
 而下一条指令固定是 jmp，用于定位到 forbody 的开始。
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src C -n 1089 :lines "1089-1110"
+#+include: ../../lua-5.1.5/src/lparser.c src C -n 1089 :lines "1089-1110"
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src C -n 1046 :lines "1046-1065"
+#+include: ../../lua-5.1.5/src/lparser.c src C -n 1046 :lines "1046-1065"
 
 其中同样隐式声明了 3 个变量，用于控制循环状态，
 
@@ -3384,7 +3386,7 @@ return a, b
 对应 retstat 过程，
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src C -n 1238 :lines "1238-1269"
+#+include: ../../lua-5.1.5/src/lparser.c src C -n 1238 :lines "1238-1269"
 
 在 line 1267 生成 return 指令。
 
@@ -3491,7 +3493,7 @@ OP_CALL,/*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */
 call 指令生成过程参考 funcargs，
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src C -n 609 :lines "609-656"
+#+include: ../../lua-5.1.5/src/lparser.c src C -n 609 :lines "609-656"
 
 计算参数的个数，line 651 生成 call 指令，返回值暂时用 1，根据上下文再进行后续的修正。
 
@@ -3582,10 +3584,10 @@ OP_SELF,/*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/
 内部在 primaryexp 中调用 =luaK_self= 生成 self 指令，
 
 #+caption: lparser.c
-#+include: ../lua-5.1.5/src/lparser.c src C -n 690 :lines "690-725"
+#+include: ../../lua-5.1.5/src/lparser.c src C -n 690 :lines "690-725"
 
 #+caption: lcode.c
-#+include: ../lua-5.1.5/src/lcode.c src C -n 503 :lines "503-514"
+#+include: ../../lua-5.1.5/src/lcode.c src C -n 503 :lines "503-514"
 
 *** tailcall
    
