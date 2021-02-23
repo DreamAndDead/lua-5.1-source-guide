@@ -5,6 +5,7 @@ theme = 'book'
 # Book configuration
 disablePathToLower = true
 enableGitInfo = true
+disqusShortname = "lua-book"
 defaultContentLanguage = 'zh'
 
 # Needed for mermaid/katex shortcodes
