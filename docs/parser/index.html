@@ -8,7 +8,7 @@ chunk ::= { stat [ `;' ] } stat ::= ifstat | whilestat | dostat | forstat | repe
 这个章节，就是尝试从代码中“分离”出语法分析的部分，先对模块做初步的理解。
   grammar #  模块以语法分析作为入口，整体是一个语法制导翻译的过程。
 官方文档1使用上下文无关文法来描述 lua 语法，但是省略了一些细节。 笔者结合 parser 代码中的实现过程和相关注释，重新整理语法描述如下，使用 EBNF 描述。
-chunk ::= { stat [ `;' ] } stat ::= ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat ifstat ::= IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END cond ::= expr block ::= chunk whilestat ::= WHILE cond DO block END dostat ::= DO block END forstat ::= FOR (fornum | forlist) END fornum ::= NAME = expr `,' expr [`,' expr] forbody forlist ::= NAME {`,' NAME} IN explist forbody forbody ::= DO block repeatstat ::= REPEAT block UNTIL cond funcstat ::= FUNCTION funcname body funcname ::= NAME {`."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/parser/"><meta property="og:image" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/parser/parser-feature.png"><meta property="article:published_time" content="2021-01-07T15:46:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>parser | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+chunk ::= { stat [ `;' ] } stat ::= ifstat | whilestat | dostat | forstat | repeatstat | funcstat | localstat | retstat | breakstat | exprstat ifstat ::= IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END cond ::= expr block ::= chunk whilestat ::= WHILE cond DO block END dostat ::= DO block END forstat ::= FOR (fornum | forlist) END fornum ::= NAME = expr `,' expr [`,' expr] forbody forlist ::= NAME {`,' NAME} IN explist forbody forbody ::= DO block repeatstat ::= REPEAT block UNTIL cond funcstat ::= FUNCTION funcname body funcname ::= NAME {`."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/parser/"><meta property="og:image" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/parser/parser-feature.png"><meta property="article:published_time" content="2021-01-07T15:46:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>parser | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.dfc677a7972fb0d86dd6eaf657edfad83e2c433246dffdf64911ee91450f0378.css integrity="sha256-38Z3p5cvsNht1ur2V+362D4sQzJG3/32SRHukUUPA3g="><script defer src=/lua-5.1-source-guide/zh.search.min.63a734a12cfe0fd29995becea70dc8f315c1540f9981491da7d955afee3cf62e.js integrity="sha256-Y6c0oSz+D9KZlb7Opw3I8xXBVA+ZgUkdp9lVr+489i4="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/ class=active>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
 <strong>parser</strong>
 <label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#grammar>grammar</a><ul><li><a href=#binop>binop</a></li><li><a href=#break>break</a></li><li><a href=#return>return</a></li></ul></li><li><a href=#recursive-descent>recursive descent</a></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><p>在 lexer 章节提到，lua 为了效率，将语法分析到代码生成的所有功能封装在 parser 模块中。
@@ -16,63 +16,63 @@ chunk ::= { stat [ `;' ] } stat ::= ifstat | whilestat | dostat | forstat | repe
 相对的，这部分代码就相对难以理解。</p><p>虽然在代码实现没有明显的步骤划分，但是对于读者，
 在理解代码过程中，还是先找出不同步骤的影子，最后再串联在一起。</p><p>这个章节，就是尝试从代码中“分离”出语法分析的部分，先对模块做初步的理解。</p><figure><img src=parser-feature.png></figure><h2 id=grammar>grammar
 <a class=anchor href=#grammar>#</a></h2><p>模块以语法分析作为入口，整体是一个语法制导翻译的过程。</p><p>官方文档<sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>使用上下文无关文法来描述 lua 语法，但是省略了一些细节。
-笔者结合 parser 代码中的实现过程和相关注释，重新整理语法描述如下，使用 EBNF 描述。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bnf data-lang=bnf>chunk        <span style=color:#f92672>::=</span> { stat [ `;&#39; ] }
+笔者结合 parser 代码中的实现过程和相关注释，重新整理语法描述如下，使用 EBNF 描述。</p><div class=highlight><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bnf data-lang=bnf>chunk        ::= { stat [ `;&#39; ] }
 
-stat         <span style=color:#f92672>::=</span> ifstat | whilestat | dostat | forstat | repeatstat |
+stat         ::= ifstat | whilestat | dostat | forstat | repeatstat |
 		   funcstat | localstat | retstat | breakstat | exprstat
 
-ifstat       <span style=color:#f92672>::=</span> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
-cond         <span style=color:#f92672>::=</span> expr
-block        <span style=color:#f92672>::=</span> chunk
+ifstat       ::= IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+cond         ::= expr
+block        ::= chunk
 
-whilestat    <span style=color:#f92672>::=</span> WHILE cond DO block END
+whilestat    ::= WHILE cond DO block END
 
-dostat       <span style=color:#f92672>::=</span> DO block END
+dostat       ::= DO block END
 
-forstat      <span style=color:#f92672>::=</span> FOR (fornum | forlist) END
-fornum       <span style=color:#f92672>::=</span> NAME = expr `,&#39; expr [`,&#39; expr] forbody
-forlist      <span style=color:#f92672>::=</span> NAME {`,&#39; NAME} IN explist forbody
-forbody      <span style=color:#f92672>::=</span> DO block
+forstat      ::= FOR (fornum | forlist) END
+fornum       ::= NAME = expr `,&#39; expr [`,&#39; expr] forbody
+forlist      ::= NAME {`,&#39; NAME} IN explist forbody
+forbody      ::= DO block
 
-repeatstat   <span style=color:#f92672>::=</span> REPEAT block UNTIL cond
+repeatstat   ::= REPEAT block UNTIL cond
 
-funcstat     <span style=color:#f92672>::=</span> FUNCTION funcname body
-funcname     <span style=color:#f92672>::=</span> NAME {`.&#39; NAME} [`:&#39; NAME]
-body         <span style=color:#f92672>::=</span> `(&#39; parlist `)&#39; chunk END
-parlist      <span style=color:#f92672>::=</span> [ DOTS | NAME {`,&#39; NAME} [`,&#39; DOTS] ]
+funcstat     ::= FUNCTION funcname body
+funcname     ::= NAME {`.&#39; NAME} [`:&#39; NAME]
+body         ::= `(&#39; parlist `)&#39; chunk END
+parlist      ::= [ DOTS | NAME {`,&#39; NAME} [`,&#39; DOTS] ]
 
-localstat    <span style=color:#f92672>::=</span> LOCAL FUNCTION NAME body | LOCAL NAME {`,&#39; NAME} [`=&#39; explist]
+localstat    ::= LOCAL FUNCTION NAME body | LOCAL NAME {`,&#39; NAME} [`=&#39; explist]
 
-retstat      <span style=color:#f92672>::=</span> RETURN [explist]
+retstat      ::= RETURN [explist]
 
-breakstat    <span style=color:#f92672>::=</span> BREAK
+breakstat    ::= BREAK
 
-exprstat     <span style=color:#f92672>::=</span> assignstat | funccallstat
+exprstat     ::= assignstat | funccallstat
 
-assignstat   <span style=color:#f92672>::=</span> (prefixexp | primaryexp (`.&#39; NAME | `[&#39; expr `]&#39;)) assignment
-assignment   <span style=color:#f92672>::=</span> `,&#39; assignstat | `=&#39; explist
+assignstat   ::= (prefixexp | primaryexp (`.&#39; NAME | `[&#39; expr `]&#39;)) assignment
+assignment   ::= `,&#39; assignstat | `=&#39; explist
 
-primaryexp   <span style=color:#f92672>::=</span> prefixexp {`.&#39; NAME | `[&#39; expr `]&#39; | `:&#39; NAME funcargs | funcargs}
-prefixexp    <span style=color:#f92672>::=</span> NAME | `(&#39; expr `)&#39;
+primaryexp   ::= prefixexp {`.&#39; NAME | `[&#39; expr `]&#39; | `:&#39; NAME funcargs | funcargs}
+prefixexp    ::= NAME | `(&#39; expr `)&#39;
 
-funccallstat <span style=color:#f92672>::=</span> prefixexp primaryexp (`:&#39; NAME funcargs | funcargs)
-funcargs     <span style=color:#f92672>::=</span> `(&#39; [ explist ] `)&#39; | constructor | STRING
+funccallstat ::= prefixexp primaryexp (`:&#39; NAME funcargs | funcargs)
+funcargs     ::= `(&#39; [ explist ] `)&#39; | constructor | STRING
 
-explist      <span style=color:#f92672>::=</span> expr {`,&#39; expr}
-expr         <span style=color:#f92672>::=</span> subexpr
-subexpr      <span style=color:#f92672>::=</span> (simpleexp | unop subexpr) {binop subexpr}
+explist      ::= expr {`,&#39; expr}
+expr         ::= subexpr
+subexpr      ::= (simpleexp | unop subexpr) {binop subexpr}
 
-simpleexp    <span style=color:#f92672>::=</span> NUMBER | STRING | NIL | TRUE | FALSE | DOTS |
+simpleexp    ::= NUMBER | STRING | NIL | TRUE | FALSE | DOTS |
 		 constructor | FUNCTION body | primaryexp
 
-binop        <span style=color:#f92672>::=</span> `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | CONCAT |
+binop        ::= `+´ | `-´ | `*´ | `/´ | `^´ | `%´ | CONCAT |
 		 `&lt;´ | LE | `&gt;´ | GE | EQ | NE | AND | OR
-unop         <span style=color:#f92672>::=</span> `-´ | NOT | `#´
+unop         ::= `-´ | NOT | `#´
 
-constructor  <span style=color:#f92672>::=</span> `{&#39; [fieldlist] `}&#39;
-fieldlist    <span style=color:#f92672>::=</span> field {fieldsep field} [fieldsep]
-field        <span style=color:#f92672>::=</span> `[&#39; expr `]&#39; `=&#39; expr | NAME `=&#39; expr | expr
-fieldsep     <span style=color:#f92672>::=</span> `,&#39; | `;&#39;
+constructor  ::= `{&#39; [fieldlist] `}&#39;
+fieldlist    ::= field {fieldsep field} [fieldsep]
+field        ::= `[&#39; expr `]&#39; `=&#39; expr | NAME `=&#39; expr | expr
+fieldsep     ::= `,&#39; | `;&#39;
 </code></pre></div><ul><li><code>{ a }</code> 表示 0 个或多个 a</li><li><code>[ a ]</code> 表示 0 个或一个 a</li><li><code>( a )</code> 表示组</li><li><code>|</code> 表示或</li><li>大写单词，`单字符' 表示终结符，和 lex 阶段生成的 token 一一对应</li><li>小写单词 表示非终结符，整体以 chunk 为入口</li></ul><p>之前提到，在 lex 过程，lua 并没有完全使用 regex 对词法做完整的限制，存在些许不完美的实现。
 同样的“问题”在语法分析的 EBNF 描述中也存在。</p><h3 id=binop>binop
 <a class=anchor href=#binop>#</a></h3><p>在语法描述上，没有控制二元运算的优先级，而是将优先级在 subexpr 过程中用代码隐式实现。</p><h3 id=break>break
@@ -80,7 +80,7 @@ fieldsep     <span style=color:#f92672>::=</span> `,&#39; | `;&#39;
 同样的，lua 将此限制实现在代码层面。</p><h3 id=return>return
 <a class=anchor href=#return>#</a></h3><p>return 语句只能放置在块的最后一行，而语法描述没有表示出此种限制。</p><h2 id=recursive-descent>recursive descent
 <a class=anchor href=#recursive-descent>#</a></h2><p>parser 模块使用 LL(1) 递归下降法进行语法分析。</p><p>递归下降法有一个明显的优点，通常在实现中，
-每个非终结符都对应一个同名函数来实现，如 <code>chunk() statement()</code> 等。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1271
+每个非终结符都对应一个同名函数来实现，如 <code>chunk() statement()</code> 等。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1271
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1272
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1273
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1274
@@ -147,75 +147,75 @@ fieldsep     <span style=color:#f92672>::=</span> `,&#39; | `;&#39;
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1335
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1336
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1337
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>static</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>statement</span> (LexState <span style=color:#f92672>*</span>ls) {
-  <span style=color:#66d9ef>int</span> line <span style=color:#f92672>=</span> ls<span style=color:#f92672>-&gt;</span>linenumber;  <span style=color:#75715e>/* may be needed for error messages */</span>
-  <span style=color:#66d9ef>switch</span> (ls<span style=color:#f92672>-&gt;</span>t.token) {
-    <span style=color:#66d9ef>case</span> TK_IF: {  <span style=color:#75715e>/* stat -&gt; ifstat */</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#8b008b;font-weight:700>static</span> <span style=color:#00688b;font-weight:700>int</span> <span style=color:#008b45>statement</span> (LexState *ls) {
+  <span style=color:#00688b;font-weight:700>int</span> line = ls-&gt;linenumber;  <span style=color:#228b22>/* may be needed for error messages */</span>
+  <span style=color:#8b008b;font-weight:700>switch</span> (ls-&gt;t.token) {
+    <span style=color:#8b008b;font-weight:700>case</span> TK_IF: {  <span style=color:#228b22>/* stat -&gt; ifstat */</span>
       ifstat(ls, line);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> TK_WHILE: {  <span style=color:#75715e>/* stat -&gt; whilestat */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> TK_WHILE: {  <span style=color:#228b22>/* stat -&gt; whilestat */</span>
       whilestat(ls, line);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> TK_DO: {  <span style=color:#75715e>/* stat -&gt; DO block END */</span>
-      luaX_next(ls);  <span style=color:#75715e>/* skip DO */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> TK_DO: {  <span style=color:#228b22>/* stat -&gt; DO block END */</span>
+      luaX_next(ls);  <span style=color:#228b22>/* skip DO */</span>
       block(ls);
       check_match(ls, TK_END, TK_DO, line);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> TK_FOR: {  <span style=color:#75715e>/* stat -&gt; forstat */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> TK_FOR: {  <span style=color:#228b22>/* stat -&gt; forstat */</span>
       forstat(ls, line);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> TK_REPEAT: {  <span style=color:#75715e>/* stat -&gt; repeatstat */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> TK_REPEAT: {  <span style=color:#228b22>/* stat -&gt; repeatstat */</span>
       repeatstat(ls, line);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> TK_FUNCTION: {
-      funcstat(ls, line);  <span style=color:#75715e>/* stat -&gt; funcstat */</span>
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+    <span style=color:#8b008b;font-weight:700>case</span> TK_FUNCTION: {
+      funcstat(ls, line);  <span style=color:#228b22>/* stat -&gt; funcstat */</span>
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> TK_LOCAL: {  <span style=color:#75715e>/* stat -&gt; localstat */</span>
-      luaX_next(ls);  <span style=color:#75715e>/* skip LOCAL */</span>
-      <span style=color:#66d9ef>if</span> (testnext(ls, TK_FUNCTION))  <span style=color:#75715e>/* local function? */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> TK_LOCAL: {  <span style=color:#228b22>/* stat -&gt; localstat */</span>
+      luaX_next(ls);  <span style=color:#228b22>/* skip LOCAL */</span>
+      <span style=color:#8b008b;font-weight:700>if</span> (testnext(ls, TK_FUNCTION))  <span style=color:#228b22>/* local function? */</span>
 	localfunc(ls);
-      <span style=color:#66d9ef>else</span>
+      <span style=color:#8b008b;font-weight:700>else</span>
 	localstat(ls);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> TK_RETURN: {  <span style=color:#75715e>/* stat -&gt; retstat */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> TK_RETURN: {  <span style=color:#228b22>/* stat -&gt; retstat */</span>
       retstat(ls);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>1</span>;  <span style=color:#75715e>/* must be last statement */</span>
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>1</span>;  <span style=color:#228b22>/* must be last statement */</span>
     }
-    <span style=color:#66d9ef>case</span> TK_BREAK: {  <span style=color:#75715e>/* stat -&gt; breakstat */</span>
-      luaX_next(ls);  <span style=color:#75715e>/* skip BREAK */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> TK_BREAK: {  <span style=color:#228b22>/* stat -&gt; breakstat */</span>
+      luaX_next(ls);  <span style=color:#228b22>/* skip BREAK */</span>
       breakstat(ls);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>1</span>;  <span style=color:#75715e>/* must be last statement */</span>
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>1</span>;  <span style=color:#228b22>/* must be last statement */</span>
     }
-    <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span> {
+    <span style=color:#8b008b;font-weight:700>default</span>: {
       exprstat(ls);
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;  <span style=color:#75715e>/* to avoid warnings */</span>
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;  <span style=color:#228b22>/* to avoid warnings */</span>
     }
   }
 }
 
 
-<span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>chunk</span> (LexState <span style=color:#f92672>*</span>ls) {
-  <span style=color:#75715e>/* chunk -&gt; { stat [`;&#39;] } */</span>
-  <span style=color:#66d9ef>int</span> islast <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+<span style=color:#8b008b;font-weight:700>static</span> <span style=color:#00688b;font-weight:700>void</span> <span style=color:#008b45>chunk</span> (LexState *ls) {
+  <span style=color:#228b22>/* chunk -&gt; { stat [`;&#39;] } */</span>
+  <span style=color:#00688b;font-weight:700>int</span> islast = <span style=color:#b452cd>0</span>;
   enterlevel(ls);
-  <span style=color:#66d9ef>while</span> (<span style=color:#f92672>!</span>islast <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span>block_follow(ls<span style=color:#f92672>-&gt;</span>t.token)) {
-    islast <span style=color:#f92672>=</span> statement(ls);
-    testnext(ls, <span style=color:#e6db74>&#39;;&#39;</span>);
-    lua_assert(ls<span style=color:#f92672>-&gt;</span>fs<span style=color:#f92672>-&gt;</span>f<span style=color:#f92672>-&gt;</span>maxstacksize <span style=color:#f92672>&gt;=</span> ls<span style=color:#f92672>-&gt;</span>fs<span style=color:#f92672>-&gt;</span>freereg <span style=color:#f92672>&amp;&amp;</span>
-	       ls<span style=color:#f92672>-&gt;</span>fs<span style=color:#f92672>-&gt;</span>freereg <span style=color:#f92672>&gt;=</span> ls<span style=color:#f92672>-&gt;</span>fs<span style=color:#f92672>-&gt;</span>nactvar);
-    ls<span style=color:#f92672>-&gt;</span>fs<span style=color:#f92672>-&gt;</span>freereg <span style=color:#f92672>=</span> ls<span style=color:#f92672>-&gt;</span>fs<span style=color:#f92672>-&gt;</span>nactvar;  <span style=color:#75715e>/* free registers */</span>
+  <span style=color:#8b008b;font-weight:700>while</span> (!islast &amp;&amp; !block_follow(ls-&gt;t.token)) {
+    islast = statement(ls);
+    testnext(ls, <span style=color:#cd5555>&#39;;&#39;</span>);
+    lua_assert(ls-&gt;fs-&gt;f-&gt;maxstacksize &gt;= ls-&gt;fs-&gt;freereg &amp;&amp;
+	       ls-&gt;fs-&gt;freereg &gt;= ls-&gt;fs-&gt;nactvar);
+    ls-&gt;fs-&gt;freereg = ls-&gt;fs-&gt;nactvar;  <span style=color:#228b22>/* free registers */</span>
   }
   leavelevel(ls);
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
 lparser.c</div><p>这些函数都有一个共性，全部都接收参数 <code>LexState *ls</code> ，从其得到 token。
-部分函数接收参数 <code>expdesc* v</code> ，表示当前过程之后，得到的表达式结果。</p><p><code>expdesc</code> 结构非常关键，在代码生成章节再详细描述。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+部分函数接收参数 <code>expdesc* v</code> ，表示当前过程之后，得到的表达式结果。</p><p><code>expdesc</code> 结构非常关键，在代码生成章节再详细描述。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
@@ -246,41 +246,41 @@ lparser.c</div><p>这些函数都有一个共性，全部都接收参数 <code>L
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
-</span><span style=color:#75715e>** Expression descriptor
-</span><span style=color:#75715e>*/</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#228b22>/*
+</span><span style=color:#228b22>** Expression descriptor
+</span><span style=color:#228b22>*/</span>
 
-<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>enum</span> {
-  VVOID,	<span style=color:#75715e>/* no value */</span>
+<span style=color:#8b008b;font-weight:700>typedef</span> <span style=color:#8b008b;font-weight:700>enum</span> {
+  VVOID,	<span style=color:#228b22>/* no value */</span>
   VNIL,
   VTRUE,
   VFALSE,
-  VK,		<span style=color:#75715e>/* info = index of constant in `k&#39; */</span>
-  VKNUM,	<span style=color:#75715e>/* nval = numerical value */</span>
-  VLOCAL,	<span style=color:#75715e>/* info = local register */</span>
-  VUPVAL,       <span style=color:#75715e>/* info = index of upvalue in `upvalues&#39; */</span>
-  VGLOBAL,	<span style=color:#75715e>/* info = index of table; aux = index of global name in `k&#39; */</span>
-  VINDEXED,	<span style=color:#75715e>/* info = table register; aux = index register (or `k&#39;) */</span>
-  VJMP,		<span style=color:#75715e>/* info = instruction pc */</span>
-  VRELOCABLE,	<span style=color:#75715e>/* info = instruction pc */</span>
-  VNONRELOC,	<span style=color:#75715e>/* info = result register */</span>
-  VCALL,	<span style=color:#75715e>/* info = instruction pc */</span>
-  VVARARG	<span style=color:#75715e>/* info = instruction pc */</span>
+  VK,		<span style=color:#228b22>/* info = index of constant in `k&#39; */</span>
+  VKNUM,	<span style=color:#228b22>/* nval = numerical value */</span>
+  VLOCAL,	<span style=color:#228b22>/* info = local register */</span>
+  VUPVAL,       <span style=color:#228b22>/* info = index of upvalue in `upvalues&#39; */</span>
+  VGLOBAL,	<span style=color:#228b22>/* info = index of table; aux = index of global name in `k&#39; */</span>
+  VINDEXED,	<span style=color:#228b22>/* info = table register; aux = index register (or `k&#39;) */</span>
+  VJMP,		<span style=color:#228b22>/* info = instruction pc */</span>
+  VRELOCABLE,	<span style=color:#228b22>/* info = instruction pc */</span>
+  VNONRELOC,	<span style=color:#228b22>/* info = result register */</span>
+  VCALL,	<span style=color:#228b22>/* info = instruction pc */</span>
+  VVARARG	<span style=color:#228b22>/* info = instruction pc */</span>
 } expkind;
 
-<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> expdesc {
+<span style=color:#8b008b;font-weight:700>typedef</span> <span style=color:#8b008b;font-weight:700>struct</span> expdesc {
   expkind k;
-  <span style=color:#66d9ef>union</span> {
-    <span style=color:#66d9ef>struct</span> { <span style=color:#66d9ef>int</span> info, aux; } s;
+  <span style=color:#8b008b;font-weight:700>union</span> {
+    <span style=color:#8b008b;font-weight:700>struct</span> { <span style=color:#00688b;font-weight:700>int</span> info, aux; } s;
     lua_Number nval;
   } u;
-  <span style=color:#66d9ef>int</span> t;  <span style=color:#75715e>/* patch list of `exit when true&#39; */</span>
-  <span style=color:#66d9ef>int</span> f;  <span style=color:#75715e>/* patch list of `exit when false&#39; */</span>
+  <span style=color:#00688b;font-weight:700>int</span> t;  <span style=color:#228b22>/* patch list of `exit when true&#39; */</span>
+  <span style=color:#00688b;font-weight:700>int</span> f;  <span style=color:#228b22>/* patch list of `exit when false&#39; */</span>
 } expdesc;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
 lparser.h</div><p>如此对照 EBNF 的语法描述，就可以方便地对语法分析的过程有大体的了解。</p><p>所有函数之间的调用过程，就像是隐式的 AST 的遍历过程。
 代码生成的实现过程就隐藏在这一个个函数中。</p><figure><img src=parser-ast.png></figure><p>整体以 chunk 为入口，下分为多个 stat，每个 stat 有独立的结构，最终到基础的 expr 单元，
 像一棵树形结构，自顶向下。</p><h2 id=practice>practice
-<a class=anchor href=#practice>#</a></h2><p><code>luaY_parser</code> 是 parser 模块的入口，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">383
+<a class=anchor href=#practice>#</a></h2><p><code>luaY_parser</code> 是 parser 模块的入口，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">383
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">384
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">385
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">386
@@ -296,24 +296,24 @@ lparser.h</div><p>如此对照 EBNF 的语法描述，就可以方便地对语�
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">396
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">397
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">398
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>Proto <span style=color:#f92672>*</span><span style=color:#a6e22e>luaY_parser</span> (lua_State <span style=color:#f92672>*</span>L, ZIO <span style=color:#f92672>*</span>z, Mbuffer <span style=color:#f92672>*</span>buff, <span style=color:#66d9ef>const</span> <span style=color:#66d9ef>char</span> <span style=color:#f92672>*</span>name) {
-  <span style=color:#66d9ef>struct</span> LexState lexstate;
-  <span style=color:#66d9ef>struct</span> FuncState funcstate;
-  lexstate.buff <span style=color:#f92672>=</span> buff;
-  luaX_setinput(L, <span style=color:#f92672>&amp;</span>lexstate, z, luaS_new(L, name));
-  open_func(<span style=color:#f92672>&amp;</span>lexstate, <span style=color:#f92672>&amp;</span>funcstate);
-  funcstate.f<span style=color:#f92672>-&gt;</span>is_vararg <span style=color:#f92672>=</span> VARARG_ISVARARG;  <span style=color:#75715e>/* main func. is always vararg */</span>
-  luaX_next(<span style=color:#f92672>&amp;</span>lexstate);  <span style=color:#75715e>/* read first token */</span>
-  chunk(<span style=color:#f92672>&amp;</span>lexstate);
-  check(<span style=color:#f92672>&amp;</span>lexstate, TK_EOS);
-  close_func(<span style=color:#f92672>&amp;</span>lexstate);
-  lua_assert(funcstate.prev <span style=color:#f92672>==</span> NULL);
-  lua_assert(funcstate.f<span style=color:#f92672>-&gt;</span>nups <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>);
-  lua_assert(lexstate.fs <span style=color:#f92672>==</span> NULL);
-  <span style=color:#66d9ef>return</span> funcstate.f;
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>Proto *<span style=color:#008b45>luaY_parser</span> (lua_State *L, ZIO *z, Mbuffer *buff, <span style=color:#8b008b;font-weight:700>const</span> <span style=color:#00688b;font-weight:700>char</span> *name) {
+  <span style=color:#8b008b;font-weight:700>struct</span> LexState lexstate;
+  <span style=color:#8b008b;font-weight:700>struct</span> FuncState funcstate;
+  lexstate.buff = buff;
+  luaX_setinput(L, &amp;lexstate, z, luaS_new(L, name));
+  open_func(&amp;lexstate, &amp;funcstate);
+  funcstate.f-&gt;is_vararg = VARARG_ISVARARG;  <span style=color:#228b22>/* main func. is always vararg */</span>
+  luaX_next(&amp;lexstate);  <span style=color:#228b22>/* read first token */</span>
+  chunk(&amp;lexstate);
+  check(&amp;lexstate, TK_EOS);
+  close_func(&amp;lexstate);
+  lua_assert(funcstate.prev == <span style=color:#658b00>NULL</span>);
+  lua_assert(funcstate.f-&gt;nups == <span style=color:#b452cd>0</span>);
+  lua_assert(lexstate.fs == <span style=color:#658b00>NULL</span>);
+  <span style=color:#8b008b;font-weight:700>return</span> funcstate.f;
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
 lparser.c</div><p>Line 391 调用 chunk，开始递归向下的分析。</p><p>读者可以使用调试器，在 chunk 处加上断点，运行 lua 代码，
-使用 next/step 观察内部运行的走向，对照 EBNF 来理解语法分析的整体结构。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make -s debug source=if.lua
+使用 next/step 观察内部运行的走向，对照 EBNF 来理解语法分析的整体结构。</p><div class=highlight><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>$ make -s debug source=if.lua
 </code></pre></div><p>建议最开始以 stat 为单位，对每个 stat 进行独立的观察，最终再整合为宏观的理解。</p><section class=footnotes role=doc-endnotes><hr><ol><li id=fn:1 role=doc-endnote><p>: <a href=http://www.lua.org/manual/5.1/manual.html#8>http://www.lua.org/manual/5.1/manual.html#8</a> <a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li></ol></section></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/commit/8c359ebae66c3a96c4a0c7ed6ba49ad52483055a title="最后修改者 DreamAndDead | February 23, 2021" target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/calendar.svg class=book-icon alt=Calendar>
 <span>February 23, 2021</span></a></div><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/edit/master/site/content/docs/parser/index.md target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/edit.svg class=book-icon alt=Edit>
 <span>编辑本页</span></a></div></div></footer><div class=book-comments><div id=disqus_thread></div><script type=application/javascript>var disqus_config=function(){};(function(){if(["localhost","127.0.0.1"].indexOf(window.location.hostname)!=-1){document.getElementById('disqus_thread').innerHTML='Disqus comments not available by default when the website is previewed locally.';return;}

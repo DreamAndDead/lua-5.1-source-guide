@@ -14,19 +14,19 @@ core api #  内存分配，无外乎涉及 3 个基础 api
  malloc realloc free  对于了解操作系统和 C 语言的大家都不陌生。
 lua 内部将其简化为 1 个 api，定义原型为 lua_Alloc
 63 64 65 66  /* ** prototype for memory-allocation functions */ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);   Code Snippet 1: lua.h  这是一个函数指针，规定其行为需遵从如下约定
-23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39  /* ** About the realloc function: ** void * frealloc (void *ud, void *ptr, size_t osize, size_t nsize); ** (`osize' is the old size, `nsize' is the new size) ** ** Lua ensures that (ptr == NULL) iff (osize == 0)."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/memory/"><meta property="article:published_time" content="2020-12-23T11:59:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>memory | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39  /* ** About the realloc function: ** void * frealloc (void *ud, void *ptr, size_t osize, size_t nsize); ** (`osize' is the old size, `nsize' is the new size) ** ** Lua ensures that (ptr == NULL) iff (osize == 0)."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/memory/"><meta property="article:published_time" content="2020-12-23T11:59:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>memory | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.dfc677a7972fb0d86dd6eaf657edfad83e2c433246dffdf64911ee91450f0378.css integrity="sha256-38Z3p5cvsNht1ur2V+362D4sQzJG3/32SRHukUUPA3g="><script defer src=/lua-5.1-source-guide/zh.search.min.63a734a12cfe0fd29995becea70dc8f315c1540f9981491da7d955afee3cf62e.js integrity="sha256-Y6c0oSz+D9KZlb7Opw3I8xXBVA+ZgUkdp9lVr+489i4="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/ class=active>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
 <strong>memory</strong>
 <label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#core-api>core api</a><ul><li><a href=#about-global-state>about global state</a></li></ul></li><li><a href=#generic-api>generic api</a><ul><li><a href=#luam-realloc><code>luaM_realloc_</code></a></li><li><a href=#luam-rellocv><code>luaM_rellocv</code></a></li><li><a href=#luam-growaux><code>luaM_growaux_</code></a></li></ul></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><p>内存管理对所有程序都很关键，对于动态语言更是如此。</p><p>lua 是单线程程序，即使在内部实现了协程，但内存还是统一管理的。</p><p>内存回收使用 gc 算法，是非常重要的模块，而相对地，内存分配就显得非常简单。</p><p>本章就讲解 lua 源码中关于内存分配的内容。</p><h2 id=core-api>core api
-<a class=anchor href=#core-api>#</a></h2><p>内存分配，无外乎涉及 3 个基础 api</p><ul><li>malloc</li><li>realloc</li><li>free</li></ul><p>对于了解操作系统和 C 语言的大家都不陌生。</p><p>lua 内部将其简化为 1 个 api，定义原型为 <code>lua_Alloc</code></p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">63
+<a class=anchor href=#core-api>#</a></h2><p>内存分配，无外乎涉及 3 个基础 api</p><ul><li>malloc</li><li>realloc</li><li>free</li></ul><p>对于了解操作系统和 C 语言的大家都不陌生。</p><p>lua 内部将其简化为 1 个 api，定义原型为 <code>lua_Alloc</code></p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">63
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">64
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">66
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
-</span><span style=color:#75715e>** prototype for memory-allocation functions
-</span><span style=color:#75715e>*/</span>
-<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span> (<span style=color:#f92672>*</span>lua_Alloc) (<span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>ud, <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>ptr, size_t osize, size_t nsize);</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
-lua.h</div><p>这是一个函数指针，规定其行为需遵从如下约定</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#228b22>/*
+</span><span style=color:#228b22>** prototype for memory-allocation functions
+</span><span style=color:#228b22>*/</span>
+<span style=color:#8b008b;font-weight:700>typedef</span> <span style=color:#00688b;font-weight:700>void</span> * (*lua_Alloc) (<span style=color:#00688b;font-weight:700>void</span> *ud, <span style=color:#00688b;font-weight:700>void</span> *ptr, size_t osize, size_t nsize);</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
+lua.h</div><p>这是一个函数指针，规定其行为需遵从如下约定</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
@@ -43,24 +43,24 @@ lua.h</div><p>这是一个函数指针，规定其行为需遵从如下约定</p
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">38
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
-</span><span style=color:#75715e>** About the realloc function:
-</span><span style=color:#75715e>** void * frealloc (void *ud, void *ptr, size_t osize, size_t nsize);
-</span><span style=color:#75715e>** (`osize&#39; is the old size, `nsize&#39; is the new size)
-</span><span style=color:#75715e>**
-</span><span style=color:#75715e>** Lua ensures that (ptr == NULL) iff (osize == 0).
-</span><span style=color:#75715e>**
-</span><span style=color:#75715e>** * frealloc(ud, NULL, 0, x) creates a new block of size `x&#39;
-</span><span style=color:#75715e>**
-</span><span style=color:#75715e>** * frealloc(ud, p, x, 0) frees the block `p&#39;
-</span><span style=color:#75715e>** (in this specific case, frealloc must return NULL).
-</span><span style=color:#75715e>** particularly, frealloc(ud, NULL, 0, 0) does nothing
-</span><span style=color:#75715e>** (which is equivalent to free(NULL) in ANSI C)
-</span><span style=color:#75715e>**
-</span><span style=color:#75715e>** frealloc returns NULL if it cannot create or reallocate the area
-</span><span style=color:#75715e>** (any reallocation to an equal or smaller size cannot fail!)
-</span><span style=color:#75715e>*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
-lmem.c</div><p>简单的说，就是根据参数的不同，将 3 个基础 api 的功能用 1 个 api 来表示</p><ul><li>malloc， <code>frealloc(ud, NULL, 0, ns)</code> ，分配大小为 ns 的内存，返回头地址</li><li>realloc， <code>frealloc(ud, p, os, ns)</code> ，变更 p 开始的内存块大小从 os 到 ns，失败返回 NULL</li><li>free， <code>frealloc(ud, p, os, 0)</code> ，回收以 p 开始的 os 大小的内存块，返回 NULL</li></ul><p>lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看到它是非常纯粹的</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">627
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#228b22>/*
+</span><span style=color:#228b22>** About the realloc function:
+</span><span style=color:#228b22>** void * frealloc (void *ud, void *ptr, size_t osize, size_t nsize);
+</span><span style=color:#228b22>** (`osize&#39; is the old size, `nsize&#39; is the new size)
+</span><span style=color:#228b22>**
+</span><span style=color:#228b22>** Lua ensures that (ptr == NULL) iff (osize == 0).
+</span><span style=color:#228b22>**
+</span><span style=color:#228b22>** * frealloc(ud, NULL, 0, x) creates a new block of size `x&#39;
+</span><span style=color:#228b22>**
+</span><span style=color:#228b22>** * frealloc(ud, p, x, 0) frees the block `p&#39;
+</span><span style=color:#228b22>** (in this specific case, frealloc must return NULL).
+</span><span style=color:#228b22>** particularly, frealloc(ud, NULL, 0, 0) does nothing
+</span><span style=color:#228b22>** (which is equivalent to free(NULL) in ANSI C)
+</span><span style=color:#228b22>**
+</span><span style=color:#228b22>** frealloc returns NULL if it cannot create or reallocate the area
+</span><span style=color:#228b22>** (any reallocation to an equal or smaller size cannot fail!)
+</span><span style=color:#228b22>*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
+lmem.c</div><p>简单的说，就是根据参数的不同，将 3 个基础 api 的功能用 1 个 api 来表示</p><ul><li>malloc， <code>frealloc(ud, NULL, 0, ns)</code> ，分配大小为 ns 的内存，返回头地址</li><li>realloc， <code>frealloc(ud, p, os, ns)</code> ，变更 p 开始的内存块大小从 os 到 ns，失败返回 NULL</li><li>free， <code>frealloc(ud, p, os, 0)</code> ，回收以 p 开始的 os 大小的内存块，返回 NULL</li></ul><p>lua 默认提供一个符合约定的 frealloc 函数供内部使用，可以看到它是非常纯粹的</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">627
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">628
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">629
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">630
@@ -70,19 +70,19 @@ lmem.c</div><p>简单的说，就是根据参数的不同，将 3 个基础 api 
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">634
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">635
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">636
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>l_alloc</span> (<span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>ud, <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>ptr, size_t osize, size_t nsize) {
-  (<span style=color:#66d9ef>void</span>)ud;
-  (<span style=color:#66d9ef>void</span>)osize;
-  <span style=color:#66d9ef>if</span> (nsize <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>) {
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#8b008b;font-weight:700>static</span> <span style=color:#00688b;font-weight:700>void</span> *<span style=color:#008b45>l_alloc</span> (<span style=color:#00688b;font-weight:700>void</span> *ud, <span style=color:#00688b;font-weight:700>void</span> *ptr, size_t osize, size_t nsize) {
+  (<span style=color:#00688b;font-weight:700>void</span>)ud;
+  (<span style=color:#00688b;font-weight:700>void</span>)osize;
+  <span style=color:#8b008b;font-weight:700>if</span> (nsize == <span style=color:#b452cd>0</span>) {
     free(ptr);
-    <span style=color:#66d9ef>return</span> NULL;
+    <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#658b00>NULL</span>;
   }
-  <span style=color:#66d9ef>else</span>
-    <span style=color:#66d9ef>return</span> realloc(ptr, nsize);
+  <span style=color:#8b008b;font-weight:700>else</span>
+    <span style=color:#8b008b;font-weight:700>return</span> realloc(ptr, nsize);
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
 lauxlib.c</div><h3 id=about-global-state>about global state
 <a class=anchor href=#about-global-state>#</a></h3><p>在
-<a href=/lua-5.1-source-guide/docs/overview/>overview</a> 章节，简单提到了 <code>global_State</code> ，字面意义上理解，它和全局的状态相关。</p><p>这里就是它的一个应用方面，记录内存分配相关的状态。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
+<a href=/lua-5.1-source-guide/docs/overview/>overview</a> 章节，简单提到了 <code>global_State</code> ，字面意义上理解，它和全局的状态相关。</p><p>这里就是它的一个应用方面，记录内存分配相关的状态。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">66
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">67
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">68
@@ -112,38 +112,38 @@ lauxlib.c</div><h3 id=about-global-state>about global state
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">92
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">93
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">94
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
-</span><span style=color:#75715e>** `global state&#39;, shared by all threads of this state
-</span><span style=color:#75715e>*/</span>
-<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>struct</span> global_State {
-  stringtable strt;  <span style=color:#75715e>/* hash table for strings */</span>
-  lua_Alloc frealloc;  <span style=color:#75715e>/* function to reallocate memory */</span>
-  <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>ud;         <span style=color:#75715e>/* auxiliary data to `frealloc&#39; */</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/*
+</span><span style=color:#228b22>** `global state&#39;, shared by all threads of this state
+</span><span style=color:#228b22>*/</span>
+<span style=color:#8b008b;font-weight:700>typedef</span> <span style=color:#8b008b;font-weight:700>struct</span> global_State {
+  stringtable strt;  <span style=color:#228b22>/* hash table for strings */</span>
+  lua_Alloc frealloc;  <span style=color:#228b22>/* function to reallocate memory */</span>
+  <span style=color:#00688b;font-weight:700>void</span> *ud;         <span style=color:#228b22>/* auxiliary data to `frealloc&#39; */</span>
   lu_byte currentwhite;
-  lu_byte gcstate;  <span style=color:#75715e>/* state of garbage collector */</span>
-  <span style=color:#66d9ef>int</span> sweepstrgc;  <span style=color:#75715e>/* position of sweep in `strt&#39; */</span>
-  GCObject <span style=color:#f92672>*</span>rootgc;  <span style=color:#75715e>/* list of all collectable objects */</span>
-  GCObject <span style=color:#f92672>**</span>sweepgc;  <span style=color:#75715e>/* position of sweep in `rootgc&#39; */</span>
-  GCObject <span style=color:#f92672>*</span>gray;  <span style=color:#75715e>/* list of gray objects */</span>
-  GCObject <span style=color:#f92672>*</span>grayagain;  <span style=color:#75715e>/* list of objects to be traversed atomically */</span>
-  GCObject <span style=color:#f92672>*</span>weak;  <span style=color:#75715e>/* list of weak tables (to be cleared) */</span>
-  GCObject <span style=color:#f92672>*</span>tmudata;  <span style=color:#75715e>/* last element of list of userdata to be GC */</span>
-  Mbuffer buff;  <span style=color:#75715e>/* temporary buffer for string concatentation */</span>
+  lu_byte gcstate;  <span style=color:#228b22>/* state of garbage collector */</span>
+  <span style=color:#00688b;font-weight:700>int</span> sweepstrgc;  <span style=color:#228b22>/* position of sweep in `strt&#39; */</span>
+  GCObject *rootgc;  <span style=color:#228b22>/* list of all collectable objects */</span>
+  GCObject **sweepgc;  <span style=color:#228b22>/* position of sweep in `rootgc&#39; */</span>
+  GCObject *gray;  <span style=color:#228b22>/* list of gray objects */</span>
+  GCObject *grayagain;  <span style=color:#228b22>/* list of objects to be traversed atomically */</span>
+  GCObject *weak;  <span style=color:#228b22>/* list of weak tables (to be cleared) */</span>
+  GCObject *tmudata;  <span style=color:#228b22>/* last element of list of userdata to be GC */</span>
+  Mbuffer buff;  <span style=color:#228b22>/* temporary buffer for string concatentation */</span>
   lu_mem GCthreshold;
-  lu_mem totalbytes;  <span style=color:#75715e>/* number of bytes currently allocated */</span>
-  lu_mem estimate;  <span style=color:#75715e>/* an estimate of number of bytes actually in use */</span>
-  lu_mem gcdept;  <span style=color:#75715e>/* how much GC is `behind schedule&#39; */</span>
-  <span style=color:#66d9ef>int</span> gcpause;  <span style=color:#75715e>/* size of pause between successive GCs */</span>
-  <span style=color:#66d9ef>int</span> gcstepmul;  <span style=color:#75715e>/* GC `granularity&#39; */</span>
-  lua_CFunction panic;  <span style=color:#75715e>/* to be called in unprotected errors */</span>
+  lu_mem totalbytes;  <span style=color:#228b22>/* number of bytes currently allocated */</span>
+  lu_mem estimate;  <span style=color:#228b22>/* an estimate of number of bytes actually in use */</span>
+  lu_mem gcdept;  <span style=color:#228b22>/* how much GC is `behind schedule&#39; */</span>
+  <span style=color:#00688b;font-weight:700>int</span> gcpause;  <span style=color:#228b22>/* size of pause between successive GCs */</span>
+  <span style=color:#00688b;font-weight:700>int</span> gcstepmul;  <span style=color:#228b22>/* GC `granularity&#39; */</span>
+  lua_CFunction panic;  <span style=color:#228b22>/* to be called in unprotected errors */</span>
   TValue l_registry;
-  <span style=color:#66d9ef>struct</span> lua_State <span style=color:#f92672>*</span>mainthread;
-  UpVal uvhead;  <span style=color:#75715e>/* head of double-linked list of all open upvalues */</span>
-  <span style=color:#66d9ef>struct</span> Table <span style=color:#f92672>*</span>mt[NUM_TAGS];  <span style=color:#75715e>/* metatables for basic types */</span>
-  TString <span style=color:#f92672>*</span>tmname[TM_N];  <span style=color:#75715e>/* array with tag-method names */</span>
+  <span style=color:#8b008b;font-weight:700>struct</span> lua_State *mainthread;
+  UpVal uvhead;  <span style=color:#228b22>/* head of double-linked list of all open upvalues */</span>
+  <span style=color:#8b008b;font-weight:700>struct</span> Table *mt[NUM_TAGS];  <span style=color:#228b22>/* metatables for basic types */</span>
+  TString *tmname[TM_N];  <span style=color:#228b22>/* array with tag-method names */</span>
 } global_State;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 4</span>:
 lstate.h</div><ul><li>frealloc 引用内部的内存分配函数，即上面提到的 <code>l_alloc</code></li><li>ud 引用 frealloc 函数的第一个参数，提供辅助数据，用于用户自定义</li><li>totalbytes 记录已分配的总内存大小</li></ul><p>在了解 <code>global_State</code> 相关字段后，就不难理解 lua 在 c api 层面提供的相关接口，
-使用户自定义内存管理函数。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1007
+使用户自定义内存管理函数。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1007
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1008
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1009
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1010
@@ -159,25 +159,25 @@ lstate.h</div><ul><li>frealloc 引用内部的内存分配函数，即上面提�
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1020
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1021
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">1022
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>LUA_API lua_Alloc <span style=color:#a6e22e>lua_getallocf</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>void</span> <span style=color:#f92672>**</span>ud) {
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>LUA_API lua_Alloc <span style=color:#008b45>lua_getallocf</span> (lua_State *L, <span style=color:#00688b;font-weight:700>void</span> **ud) {
   lua_Alloc f;
   lua_lock(L);
-  <span style=color:#66d9ef>if</span> (ud) <span style=color:#f92672>*</span>ud <span style=color:#f92672>=</span> G(L)<span style=color:#f92672>-&gt;</span>ud;
-  f <span style=color:#f92672>=</span> G(L)<span style=color:#f92672>-&gt;</span>frealloc;
+  <span style=color:#8b008b;font-weight:700>if</span> (ud) *ud = G(L)-&gt;ud;
+  f = G(L)-&gt;frealloc;
   lua_unlock(L);
-  <span style=color:#66d9ef>return</span> f;
+  <span style=color:#8b008b;font-weight:700>return</span> f;
 }
 
 
-LUA_API <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>lua_setallocf</span> (lua_State <span style=color:#f92672>*</span>L, lua_Alloc f, <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>ud) {
+LUA_API <span style=color:#00688b;font-weight:700>void</span> <span style=color:#008b45>lua_setallocf</span> (lua_State *L, lua_Alloc f, <span style=color:#00688b;font-weight:700>void</span> *ud) {
   lua_lock(L);
-  G(L)<span style=color:#f92672>-&gt;</span>ud <span style=color:#f92672>=</span> ud;
-  G(L)<span style=color:#f92672>-&gt;</span>frealloc <span style=color:#f92672>=</span> f;
+  G(L)-&gt;ud = ud;
+  G(L)-&gt;frealloc = f;
   lua_unlock(L);
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 5</span>:
 lapi.c</div><h2 id=generic-api>generic api
 <a class=anchor href=#generic-api>#</a></h2><p>核心 api 定义之后，其它上层方法不过是对它的封装。</p><figure><img src=mem-call.png></figure><p>lmem.h 对外提供了诸多函数和宏，依赖关系如图示，这里简要介绍图中标识的 3 个方法，其余留给读者自行阅读。</p><h3 id=luam-realloc><code>luaM_realloc_</code>
-<a class=anchor href=#luam-realloc>#</a></h3><p>对核心 api 进行了封装，检测函数错误，以及计算 totalbytes，为其它方法提供了基础。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">73
+<a class=anchor href=#luam-realloc>#</a></h3><p>对核心 api 进行了封装，检测函数错误，以及计算 totalbytes，为其它方法提供了基础。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">73
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">74
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">75
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">76
@@ -190,31 +190,31 @@ lapi.c</div><h2 id=generic-api>generic api
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">83
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">84
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">85
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
-</span><span style=color:#75715e>** generic allocation routine.
-</span><span style=color:#75715e>*/</span>
-<span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>luaM_realloc_</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>block, size_t osize, size_t nsize) {
-  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
-  lua_assert((osize <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>) <span style=color:#f92672>==</span> (block <span style=color:#f92672>==</span> NULL));
-  block <span style=color:#f92672>=</span> (<span style=color:#f92672>*</span>g<span style=color:#f92672>-&gt;</span>frealloc)(g<span style=color:#f92672>-&gt;</span>ud, block, osize, nsize);
-  <span style=color:#66d9ef>if</span> (block <span style=color:#f92672>==</span> NULL <span style=color:#f92672>&amp;&amp;</span> nsize <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>)
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#228b22>/*
+</span><span style=color:#228b22>** generic allocation routine.
+</span><span style=color:#228b22>*/</span>
+<span style=color:#00688b;font-weight:700>void</span> *<span style=color:#008b45>luaM_realloc_</span> (lua_State *L, <span style=color:#00688b;font-weight:700>void</span> *block, size_t osize, size_t nsize) {
+  global_State *g = G(L);
+  lua_assert((osize == <span style=color:#b452cd>0</span>) == (block == <span style=color:#658b00>NULL</span>));
+  block = (*g-&gt;frealloc)(g-&gt;ud, block, osize, nsize);
+  <span style=color:#8b008b;font-weight:700>if</span> (block == <span style=color:#658b00>NULL</span> &amp;&amp; nsize &gt; <span style=color:#b452cd>0</span>)
     luaD_throw(L, LUA_ERRMEM);
-  lua_assert((nsize <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>) <span style=color:#f92672>==</span> (block <span style=color:#f92672>==</span> NULL));
-  g<span style=color:#f92672>-&gt;</span>totalbytes <span style=color:#f92672>=</span> (g<span style=color:#f92672>-&gt;</span>totalbytes <span style=color:#f92672>-</span> osize) <span style=color:#f92672>+</span> nsize;
-  <span style=color:#66d9ef>return</span> block;
+  lua_assert((nsize == <span style=color:#b452cd>0</span>) == (block == <span style=color:#658b00>NULL</span>));
+  g-&gt;totalbytes = (g-&gt;totalbytes - osize) + nsize;
+  <span style=color:#8b008b;font-weight:700>return</span> block;
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 6</span>:
 lmem.c</div><h3 id=luam-rellocv><code>luaM_rellocv</code>
-<a class=anchor href=#luam-rellocv>#</a></h3><p>这个方法是一个宏，其中参数含义为</p><ul><li>L -> <code>lua_State</code></li><li>b -> block pointer</li><li>on -> old number n</li><li>n -> new number n</li><li>e -> elem size</li></ul><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+<a class=anchor href=#luam-rellocv>#</a></h3><p>这个方法是一个宏，其中参数含义为</p><ul><li>L -> <code>lua_State</code></li><li>b -> block pointer</li><li>on -> old number n</li><li>n -> new number n</li><li>e -> elem size</li></ul><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define luaM_reallocv(L,b,on,n,e) \
-</span><span style=color:#75715e>	((cast(size_t, (n)+1) &lt;= MAX_SIZET/(e)) ?  </span><span style=color:#75715e>/* +1 to avoid warnings */</span><span style=color:#75715e> \
-</span><span style=color:#75715e>		luaM_realloc_(L, (b), (on)*(e), (n)*(e)) : \
-</span><span style=color:#75715e>		luaM_toobig(L))</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#1e889b>#define luaM_reallocv(L,b,on,n,e) \
+</span><span style=color:#1e889b>	((cast(size_t, (n)+1) &lt;= MAX_SIZET/(e)) ?  </span><span style=color:#228b22>/* +1 to avoid warnings */</span><span style=color:#1e889b> \
+</span><span style=color:#1e889b>		luaM_realloc_(L, (b), (on)*(e), (n)*(e)) : \
+</span><span style=color:#1e889b>		luaM_toobig(L))</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
 lmem.h</div><p>可以看出，这个宏在 <code>luaM_realloc_</code> 的基础上，方便对多元素数组进行内存分配，省去重复手动计算内存大小的困扰。</p><p>其中有一个细节，使用 <code>n+1</code> 和 <code>MAX_SIZET/e</code> 进行比较，而非使用 <code>(n+1) * e</code> 和 <code>MAX_SIZET</code> 进行比较，
 因为 <code>size_t</code> 是无符号类型，先进行除法来避免比较时溢出。</p><h3 id=luam-growaux><code>luaM_growaux_</code>
-<a class=anchor href=#luam-growaux>#</a></h3><p>这个方法在 <code>luaM_rellocv</code> 的基础上，添加了 limit 的限制。</p><p>最小不能小于 4， 最大不能超过 limit，按 2 倍速度进行内存 grow，适用于管理 <strong>类 vector 结构</strong> 。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+<a class=anchor href=#luam-growaux>#</a></h3><p>这个方法在 <code>luaM_rellocv</code> 的基础上，添加了 limit 的限制。</p><p>最小不能小于 4， 最大不能超过 limit，按 2 倍速度进行内存 grow，适用于管理 <strong>类 vector 结构</strong> 。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
@@ -232,23 +232,23 @@ lmem.h</div><p>可以看出，这个宏在 <code>luaM_realloc_</code> 的基础�
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">61
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">62
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">63
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>luaM_growaux_</span> (lua_State <span style=color:#f92672>*</span>L, <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>block, <span style=color:#66d9ef>int</span> <span style=color:#f92672>*</span>size, size_t size_elems,
-		     <span style=color:#66d9ef>int</span> limit, <span style=color:#66d9ef>const</span> <span style=color:#66d9ef>char</span> <span style=color:#f92672>*</span>errormsg) {
-  <span style=color:#66d9ef>void</span> <span style=color:#f92672>*</span>newblock;
-  <span style=color:#66d9ef>int</span> newsize;
-  <span style=color:#66d9ef>if</span> (<span style=color:#f92672>*</span>size <span style=color:#f92672>&gt;=</span> limit<span style=color:#f92672>/</span><span style=color:#ae81ff>2</span>) {  <span style=color:#75715e>/* cannot double it? */</span>
-    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>*</span>size <span style=color:#f92672>&gt;=</span> limit)  <span style=color:#75715e>/* cannot grow even a little? */</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#00688b;font-weight:700>void</span> *<span style=color:#008b45>luaM_growaux_</span> (lua_State *L, <span style=color:#00688b;font-weight:700>void</span> *block, <span style=color:#00688b;font-weight:700>int</span> *size, size_t size_elems,
+		     <span style=color:#00688b;font-weight:700>int</span> limit, <span style=color:#8b008b;font-weight:700>const</span> <span style=color:#00688b;font-weight:700>char</span> *errormsg) {
+  <span style=color:#00688b;font-weight:700>void</span> *newblock;
+  <span style=color:#00688b;font-weight:700>int</span> newsize;
+  <span style=color:#8b008b;font-weight:700>if</span> (*size &gt;= limit/<span style=color:#b452cd>2</span>) {  <span style=color:#228b22>/* cannot double it? */</span>
+    <span style=color:#8b008b;font-weight:700>if</span> (*size &gt;= limit)  <span style=color:#228b22>/* cannot grow even a little? */</span>
       luaG_runerror(L, errormsg);
-    newsize <span style=color:#f92672>=</span> limit;  <span style=color:#75715e>/* still have at least one free place */</span>
+    newsize = limit;  <span style=color:#228b22>/* still have at least one free place */</span>
   }
-  <span style=color:#66d9ef>else</span> {
-    newsize <span style=color:#f92672>=</span> (<span style=color:#f92672>*</span>size)<span style=color:#f92672>*</span><span style=color:#ae81ff>2</span>;
-    <span style=color:#66d9ef>if</span> (newsize <span style=color:#f92672>&lt;</span> MINSIZEARRAY)
-      newsize <span style=color:#f92672>=</span> MINSIZEARRAY;  <span style=color:#75715e>/* minimum size */</span>
+  <span style=color:#8b008b;font-weight:700>else</span> {
+    newsize = (*size)*<span style=color:#b452cd>2</span>;
+    <span style=color:#8b008b;font-weight:700>if</span> (newsize &lt; MINSIZEARRAY)
+      newsize = MINSIZEARRAY;  <span style=color:#228b22>/* minimum size */</span>
   }
-  newblock <span style=color:#f92672>=</span> luaM_reallocv(L, block, <span style=color:#f92672>*</span>size, newsize, size_elems);
-  <span style=color:#f92672>*</span>size <span style=color:#f92672>=</span> newsize;  <span style=color:#75715e>/* update only when everything else is OK */</span>
-  <span style=color:#66d9ef>return</span> newblock;
+  newblock = luaM_reallocv(L, block, *size, newsize, size_elems);
+  *size = newsize;  <span style=color:#228b22>/* update only when everything else is OK */</span>
+  <span style=color:#8b008b;font-weight:700>return</span> newblock;
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 8</span>:
 lmem.c</div><h2 id=practice>practice
 <a class=anchor href=#practice>#</a></h2><p>本章并不复杂，明确了上面的基础，剩下的方法并不难理解。</p><table><thead><tr><th>文件</th><th>建议</th></tr></thead><tbody><tr><td>lmem.h</td><td>仔细阅读</td></tr><tr><td>lmem.c</td><td>仔细阅读</td></tr></tbody></table></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/commit/8c359ebae66c3a96c4a0c7ed6ba49ad52483055a title="最后修改者 DreamAndDead | February 23, 2021" target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/calendar.svg class=book-icon alt=Calendar>

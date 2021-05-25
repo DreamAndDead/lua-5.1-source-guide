@@ -30,7 +30,7 @@ mark & sweep #  双色标记清除算法是最经典的算法。
 标记阶段的开始，将所有从 root 可达的对象标记为灰色；
 标记阶段，逐个取出灰色对象，将其所有可达的白色对象标记为灰色，最后将自身标记为黑色；
 清除阶段，当不存在灰色对象时，开始清除白色对象，将所有黑色对象标记回白色。
-改进后的算法，标记阶段可以增量式的运行，随时暂停和继续。"><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/gc/"><meta property="article:published_time" content="2021-01-19T15:16:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>gc | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+改进后的算法，标记阶段可以增量式的运行，随时暂停和继续。"><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/gc/"><meta property="article:published_time" content="2021-01-19T15:16:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>gc | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.dfc677a7972fb0d86dd6eaf657edfad83e2c433246dffdf64911ee91450f0378.css integrity="sha256-38Z3p5cvsNht1ur2V+362D4sQzJG3/32SRHukUUPA3g="><script defer src=/lua-5.1-source-guide/zh.search.min.63a734a12cfe0fd29995becea70dc8f315c1540f9981491da7d955afee3cf62e.js integrity="sha256-Y6c0oSz+D9KZlb7Opw3I8xXBVA+ZgUkdp9lVr+489i4="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/ class=active>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
 <strong>gc</strong>
 <label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#algo>algo</a><ul><li><a href=#mark-and-sweep>mark & sweep</a></li><li><a href=#tri-color-incremental-mark-and-sweep>tri color incremental mark & sweep</a></li><li><a href=#double-white>double white</a></li></ul></li><li><a href=#bit>bit</a></li><li><a href=#state>state</a></li><li><a href=#phase>phase</a><ul><li><a href=#push>push</a></li><li><a href=#pop>pop</a></li><li><a href=#sweep>sweep</a></li></ul></li><li><a href=#barrier>barrier</a></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><p>本章来讲解 Lua 内部实现的 gc 机制。</p><h2 id=algo>algo
@@ -48,17 +48,17 @@ B 不再引用 C，而 A 开始引用 C。</p><figure><img src=gc-problem-1.png>
 <a class=anchor href=#double-white>#</a></h3><p>Lua 内部更进一步<sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>，引用了双白色，加上灰黑，也就是 4 种颜色。</p><p>双白色的目的在于，在一轮 gc 的过程中，主程序会新建新的对象，新建对象用另一种白色来标识。
 这样在此轮 gc 最终回收的时候，只回收原有白色的对象即可，不会涉及到新建对象。</p><p>同时，最终黑色会被标记为另一种白色。</p><figure><img src=gc-4-color-with-barrier.png></figure><p>如果开始下一轮 gc，需要将所有 other white 翻转为 white，回到起始点。</p><p>但是这样代价比较高，Lua 直接使用标识 <code>g->currentwhite</code> 来表示当前 gc 处理的白色类型，
 这样就只需要翻转 <code>g->currentwhite</code> 即可。</p><h2 id=bit>bit
-<a class=anchor href=#bit>#</a></h2><p>下面来看 gc 算法是如何和 Lua 内部的对象关联起来的。</p><p>回忆 object 章节，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+<a class=anchor href=#bit>#</a></h2><p>下面来看 gc 算法是如何和 Lua 内部的对象关联起来的。</p><p>回忆 object 章节，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
-</span><span style=color:#75715e>** Common Header for all collectable objects (in macro form, to be
-</span><span style=color:#75715e>** included in other objects)
-</span><span style=color:#75715e>*/</span>
-<span style=color:#75715e>#define CommonHeader	GCObject *next; lu_byte tt; lu_byte marked</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
-lobject.h</div><p>每一个 GCObject 都有共同的 CommonHeader 字段，其中 marked 就是用来标识对象在 gc 过程中的状态。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/*
+</span><span style=color:#228b22>** Common Header for all collectable objects (in macro form, to be
+</span><span style=color:#228b22>** included in other objects)
+</span><span style=color:#228b22>*/</span>
+<span style=color:#1e889b>#define CommonHeader	GCObject *next; lu_byte tt; lu_byte marked</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
+lobject.h</div><p>每一个 GCObject 都有共同的 CommonHeader 字段，其中 marked 就是用来标识对象在 gc 过程中的状态。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
@@ -79,30 +79,30 @@ lobject.h</div><p>每一个 GCObject 都有共同的 CommonHeader 字段，其�
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">59
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">60
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">61
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
-</span><span style=color:#75715e>** Layout for bit use in `marked&#39; field:
-</span><span style=color:#75715e>** bit 0 - object is white (type 0)
-</span><span style=color:#75715e>** bit 1 - object is white (type 1)
-</span><span style=color:#75715e>** bit 2 - object is black
-</span><span style=color:#75715e>** bit 3 - for userdata: has been finalized
-</span><span style=color:#75715e>** bit 3 - for tables: has weak keys
-</span><span style=color:#75715e>** bit 4 - for tables: has weak values
-</span><span style=color:#75715e>** bit 5 - object is fixed (should not be collected)
-</span><span style=color:#75715e>** bit 6 - object is &#34;super&#34; fixed (only the main thread)
-</span><span style=color:#75715e>*/</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/*
+</span><span style=color:#228b22>** Layout for bit use in `marked&#39; field:
+</span><span style=color:#228b22>** bit 0 - object is white (type 0)
+</span><span style=color:#228b22>** bit 1 - object is white (type 1)
+</span><span style=color:#228b22>** bit 2 - object is black
+</span><span style=color:#228b22>** bit 3 - for userdata: has been finalized
+</span><span style=color:#228b22>** bit 3 - for tables: has weak keys
+</span><span style=color:#228b22>** bit 4 - for tables: has weak values
+</span><span style=color:#228b22>** bit 5 - object is fixed (should not be collected)
+</span><span style=color:#228b22>** bit 6 - object is &#34;super&#34; fixed (only the main thread)
+</span><span style=color:#228b22>*/</span>
 
 
-<span style=color:#75715e>#define WHITE0BIT	0
-</span><span style=color:#75715e>#define WHITE1BIT	1
-</span><span style=color:#75715e>#define BLACKBIT	2
-</span><span style=color:#75715e>#define FINALIZEDBIT	3
-</span><span style=color:#75715e>#define KEYWEAKBIT	3
-</span><span style=color:#75715e>#define VALUEWEAKBIT	4
-</span><span style=color:#75715e>#define FIXEDBIT	5
-</span><span style=color:#75715e>#define SFIXEDBIT	6</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
+<span style=color:#1e889b>#define WHITE0BIT	0
+</span><span style=color:#1e889b>#define WHITE1BIT	1
+</span><span style=color:#1e889b>#define BLACKBIT	2
+</span><span style=color:#1e889b>#define FINALIZEDBIT	3
+</span><span style=color:#1e889b>#define KEYWEAKBIT	3
+</span><span style=color:#1e889b>#define VALUEWEAKBIT	4
+</span><span style=color:#1e889b>#define FIXEDBIT	5
+</span><span style=color:#1e889b>#define SFIXEDBIT	6</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
 lgc.h</div><figure><img src=gc-bit-mark.png></figure><p>marked 字节中，前 3 位标识了颜色，任意时刻最多只有 1 位为 1。
 当 3 个位都为 0 时，表示灰色。</p><h2 id=state>state
-<a class=anchor href=#state>#</a></h2><p>Lua 内部的 gc 过程分为如下几个状态，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+<a class=anchor href=#state>#</a></h2><p>Lua 内部的 gc 过程分为如下几个状态，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
@@ -110,16 +110,16 @@ lgc.h</div><figure><img src=gc-bit-mark.png></figure><p>marked 字节中，前 3
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
-</span><span style=color:#75715e>** Possible states of the Garbage Collector
-</span><span style=color:#75715e>*/</span>
-<span style=color:#75715e>#define GCSpause	0
-</span><span style=color:#75715e>#define GCSpropagate	1
-</span><span style=color:#75715e>#define GCSsweepstring	2
-</span><span style=color:#75715e>#define GCSsweep	3
-</span><span style=color:#75715e>#define GCSfinalize	4</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/*
+</span><span style=color:#228b22>** Possible states of the Garbage Collector
+</span><span style=color:#228b22>*/</span>
+<span style=color:#1e889b>#define GCSpause	0
+</span><span style=color:#1e889b>#define GCSpropagate	1
+</span><span style=color:#1e889b>#define GCSsweepstring	2
+</span><span style=color:#1e889b>#define GCSsweep	3
+</span><span style=color:#1e889b>#define GCSfinalize	4</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
 lgc.h</div><p>不同状态间执行不同阶段的 gc 操作，</p><figure><img src=gc-state.png></figure><p>Lua 内部通过 <code>g->gcstate</code> 来记录当前的状态。</p><h2 id=phase>phase
-<a class=anchor href=#phase>#</a></h2><p>gc 模块内部通过 <code>luaC_step</code> 来推动整个 gc 过程，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">610
+<a class=anchor href=#phase>#</a></h2><p>gc 模块内部通过 <code>luaC_step</code> 来推动整个 gc 过程，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">610
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">611
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">612
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">613
@@ -142,31 +142,31 @@ lgc.h</div><p>不同状态间执行不同阶段的 gc 操作，</p><figure><img 
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">630
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">631
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">632
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaC_step</span> (lua_State <span style=color:#f92672>*</span>L) {
-  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
-  l_mem lim <span style=color:#f92672>=</span> (GCSTEPSIZE<span style=color:#f92672>/</span><span style=color:#ae81ff>100</span>) <span style=color:#f92672>*</span> g<span style=color:#f92672>-&gt;</span>gcstepmul;
-  <span style=color:#66d9ef>if</span> (lim <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>)
-    lim <span style=color:#f92672>=</span> (MAX_LUMEM<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>)<span style=color:#f92672>/</span><span style=color:#ae81ff>2</span>;  <span style=color:#75715e>/* no limit */</span>
-  g<span style=color:#f92672>-&gt;</span>gcdept <span style=color:#f92672>+=</span> g<span style=color:#f92672>-&gt;</span>totalbytes <span style=color:#f92672>-</span> g<span style=color:#f92672>-&gt;</span>GCthreshold;
-  <span style=color:#66d9ef>do</span> {
-    lim <span style=color:#f92672>-=</span> singlestep(L);
-    <span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>==</span> GCSpause)
-      <span style=color:#66d9ef>break</span>;
-  } <span style=color:#66d9ef>while</span> (lim <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>);
-  <span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>!=</span> GCSpause) {
-    <span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>gcdept <span style=color:#f92672>&lt;</span> GCSTEPSIZE)
-      g<span style=color:#f92672>-&gt;</span>GCthreshold <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>totalbytes <span style=color:#f92672>+</span> GCSTEPSIZE;  <span style=color:#75715e>/* - lim/g-&gt;gcstepmul;*/</span>
-    <span style=color:#66d9ef>else</span> {
-      g<span style=color:#f92672>-&gt;</span>gcdept <span style=color:#f92672>-=</span> GCSTEPSIZE;
-      g<span style=color:#f92672>-&gt;</span>GCthreshold <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>totalbytes;
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#00688b;font-weight:700>void</span> <span style=color:#008b45>luaC_step</span> (lua_State *L) {
+  global_State *g = G(L);
+  l_mem lim = (GCSTEPSIZE/<span style=color:#b452cd>100</span>) * g-&gt;gcstepmul;
+  <span style=color:#8b008b;font-weight:700>if</span> (lim == <span style=color:#b452cd>0</span>)
+    lim = (MAX_LUMEM-<span style=color:#b452cd>1</span>)/<span style=color:#b452cd>2</span>;  <span style=color:#228b22>/* no limit */</span>
+  g-&gt;gcdept += g-&gt;totalbytes - g-&gt;GCthreshold;
+  <span style=color:#8b008b;font-weight:700>do</span> {
+    lim -= singlestep(L);
+    <span style=color:#8b008b;font-weight:700>if</span> (g-&gt;gcstate == GCSpause)
+      <span style=color:#8b008b;font-weight:700>break</span>;
+  } <span style=color:#8b008b;font-weight:700>while</span> (lim &gt; <span style=color:#b452cd>0</span>);
+  <span style=color:#8b008b;font-weight:700>if</span> (g-&gt;gcstate != GCSpause) {
+    <span style=color:#8b008b;font-weight:700>if</span> (g-&gt;gcdept &lt; GCSTEPSIZE)
+      g-&gt;GCthreshold = g-&gt;totalbytes + GCSTEPSIZE;  <span style=color:#228b22>/* - lim/g-&gt;gcstepmul;*/</span>
+    <span style=color:#8b008b;font-weight:700>else</span> {
+      g-&gt;gcdept -= GCSTEPSIZE;
+      g-&gt;GCthreshold = g-&gt;totalbytes;
     }
   }
-  <span style=color:#66d9ef>else</span> {
+  <span style=color:#8b008b;font-weight:700>else</span> {
     setthreshold(g);
   }
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 4</span>:
 lgc.c</div><p>其中调用 singlestep 来进行每个 phase 操作，其中统计处理的对象空间大小的和，
-达到阈值就结束此次增量 gc 过程。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">556
+达到阈值就结束此次增量 gc 过程。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">556
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">557
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">558
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">559
@@ -218,60 +218,60 @@ lgc.c</div><p>其中调用 singlestep 来进行每个 phase 操作，其中统�
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">605
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">606
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">607
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>static</span> l_mem <span style=color:#a6e22e>singlestep</span> (lua_State <span style=color:#f92672>*</span>L) {
-  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
-  <span style=color:#75715e>/*lua_checkmemory(L);*/</span>
-  <span style=color:#66d9ef>switch</span> (g<span style=color:#f92672>-&gt;</span>gcstate) {
-    <span style=color:#66d9ef>case</span> GCSpause: {
-      markroot(L);  <span style=color:#75715e>/* start a new collection */</span>
-      <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#8b008b;font-weight:700>static</span> l_mem <span style=color:#008b45>singlestep</span> (lua_State *L) {
+  global_State *g = G(L);
+  <span style=color:#228b22>/*lua_checkmemory(L);*/</span>
+  <span style=color:#8b008b;font-weight:700>switch</span> (g-&gt;gcstate) {
+    <span style=color:#8b008b;font-weight:700>case</span> GCSpause: {
+      markroot(L);  <span style=color:#228b22>/* start a new collection */</span>
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
     }
-    <span style=color:#66d9ef>case</span> GCSpropagate: {
-      <span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>gray)
-	<span style=color:#66d9ef>return</span> propagatemark(g);
-      <span style=color:#66d9ef>else</span> {  <span style=color:#75715e>/* no more `gray&#39; objects */</span>
-	atomic(L);  <span style=color:#75715e>/* finish mark phase */</span>
-	<span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+    <span style=color:#8b008b;font-weight:700>case</span> GCSpropagate: {
+      <span style=color:#8b008b;font-weight:700>if</span> (g-&gt;gray)
+	<span style=color:#8b008b;font-weight:700>return</span> propagatemark(g);
+      <span style=color:#8b008b;font-weight:700>else</span> {  <span style=color:#228b22>/* no more `gray&#39; objects */</span>
+	atomic(L);  <span style=color:#228b22>/* finish mark phase */</span>
+	<span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
       }
     }
-    <span style=color:#66d9ef>case</span> GCSsweepstring: {
-      lu_mem old <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>totalbytes;
-      sweepwholelist(L, <span style=color:#f92672>&amp;</span>g<span style=color:#f92672>-&gt;</span>strt.hash[g<span style=color:#f92672>-&gt;</span>sweepstrgc<span style=color:#f92672>++</span>]);
-      <span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>sweepstrgc <span style=color:#f92672>&gt;=</span> g<span style=color:#f92672>-&gt;</span>strt.size)  <span style=color:#75715e>/* nothing more to sweep? */</span>
-	g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>=</span> GCSsweep;  <span style=color:#75715e>/* end sweep-string phase */</span>
-      lua_assert(old <span style=color:#f92672>&gt;=</span> g<span style=color:#f92672>-&gt;</span>totalbytes);
-      g<span style=color:#f92672>-&gt;</span>estimate <span style=color:#f92672>-=</span> old <span style=color:#f92672>-</span> g<span style=color:#f92672>-&gt;</span>totalbytes;
-      <span style=color:#66d9ef>return</span> GCSWEEPCOST;
+    <span style=color:#8b008b;font-weight:700>case</span> GCSsweepstring: {
+      lu_mem old = g-&gt;totalbytes;
+      sweepwholelist(L, &amp;g-&gt;strt.hash[g-&gt;sweepstrgc++]);
+      <span style=color:#8b008b;font-weight:700>if</span> (g-&gt;sweepstrgc &gt;= g-&gt;strt.size)  <span style=color:#228b22>/* nothing more to sweep? */</span>
+	g-&gt;gcstate = GCSsweep;  <span style=color:#228b22>/* end sweep-string phase */</span>
+      lua_assert(old &gt;= g-&gt;totalbytes);
+      g-&gt;estimate -= old - g-&gt;totalbytes;
+      <span style=color:#8b008b;font-weight:700>return</span> GCSWEEPCOST;
     }
-    <span style=color:#66d9ef>case</span> GCSsweep: {
-      lu_mem old <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>totalbytes;
-      g<span style=color:#f92672>-&gt;</span>sweepgc <span style=color:#f92672>=</span> sweeplist(L, g<span style=color:#f92672>-&gt;</span>sweepgc, GCSWEEPMAX);
-      <span style=color:#66d9ef>if</span> (<span style=color:#f92672>*</span>g<span style=color:#f92672>-&gt;</span>sweepgc <span style=color:#f92672>==</span> NULL) {  <span style=color:#75715e>/* nothing more to sweep? */</span>
+    <span style=color:#8b008b;font-weight:700>case</span> GCSsweep: {
+      lu_mem old = g-&gt;totalbytes;
+      g-&gt;sweepgc = sweeplist(L, g-&gt;sweepgc, GCSWEEPMAX);
+      <span style=color:#8b008b;font-weight:700>if</span> (*g-&gt;sweepgc == <span style=color:#658b00>NULL</span>) {  <span style=color:#228b22>/* nothing more to sweep? */</span>
 	checkSizes(L);
-	g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>=</span> GCSfinalize;  <span style=color:#75715e>/* end sweep phase */</span>
+	g-&gt;gcstate = GCSfinalize;  <span style=color:#228b22>/* end sweep phase */</span>
       }
-      lua_assert(old <span style=color:#f92672>&gt;=</span> g<span style=color:#f92672>-&gt;</span>totalbytes);
-      g<span style=color:#f92672>-&gt;</span>estimate <span style=color:#f92672>-=</span> old <span style=color:#f92672>-</span> g<span style=color:#f92672>-&gt;</span>totalbytes;
-      <span style=color:#66d9ef>return</span> GCSWEEPMAX<span style=color:#f92672>*</span>GCSWEEPCOST;
+      lua_assert(old &gt;= g-&gt;totalbytes);
+      g-&gt;estimate -= old - g-&gt;totalbytes;
+      <span style=color:#8b008b;font-weight:700>return</span> GCSWEEPMAX*GCSWEEPCOST;
     }
-    <span style=color:#66d9ef>case</span> GCSfinalize: {
-      <span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>tmudata) {
+    <span style=color:#8b008b;font-weight:700>case</span> GCSfinalize: {
+      <span style=color:#8b008b;font-weight:700>if</span> (g-&gt;tmudata) {
 	GCTM(L);
-	<span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>estimate <span style=color:#f92672>&gt;</span> GCFINALIZECOST)
-	  g<span style=color:#f92672>-&gt;</span>estimate <span style=color:#f92672>-=</span> GCFINALIZECOST;
-	<span style=color:#66d9ef>return</span> GCFINALIZECOST;
+	<span style=color:#8b008b;font-weight:700>if</span> (g-&gt;estimate &gt; GCFINALIZECOST)
+	  g-&gt;estimate -= GCFINALIZECOST;
+	<span style=color:#8b008b;font-weight:700>return</span> GCFINALIZECOST;
       }
-      <span style=color:#66d9ef>else</span> {
-	g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>=</span> GCSpause;  <span style=color:#75715e>/* end collection */</span>
-	g<span style=color:#f92672>-&gt;</span>gcdept <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
-	<span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+      <span style=color:#8b008b;font-weight:700>else</span> {
+	g-&gt;gcstate = GCSpause;  <span style=color:#228b22>/* end collection */</span>
+	g-&gt;gcdept = <span style=color:#b452cd>0</span>;
+	<span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
       }
     }
-    <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span> lua_assert(<span style=color:#ae81ff>0</span>); <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+    <span style=color:#8b008b;font-weight:700>default</span>: lua_assert(<span style=color:#b452cd>0</span>); <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
   }
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 5</span>:
 lgc.c</div><h3 id=push>push
-<a class=anchor href=#push>#</a></h3><p>push 阶段从 root 开始，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">500
+<a class=anchor href=#push>#</a></h3><p>push 阶段从 root 开始，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">500
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">501
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">502
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">503
@@ -284,21 +284,21 @@ lgc.c</div><h3 id=push>push
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">510
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">511
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">512
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/* mark root set */</span>
-<span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>markroot</span> (lua_State <span style=color:#f92672>*</span>L) {
-  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
-  g<span style=color:#f92672>-&gt;</span>gray <span style=color:#f92672>=</span> NULL;
-  g<span style=color:#f92672>-&gt;</span>grayagain <span style=color:#f92672>=</span> NULL;
-  g<span style=color:#f92672>-&gt;</span>weak <span style=color:#f92672>=</span> NULL;
-  markobject(g, g<span style=color:#f92672>-&gt;</span>mainthread);
-  <span style=color:#75715e>/* make global table be traversed before main stack */</span>
-  markvalue(g, gt(g<span style=color:#f92672>-&gt;</span>mainthread));
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/* mark root set */</span>
+<span style=color:#8b008b;font-weight:700>static</span> <span style=color:#00688b;font-weight:700>void</span> <span style=color:#008b45>markroot</span> (lua_State *L) {
+  global_State *g = G(L);
+  g-&gt;gray = <span style=color:#658b00>NULL</span>;
+  g-&gt;grayagain = <span style=color:#658b00>NULL</span>;
+  g-&gt;weak = <span style=color:#658b00>NULL</span>;
+  markobject(g, g-&gt;mainthread);
+  <span style=color:#228b22>/* make global table be traversed before main stack */</span>
+  markvalue(g, gt(g-&gt;mainthread));
   markvalue(g, registry(L));
   markmt(g);
-  g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>=</span> GCSpropagate;
+  g-&gt;gcstate = GCSpropagate;
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 6</span>:
 lgc.c</div><p>从 markroot 可以看出，gc 中的 root 从 mainthread registry globalState 开始。</p><h3 id=pop>pop
-<a class=anchor href=#pop>#</a></h3><p>pop 阶段的主要入口在 propagatemark，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">273
+<a class=anchor href=#pop>#</a></h3><p>pop 阶段的主要入口在 propagatemark，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">273
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">274
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">275
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">276
@@ -346,56 +346,56 @@ lgc.c</div><p>从 markroot 可以看出，gc 中的 root 从 mainthread registry
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">318
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">319
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">320
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
-</span><span style=color:#75715e>** traverse one gray object, turning it to black.
-</span><span style=color:#75715e>** Returns `quantity&#39; traversed.
-</span><span style=color:#75715e>*/</span>
-<span style=color:#66d9ef>static</span> l_mem <span style=color:#a6e22e>propagatemark</span> (global_State <span style=color:#f92672>*</span>g) {
-  GCObject <span style=color:#f92672>*</span>o <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>gray;
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/*
+</span><span style=color:#228b22>** traverse one gray object, turning it to black.
+</span><span style=color:#228b22>** Returns `quantity&#39; traversed.
+</span><span style=color:#228b22>*/</span>
+<span style=color:#8b008b;font-weight:700>static</span> l_mem <span style=color:#008b45>propagatemark</span> (global_State *g) {
+  GCObject *o = g-&gt;gray;
   lua_assert(isgray(o));
   gray2black(o);
-  <span style=color:#66d9ef>switch</span> (o<span style=color:#f92672>-&gt;</span>gch.tt) {
-    <span style=color:#66d9ef>case</span> LUA_TTABLE: {
-      Table <span style=color:#f92672>*</span>h <span style=color:#f92672>=</span> gco2h(o);
-      g<span style=color:#f92672>-&gt;</span>gray <span style=color:#f92672>=</span> h<span style=color:#f92672>-&gt;</span>gclist;
-      <span style=color:#66d9ef>if</span> (traversetable(g, h))  <span style=color:#75715e>/* table is weak? */</span>
-	black2gray(o);  <span style=color:#75715e>/* keep it gray */</span>
-      <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>sizeof</span>(Table) <span style=color:#f92672>+</span> <span style=color:#66d9ef>sizeof</span>(TValue) <span style=color:#f92672>*</span> h<span style=color:#f92672>-&gt;</span>sizearray <span style=color:#f92672>+</span>
-			     <span style=color:#66d9ef>sizeof</span>(Node) <span style=color:#f92672>*</span> sizenode(h);
+  <span style=color:#8b008b;font-weight:700>switch</span> (o-&gt;gch.tt) {
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TTABLE: {
+      Table *h = gco2h(o);
+      g-&gt;gray = h-&gt;gclist;
+      <span style=color:#8b008b;font-weight:700>if</span> (traversetable(g, h))  <span style=color:#228b22>/* table is weak? */</span>
+	black2gray(o);  <span style=color:#228b22>/* keep it gray */</span>
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#8b008b;font-weight:700>sizeof</span>(Table) + <span style=color:#8b008b;font-weight:700>sizeof</span>(TValue) * h-&gt;sizearray +
+			     <span style=color:#8b008b;font-weight:700>sizeof</span>(Node) * sizenode(h);
     }
-    <span style=color:#66d9ef>case</span> LUA_TFUNCTION: {
-      Closure <span style=color:#f92672>*</span>cl <span style=color:#f92672>=</span> gco2cl(o);
-      g<span style=color:#f92672>-&gt;</span>gray <span style=color:#f92672>=</span> cl<span style=color:#f92672>-&gt;</span>c.gclist;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TFUNCTION: {
+      Closure *cl = gco2cl(o);
+      g-&gt;gray = cl-&gt;c.gclist;
       traverseclosure(g, cl);
-      <span style=color:#66d9ef>return</span> (cl<span style=color:#f92672>-&gt;</span>c.isC) <span style=color:#f92672>?</span> sizeCclosure(cl<span style=color:#f92672>-&gt;</span>c.nupvalues) <span style=color:#f92672>:</span>
-			   sizeLclosure(cl<span style=color:#f92672>-&gt;</span>l.nupvalues);
+      <span style=color:#8b008b;font-weight:700>return</span> (cl-&gt;c.isC) ? sizeCclosure(cl-&gt;c.nupvalues) :
+			   sizeLclosure(cl-&gt;l.nupvalues);
     }
-    <span style=color:#66d9ef>case</span> LUA_TTHREAD: {
-      lua_State <span style=color:#f92672>*</span>th <span style=color:#f92672>=</span> gco2th(o);
-      g<span style=color:#f92672>-&gt;</span>gray <span style=color:#f92672>=</span> th<span style=color:#f92672>-&gt;</span>gclist;
-      th<span style=color:#f92672>-&gt;</span>gclist <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>grayagain;
-      g<span style=color:#f92672>-&gt;</span>grayagain <span style=color:#f92672>=</span> o;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TTHREAD: {
+      lua_State *th = gco2th(o);
+      g-&gt;gray = th-&gt;gclist;
+      th-&gt;gclist = g-&gt;grayagain;
+      g-&gt;grayagain = o;
       black2gray(o);
       traversestack(g, th);
-      <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>sizeof</span>(lua_State) <span style=color:#f92672>+</span> <span style=color:#66d9ef>sizeof</span>(TValue) <span style=color:#f92672>*</span> th<span style=color:#f92672>-&gt;</span>stacksize <span style=color:#f92672>+</span>
-				 <span style=color:#66d9ef>sizeof</span>(CallInfo) <span style=color:#f92672>*</span> th<span style=color:#f92672>-&gt;</span>size_ci;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#8b008b;font-weight:700>sizeof</span>(lua_State) + <span style=color:#8b008b;font-weight:700>sizeof</span>(TValue) * th-&gt;stacksize +
+				 <span style=color:#8b008b;font-weight:700>sizeof</span>(CallInfo) * th-&gt;size_ci;
     }
-    <span style=color:#66d9ef>case</span> LUA_TPROTO: {
-      Proto <span style=color:#f92672>*</span>p <span style=color:#f92672>=</span> gco2p(o);
-      g<span style=color:#f92672>-&gt;</span>gray <span style=color:#f92672>=</span> p<span style=color:#f92672>-&gt;</span>gclist;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TPROTO: {
+      Proto *p = gco2p(o);
+      g-&gt;gray = p-&gt;gclist;
       traverseproto(g, p);
-      <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>sizeof</span>(Proto) <span style=color:#f92672>+</span> <span style=color:#66d9ef>sizeof</span>(Instruction) <span style=color:#f92672>*</span> p<span style=color:#f92672>-&gt;</span>sizecode <span style=color:#f92672>+</span>
-			     <span style=color:#66d9ef>sizeof</span>(Proto <span style=color:#f92672>*</span>) <span style=color:#f92672>*</span> p<span style=color:#f92672>-&gt;</span>sizep <span style=color:#f92672>+</span>
-			     <span style=color:#66d9ef>sizeof</span>(TValue) <span style=color:#f92672>*</span> p<span style=color:#f92672>-&gt;</span>sizek <span style=color:#f92672>+</span>
-			     <span style=color:#66d9ef>sizeof</span>(<span style=color:#66d9ef>int</span>) <span style=color:#f92672>*</span> p<span style=color:#f92672>-&gt;</span>sizelineinfo <span style=color:#f92672>+</span>
-			     <span style=color:#66d9ef>sizeof</span>(LocVar) <span style=color:#f92672>*</span> p<span style=color:#f92672>-&gt;</span>sizelocvars <span style=color:#f92672>+</span>
-			     <span style=color:#66d9ef>sizeof</span>(TString <span style=color:#f92672>*</span>) <span style=color:#f92672>*</span> p<span style=color:#f92672>-&gt;</span>sizeupvalues;
+      <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#8b008b;font-weight:700>sizeof</span>(Proto) + <span style=color:#8b008b;font-weight:700>sizeof</span>(Instruction) * p-&gt;sizecode +
+			     <span style=color:#8b008b;font-weight:700>sizeof</span>(Proto *) * p-&gt;sizep +
+			     <span style=color:#8b008b;font-weight:700>sizeof</span>(TValue) * p-&gt;sizek +
+			     <span style=color:#8b008b;font-weight:700>sizeof</span>(<span style=color:#00688b;font-weight:700>int</span>) * p-&gt;sizelineinfo +
+			     <span style=color:#8b008b;font-weight:700>sizeof</span>(LocVar) * p-&gt;sizelocvars +
+			     <span style=color:#8b008b;font-weight:700>sizeof</span>(TString *) * p-&gt;sizeupvalues;
     }
-    <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span> lua_assert(<span style=color:#ae81ff>0</span>); <span style=color:#66d9ef>return</span> <span style=color:#ae81ff>0</span>;
+    <span style=color:#8b008b;font-weight:700>default</span>: lua_assert(<span style=color:#b452cd>0</span>); <span style=color:#8b008b;font-weight:700>return</span> <span style=color:#b452cd>0</span>;
   }
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
 lgc.c</div><p>其中针对不同的对象类型，进行不同的处理。</p><h3 id=sweep>sweep
-<a class=anchor href=#sweep>#</a></h3><p>sweep 阶段通过 sweeplist 遍历并回收白色对象，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">404
+<a class=anchor href=#sweep>#</a></h3><p>sweep 阶段通过 sweeplist 遍历并回收白色对象，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">404
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">405
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">406
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">407
@@ -420,32 +420,32 @@ lgc.c</div><p>其中针对不同的对象类型，进行不同的处理。</p><h
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">426
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">427
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">428
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>#define sweepwholelist(L,p)	sweeplist(L,p,MAX_LUMEM)
-</span><span style=color:#75715e></span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#1e889b>#define sweepwholelist(L,p)	sweeplist(L,p,MAX_LUMEM)
+</span><span style=color:#1e889b></span>
 
-<span style=color:#66d9ef>static</span> GCObject <span style=color:#f92672>**</span><span style=color:#a6e22e>sweeplist</span> (lua_State <span style=color:#f92672>*</span>L, GCObject <span style=color:#f92672>**</span>p, lu_mem count) {
-  GCObject <span style=color:#f92672>*</span>curr;
-  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
-  <span style=color:#66d9ef>int</span> deadmask <span style=color:#f92672>=</span> otherwhite(g);
-  <span style=color:#66d9ef>while</span> ((curr <span style=color:#f92672>=</span> <span style=color:#f92672>*</span>p) <span style=color:#f92672>!=</span> NULL <span style=color:#f92672>&amp;&amp;</span> count<span style=color:#f92672>--</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
-    <span style=color:#66d9ef>if</span> (curr<span style=color:#f92672>-&gt;</span>gch.tt <span style=color:#f92672>==</span> LUA_TTHREAD)  <span style=color:#75715e>/* sweep open upvalues of each thread */</span>
-      sweepwholelist(L, <span style=color:#f92672>&amp;</span>gco2th(curr)<span style=color:#f92672>-&gt;</span>openupval);
-    <span style=color:#66d9ef>if</span> ((curr<span style=color:#f92672>-&gt;</span>gch.marked <span style=color:#f92672>^</span> WHITEBITS) <span style=color:#f92672>&amp;</span> deadmask) {  <span style=color:#75715e>/* not dead? */</span>
-      lua_assert(<span style=color:#f92672>!</span>isdead(g, curr) <span style=color:#f92672>||</span> testbit(curr<span style=color:#f92672>-&gt;</span>gch.marked, FIXEDBIT));
-      makewhite(g, curr);  <span style=color:#75715e>/* make it white (for next cycle) */</span>
-      p <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>curr<span style=color:#f92672>-&gt;</span>gch.next;
+<span style=color:#8b008b;font-weight:700>static</span> GCObject **<span style=color:#008b45>sweeplist</span> (lua_State *L, GCObject **p, lu_mem count) {
+  GCObject *curr;
+  global_State *g = G(L);
+  <span style=color:#00688b;font-weight:700>int</span> deadmask = otherwhite(g);
+  <span style=color:#8b008b;font-weight:700>while</span> ((curr = *p) != <span style=color:#658b00>NULL</span> &amp;&amp; count-- &gt; <span style=color:#b452cd>0</span>) {
+    <span style=color:#8b008b;font-weight:700>if</span> (curr-&gt;gch.tt == LUA_TTHREAD)  <span style=color:#228b22>/* sweep open upvalues of each thread */</span>
+      sweepwholelist(L, &amp;gco2th(curr)-&gt;openupval);
+    <span style=color:#8b008b;font-weight:700>if</span> ((curr-&gt;gch.marked ^ WHITEBITS) &amp; deadmask) {  <span style=color:#228b22>/* not dead? */</span>
+      lua_assert(!isdead(g, curr) || testbit(curr-&gt;gch.marked, FIXEDBIT));
+      makewhite(g, curr);  <span style=color:#228b22>/* make it white (for next cycle) */</span>
+      p = &amp;curr-&gt;gch.next;
     }
-    <span style=color:#66d9ef>else</span> {  <span style=color:#75715e>/* must erase `curr&#39; */</span>
-      lua_assert(isdead(g, curr) <span style=color:#f92672>||</span> deadmask <span style=color:#f92672>==</span> bitmask(SFIXEDBIT));
-      <span style=color:#f92672>*</span>p <span style=color:#f92672>=</span> curr<span style=color:#f92672>-&gt;</span>gch.next;
-      <span style=color:#66d9ef>if</span> (curr <span style=color:#f92672>==</span> g<span style=color:#f92672>-&gt;</span>rootgc)  <span style=color:#75715e>/* is the first element of the list? */</span>
-	g<span style=color:#f92672>-&gt;</span>rootgc <span style=color:#f92672>=</span> curr<span style=color:#f92672>-&gt;</span>gch.next;  <span style=color:#75715e>/* adjust first */</span>
+    <span style=color:#8b008b;font-weight:700>else</span> {  <span style=color:#228b22>/* must erase `curr&#39; */</span>
+      lua_assert(isdead(g, curr) || deadmask == bitmask(SFIXEDBIT));
+      *p = curr-&gt;gch.next;
+      <span style=color:#8b008b;font-weight:700>if</span> (curr == g-&gt;rootgc)  <span style=color:#228b22>/* is the first element of the list? */</span>
+	g-&gt;rootgc = curr-&gt;gch.next;  <span style=color:#228b22>/* adjust first */</span>
       freeobj(L, curr);
     }
   }
-  <span style=color:#66d9ef>return</span> p;
+  <span style=color:#8b008b;font-weight:700>return</span> p;
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 8</span>:
-lgc.c</div><p>最终通过 freeobj 回收相应内存空间，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">378
+lgc.c</div><p>最终通过 freeobj 回收相应内存空间，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">378
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">379
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">380
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">381
@@ -468,31 +468,31 @@ lgc.c</div><p>最终通过 freeobj 回收相应内存空间，</p><div class=hig
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">398
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">399
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">400
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>freeobj</span> (lua_State <span style=color:#f92672>*</span>L, GCObject <span style=color:#f92672>*</span>o) {
-  <span style=color:#66d9ef>switch</span> (o<span style=color:#f92672>-&gt;</span>gch.tt) {
-    <span style=color:#66d9ef>case</span> LUA_TPROTO: luaF_freeproto(L, gco2p(o)); <span style=color:#66d9ef>break</span>;
-    <span style=color:#66d9ef>case</span> LUA_TFUNCTION: luaF_freeclosure(L, gco2cl(o)); <span style=color:#66d9ef>break</span>;
-    <span style=color:#66d9ef>case</span> LUA_TUPVAL: luaF_freeupval(L, gco2uv(o)); <span style=color:#66d9ef>break</span>;
-    <span style=color:#66d9ef>case</span> LUA_TTABLE: luaH_free(L, gco2h(o)); <span style=color:#66d9ef>break</span>;
-    <span style=color:#66d9ef>case</span> LUA_TTHREAD: {
-      lua_assert(gco2th(o) <span style=color:#f92672>!=</span> L <span style=color:#f92672>&amp;&amp;</span> gco2th(o) <span style=color:#f92672>!=</span> G(L)<span style=color:#f92672>-&gt;</span>mainthread);
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#8b008b;font-weight:700>static</span> <span style=color:#00688b;font-weight:700>void</span> <span style=color:#008b45>freeobj</span> (lua_State *L, GCObject *o) {
+  <span style=color:#8b008b;font-weight:700>switch</span> (o-&gt;gch.tt) {
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TPROTO: luaF_freeproto(L, gco2p(o)); <span style=color:#8b008b;font-weight:700>break</span>;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TFUNCTION: luaF_freeclosure(L, gco2cl(o)); <span style=color:#8b008b;font-weight:700>break</span>;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TUPVAL: luaF_freeupval(L, gco2uv(o)); <span style=color:#8b008b;font-weight:700>break</span>;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TTABLE: luaH_free(L, gco2h(o)); <span style=color:#8b008b;font-weight:700>break</span>;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TTHREAD: {
+      lua_assert(gco2th(o) != L &amp;&amp; gco2th(o) != G(L)-&gt;mainthread);
       luaE_freethread(L, gco2th(o));
-      <span style=color:#66d9ef>break</span>;
+      <span style=color:#8b008b;font-weight:700>break</span>;
     }
-    <span style=color:#66d9ef>case</span> LUA_TSTRING: {
-      G(L)<span style=color:#f92672>-&gt;</span>strt.nuse<span style=color:#f92672>--</span>;
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TSTRING: {
+      G(L)-&gt;strt.nuse--;
       luaM_freemem(L, o, sizestring(gco2ts(o)));
-      <span style=color:#66d9ef>break</span>;
+      <span style=color:#8b008b;font-weight:700>break</span>;
     }
-    <span style=color:#66d9ef>case</span> LUA_TUSERDATA: {
+    <span style=color:#8b008b;font-weight:700>case</span> LUA_TUSERDATA: {
       luaM_freemem(L, o, sizeudata(gco2u(o)));
-      <span style=color:#66d9ef>break</span>;
+      <span style=color:#8b008b;font-weight:700>break</span>;
     }
-    <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span> lua_assert(<span style=color:#ae81ff>0</span>);
+    <span style=color:#8b008b;font-weight:700>default</span>: lua_assert(<span style=color:#b452cd>0</span>);
   }
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 9</span>:
 lgc.c</div><h2 id=barrier>barrier
-<a class=anchor href=#barrier>#</a></h2><p><code>luaC_barrierf</code> 和 <code>luaC_barrierback</code> 提供了 forward barrier 和 backward barrier 的实现。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">661
+<a class=anchor href=#barrier>#</a></h2><p><code>luaC_barrierf</code> 和 <code>luaC_barrierback</code> 提供了 forward barrier 和 backward barrier 的实现。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">661
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">662
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">663
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">664
@@ -514,27 +514,27 @@ lgc.c</div><h2 id=barrier>barrier
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">680
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">681
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">682
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaC_barrierf</span> (lua_State <span style=color:#f92672>*</span>L, GCObject <span style=color:#f92672>*</span>o, GCObject <span style=color:#f92672>*</span>v) {
-  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
-  lua_assert(isblack(o) <span style=color:#f92672>&amp;&amp;</span> iswhite(v) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span>isdead(g, v) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span>isdead(g, o));
-  lua_assert(g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>!=</span> GCSfinalize <span style=color:#f92672>&amp;&amp;</span> g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>!=</span> GCSpause);
-  lua_assert(ttype(<span style=color:#f92672>&amp;</span>o<span style=color:#f92672>-&gt;</span>gch) <span style=color:#f92672>!=</span> LUA_TTABLE);
-  <span style=color:#75715e>/* must keep invariant? */</span>
-  <span style=color:#66d9ef>if</span> (g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>==</span> GCSpropagate)
-    reallymarkobject(g, v);  <span style=color:#75715e>/* restore invariant */</span>
-  <span style=color:#66d9ef>else</span>  <span style=color:#75715e>/* don&#39;t mind */</span>
-    makewhite(g, o);  <span style=color:#75715e>/* mark as white just to avoid other barriers */</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#00688b;font-weight:700>void</span> <span style=color:#008b45>luaC_barrierf</span> (lua_State *L, GCObject *o, GCObject *v) {
+  global_State *g = G(L);
+  lua_assert(isblack(o) &amp;&amp; iswhite(v) &amp;&amp; !isdead(g, v) &amp;&amp; !isdead(g, o));
+  lua_assert(g-&gt;gcstate != GCSfinalize &amp;&amp; g-&gt;gcstate != GCSpause);
+  lua_assert(ttype(&amp;o-&gt;gch) != LUA_TTABLE);
+  <span style=color:#228b22>/* must keep invariant? */</span>
+  <span style=color:#8b008b;font-weight:700>if</span> (g-&gt;gcstate == GCSpropagate)
+    reallymarkobject(g, v);  <span style=color:#228b22>/* restore invariant */</span>
+  <span style=color:#8b008b;font-weight:700>else</span>  <span style=color:#228b22>/* don&#39;t mind */</span>
+    makewhite(g, o);  <span style=color:#228b22>/* mark as white just to avoid other barriers */</span>
 }
 
 
-<span style=color:#66d9ef>void</span> <span style=color:#a6e22e>luaC_barrierback</span> (lua_State <span style=color:#f92672>*</span>L, Table <span style=color:#f92672>*</span>t) {
-  global_State <span style=color:#f92672>*</span>g <span style=color:#f92672>=</span> G(L);
-  GCObject <span style=color:#f92672>*</span>o <span style=color:#f92672>=</span> obj2gco(t);
-  lua_assert(isblack(o) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span>isdead(g, o));
-  lua_assert(g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>!=</span> GCSfinalize <span style=color:#f92672>&amp;&amp;</span> g<span style=color:#f92672>-&gt;</span>gcstate <span style=color:#f92672>!=</span> GCSpause);
-  black2gray(o);  <span style=color:#75715e>/* make table gray (again) */</span>
-  t<span style=color:#f92672>-&gt;</span>gclist <span style=color:#f92672>=</span> g<span style=color:#f92672>-&gt;</span>grayagain;
-  g<span style=color:#f92672>-&gt;</span>grayagain <span style=color:#f92672>=</span> o;
+<span style=color:#00688b;font-weight:700>void</span> <span style=color:#008b45>luaC_barrierback</span> (lua_State *L, Table *t) {
+  global_State *g = G(L);
+  GCObject *o = obj2gco(t);
+  lua_assert(isblack(o) &amp;&amp; !isdead(g, o));
+  lua_assert(g-&gt;gcstate != GCSfinalize &amp;&amp; g-&gt;gcstate != GCSpause);
+  black2gray(o);  <span style=color:#228b22>/* make table gray (again) */</span>
+  t-&gt;gclist = g-&gt;grayagain;
+  g-&gt;grayagain = o;
 }</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 10</span>:
 lgc.c</div><p>在 Lua 内部，只有 table 对象使用 backward barrier，因为其作为容器，
 引用其它可变动的对象比较多，置为灰色就不用一直触发写屏障，提高效率。</p><h2 id=practice>practice

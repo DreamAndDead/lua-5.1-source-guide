@@ -8,26 +8,26 @@ format #  所有 opcode 都是定长的，4 bytes 32 bits，单个指令用 unsi
 opcode 字节码，是编译阶段的最终结果。 类比来看，C 编译为机器码，由机器执行；lua 编译为 opcode 由 vm 执行。
 可以说，opcode 是上层 lua 代码与 vm 的中间层，是语义的约定。 本章关注 opcode 的表示方式及含义。
 format #  所有 opcode 都是定长的，4 bytes 32 bits，单个指令用 unsigned int 表示。
-84 85 86 87 88  /* ** type for virtual-machine instructions ** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h) */ typedef lu_int32 Instruction;   Code Snippet 1: llimits."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/opcode/"><meta property="article:published_time" content="2021-01-06T16:12:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>opcode | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.44110be292c9f873dbe57bd8895d52b387519bad9a89a86ed5c3705e11d6b0d5.css integrity="sha256-RBEL4pLJ+HPb5XvYiV1Ss4dRm62aiahu1cNwXhHWsNU="><script defer src=/lua-5.1-source-guide/zh.search.min.7290bfd60a7f5c526bdb44d6c18babbd3e5ba6b7b0df02ac8bda3f32a4cf6542.js integrity="sha256-cpC/1gp/XFJr20TWwYurvT5bprew3wKsi9o/MqTPZUI="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
+84 85 86 87 88  /* ** type for virtual-machine instructions ** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h) */ typedef lu_int32 Instruction;   Code Snippet 1: llimits."><meta property="og:type" content="article"><meta property="og:url" content="https://dreamanddead.github.io/lua-5.1-source-guide/docs/opcode/"><meta property="article:published_time" content="2021-01-06T16:12:00+08:00"><meta property="article:modified_time" content="2021-02-23T13:26:02+08:00"><title>opcode | lua 5.1 source guide</title><link rel=manifest href=/lua-5.1-source-guide/manifest.json><link rel=icon href=/lua-5.1-source-guide/favicon.png type=image/x-icon><link rel=stylesheet href=/lua-5.1-source-guide/book.min.dfc677a7972fb0d86dd6eaf657edfad83e2c433246dffdf64911ee91450f0378.css integrity="sha256-38Z3p5cvsNht1ur2V+362D4sQzJG3/32SRHukUUPA3g="><script defer src=/lua-5.1-source-guide/zh.search.min.63a734a12cfe0fd29995becea70dc8f315c1540f9981491da7d955afee3cf62e.js integrity="sha256-Y6c0oSz+D9KZlb7Opw3I8xXBVA+ZgUkdp9lVr+489i4="></script><script defer src=/lua-5.1-source-guide/sw.min.630373637e97fa7891a03b850675656b8da4625d692de7ef0581b22b995ab946.js integrity="sha256-YwNzY36X+niRoDuFBnVla42kYl1pLefvBYGyK5lauUY="></script></head><body dir=ltr><input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a href=/lua-5.1-source-guide><img src=/lua-5.1-source-guide/logo.png alt=Logo><span>lua 5.1 source guide</span></a></h2><div class=book-search><input type=text id=book-search-input placeholder=搜索 aria-label=搜索 maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul><li><a href=/lua-5.1-source-guide/docs/overview/>overview</a></li><li>basic<ul><li><a href=/lua-5.1-source-guide/docs/object/>object</a></li><li><a href=/lua-5.1-source-guide/docs/memory/>memory</a></li><li><a href=/lua-5.1-source-guide/docs/string/>string</a></li><li><a href=/lua-5.1-source-guide/docs/table/>table</a></li></ul></li><li>compiler<ul><li><a href=/lua-5.1-source-guide/docs/lexer/>lexer</a></li><li><a href=/lua-5.1-source-guide/docs/opcode/ class=active>opcode</a></li><li><a href=/lua-5.1-source-guide/docs/parser/>parser</a></li><li><a href=/lua-5.1-source-guide/docs/generator/>generator</a></li></ul></li><li>vm<ul><li><a href=/lua-5.1-source-guide/docs/vm/>vm</a></li><li><a href=/lua-5.1-source-guide/docs/api/>c api</a></li><li><a href=/lua-5.1-source-guide/docs/stdlib/>stdlib</a></li><li><a href=/lua-5.1-source-guide/docs/gc/>gc</a></li></ul></li></ul><p><br></p><ul><li><a href=https://github.com/DreamAndDead/lua-5.1-source-guide target=_blank rel=noopener>Github</a></li></ul></nav><script>(function(){var menu=document.querySelector("aside.book-menu nav");addEventListener("beforeunload",function(event){localStorage.setItem("menu.scrollTop",menu.scrollTop);});menu.scrollTop=localStorage.getItem("menu.scrollTop");})();</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/lua-5.1-source-guide/svg/menu.svg class=book-icon alt=Menu></label>
 <strong>opcode</strong>
 <label for=toc-control><img src=/lua-5.1-source-guide/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><ul><li><a href=#format>format</a></li><li><a href=#param>param</a></li><li><a href=#kind>kind</a></li><li><a href=#model>model</a><ul><li><a href=#code-and-pc>Code & pc</a></li><li><a href=#stack>Stack</a></li><li><a href=#kst>Kst</a></li><li><a href=#gbl>Gbl</a></li><li><a href=#upvalue>UpValue</a></li></ul></li><li><a href=#meaning>meaning</a><ul><li><a href=#move>move</a></li><li><a href=#getglobal>getglobal</a></li><li><a href=#add>add</a></li><li><a href=#more>more</a></li></ul></li><li><a href=#meta>meta</a></li><li><a href=#practice>practice</a></li></ul></li></ul></nav></aside></header><article class=markdown><p>按顺序，本章应该讲解 parser 相关的内容。</p><p>之前提到，parser 模块将语法分析与代码生成揉合在一起，为了更容易理解 parser 的功能，
 先对最终生成的代码 opcode 做一些了解，到时就可以带着目的去阅读。</p><p>opcode 字节码，是编译阶段的最终结果。
 类比来看，C 编译为机器码，由机器执行；lua 编译为 opcode 由 vm 执行。</p><p>可以说，opcode 是上层 lua 代码与 vm 的中间层，是语义的约定。
 本章关注 opcode 的表示方式及含义。</p><h2 id=format>format
-<a class=anchor href=#format>#</a></h2><p>所有 opcode 都是定长的，4 bytes 32 bits，单个指令用 unsigned int 表示。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">84
+<a class=anchor href=#format>#</a></h2><p>所有 opcode 都是定长的，4 bytes 32 bits，单个指令用 unsigned int 表示。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">84
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">85
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">86
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">87
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">88
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
-</span><span style=color:#75715e>** type for virtual-machine instructions
-</span><span style=color:#75715e>** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h)
-</span><span style=color:#75715e>*/</span>
-<span style=color:#66d9ef>typedef</span> lu_int32 Instruction;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
-llimits.h</div><p>指令内部可分为类型和参数两部分，根据参数的安排方式，所有指令可分为 3 类操作模式。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#66d9ef>enum</span> OpMode {iABC, iABx, iAsBx};  <span style=color:#75715e>/* basic instruction format */</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
-lopcodes.h</div><ul><li>iABC，接受 A B C 三个参数</li><li>iABx，接受 A Bx 两个参数</li><li>iAsBx，接受 A sBx 两个参数</li></ul><p>A B C Bx 是无符号数，而 sBx 是有符号数（s 即 signed）。</p><figure><img src=opcode-format.png></figure><p>三种类型的指令在 32 bits 的空间中进行如下的划分</p><ul><li>Op 表示指令类型，占据 6 bits，在最低位</li><li>A C B 分别占据 8 9 9 bits，从低位到高位排列</li><li>Bx 占据 B C 两者的空间</li><li>sBx 和 Bx 占据的空间相同，不过解析为有符号数</li></ul><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/*
+</span><span style=color:#228b22>** type for virtual-machine instructions
+</span><span style=color:#228b22>** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h)
+</span><span style=color:#228b22>*/</span>
+<span style=color:#8b008b;font-weight:700>typedef</span> lu_int32 Instruction;</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 1</span>:
+llimits.h</div><p>指令内部可分为类型和参数两部分，根据参数的安排方式，所有指令可分为 3 类操作模式。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#8b008b;font-weight:700>enum</span> OpMode {iABC, iABx, iAsBx};  <span style=color:#228b22>/* basic instruction format */</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 2</span>:
+lopcodes.h</div><ul><li>iABC，接受 A B C 三个参数</li><li>iABx，接受 A Bx 两个参数</li><li>iAsBx，接受 A sBx 两个参数</li></ul><p>A B C Bx 是无符号数，而 sBx 是有符号数（s 即 signed）。</p><figure><img src=opcode-format.png></figure><p>三种类型的指令在 32 bits 的空间中进行如下的划分</p><ul><li>Op 表示指令类型，占据 6 bits，在最低位</li><li>A C B 分别占据 8 9 9 bits，从低位到高位排列</li><li>Bx 占据 B C 两者的空间</li><li>sBx 和 Bx 占据的空间相同，不过解析为有符号数</li></ul><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
@@ -42,35 +42,35 @@ lopcodes.h</div><ul><li>iABC，接受 A B C 三个参数</li><li>iABx，接受 A
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>/*
-</span><span style=color:#75715e>** size and position of opcode arguments.
-</span><span style=color:#75715e>*/</span>
-<span style=color:#75715e>#define SIZE_C		9
-</span><span style=color:#75715e>#define SIZE_B		9
-</span><span style=color:#75715e>#define SIZE_Bx		(SIZE_C + SIZE_B)
-</span><span style=color:#75715e>#define SIZE_A		8
-</span><span style=color:#75715e></span>
-<span style=color:#75715e>#define SIZE_OP		6
-</span><span style=color:#75715e></span>
-<span style=color:#75715e>#define POS_OP		0
-</span><span style=color:#75715e>#define POS_A		(POS_OP + SIZE_OP)
-</span><span style=color:#75715e>#define POS_C		(POS_A + SIZE_A)
-</span><span style=color:#75715e>#define POS_B		(POS_C + SIZE_C)
-</span><span style=color:#75715e>#define POS_Bx		POS_C</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#228b22>/*
+</span><span style=color:#228b22>** size and position of opcode arguments.
+</span><span style=color:#228b22>*/</span>
+<span style=color:#1e889b>#define SIZE_C		9
+</span><span style=color:#1e889b>#define SIZE_B		9
+</span><span style=color:#1e889b>#define SIZE_Bx		(SIZE_C + SIZE_B)
+</span><span style=color:#1e889b>#define SIZE_A		8
+</span><span style=color:#1e889b></span>
+<span style=color:#1e889b>#define SIZE_OP		6
+</span><span style=color:#1e889b></span>
+<span style=color:#1e889b>#define POS_OP		0
+</span><span style=color:#1e889b>#define POS_A		(POS_OP + SIZE_OP)
+</span><span style=color:#1e889b>#define POS_C		(POS_A + SIZE_A)
+</span><span style=color:#1e889b>#define POS_B		(POS_C + SIZE_C)
+</span><span style=color:#1e889b>#define POS_Bx		POS_C</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 3</span>:
 lopcodes.h</div><h2 id=param>param
 <a class=anchor href=#param>#</a></h2><p>A C B 的长度分别是 8 9 9 bits，都解析为无符号数。
 Bx 占据 18 位，解析为无符号数。
-sBx 和 Bx 占据同一空间，但是解析为有符号数。</p><p>不同参数表示不同的范围。</p><table><thead><tr><th>param</th><th>len(bits)</th><th>range</th></tr></thead><tbody><tr><td>A</td><td>8</td><td>0 -> 2^8 - 1</td></tr><tr><td>C</td><td>9</td><td>0 -> 2^9 - 1</td></tr><tr><td>B</td><td>9</td><td>0 -> 2^9 - 1</td></tr><tr><td>Bx</td><td>18</td><td>0 -> 2^18 - 1</td></tr><tr><td>sBx</td><td>18</td><td>-(2^17 - 1) -> 2^17 - 1</td></tr></tbody></table><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
+sBx 和 Bx 占据同一空间，但是解析为有符号数。</p><p>不同参数表示不同的范围。</p><table><thead><tr><th>param</th><th>len(bits)</th><th>range</th></tr></thead><tbody><tr><td>A</td><td>8</td><td>0 -> 2^8 - 1</td></tr><tr><td>C</td><td>9</td><td>0 -> 2^9 - 1</td></tr><tr><td>B</td><td>9</td><td>0 -> 2^9 - 1</td></tr><tr><td>Bx</td><td>18</td><td>0 -> 2^18 - 1</td></tr><tr><td>sBx</td><td>18</td><td>-(2^17 - 1) -> 2^17 - 1</td></tr></tbody></table><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">66
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">67
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define MAXARG_A        ((1&lt;&lt;SIZE_A)-1)
-</span><span style=color:#75715e>#define MAXARG_B        ((1&lt;&lt;SIZE_B)-1)
-</span><span style=color:#75715e>#define MAXARG_C        ((1&lt;&lt;SIZE_C)-1)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 4</span>:
-lopcodes.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">57
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#1e889b>#define MAXARG_A        ((1&lt;&lt;SIZE_A)-1)
+</span><span style=color:#1e889b>#define MAXARG_B        ((1&lt;&lt;SIZE_B)-1)
+</span><span style=color:#1e889b>#define MAXARG_C        ((1&lt;&lt;SIZE_C)-1)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 4</span>:
+lopcodes.h</div><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">57
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">58
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define MAXARG_Bx        ((1&lt;&lt;SIZE_Bx)-1)
-</span><span style=color:#75715e>#define MAXARG_sBx        (MAXARG_Bx&gt;&gt;1)         </span><span style=color:#75715e>/* `sBx&#39; is signed */</span></code></pre></td></tr></table></div></div><p>lua 并不用反码补码的逻辑来理解 sBx，而只是将同样字节表示的 Bx 减去 offset 得到 sBx。</p><figure><img src=opcode-Bx-sBx.png></figure><p>offset 就是 sBx 的最大值，所以 <code>1111 1..1 1111</code> 对于 sBx 是没有意义的。</p><h2 id=kind>kind
-<a class=anchor href=#kind>#</a></h2><p>指令类型共有 38 种，用 enum OpCode 标识，</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">146
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#1e889b>#define MAXARG_Bx        ((1&lt;&lt;SIZE_Bx)-1)
+</span><span style=color:#1e889b>#define MAXARG_sBx        (MAXARG_Bx&gt;&gt;1)         </span><span style=color:#228b22>/* `sBx&#39; is signed */</span></code></pre></td></tr></table></div></div><p>lua 并不用反码补码的逻辑来理解 sBx，而只是将同样字节表示的 Bx 减去 offset 得到 sBx。</p><figure><img src=opcode-Bx-sBx.png></figure><p>offset 就是 sBx 的最大值，所以 <code>1111 1..1 1111</code> 对于 sBx 是没有意义的。</p><h2 id=kind>kind
+<a class=anchor href=#kind>#</a></h2><p>指令类型共有 38 种，用 enum OpCode 标识，</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">146
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">147
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">148
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">149
@@ -136,72 +136,72 @@ lopcodes.h</div><div class=highlight><div style=color:#f8f8f2;background-color:#
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">209
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">210
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">211
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
-</span><span style=color:#75715e>** grep &#34;ORDER OP&#34; if you change these enums
-</span><span style=color:#75715e>*/</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#228b22>/*
+</span><span style=color:#228b22>** grep &#34;ORDER OP&#34; if you change these enums
+</span><span style=color:#228b22>*/</span>
 
-<span style=color:#66d9ef>typedef</span> <span style=color:#66d9ef>enum</span> {
-<span style=color:#75715e>/*----------------------------------------------------------------------
-</span><span style=color:#75715e>name		args	description
-</span><span style=color:#75715e>------------------------------------------------------------------------*/</span>
-OP_MOVE,<span style=color:#75715e>/*	A B	R(A) := R(B)					*/</span>
-OP_LOADK,<span style=color:#75715e>/*	A Bx	R(A) := Kst(Bx)					*/</span>
-OP_LOADBOOL,<span style=color:#75715e>/*	A B C	R(A) := (Bool)B; if (C) pc++			*/</span>
-OP_LOADNIL,<span style=color:#75715e>/*	A B	R(A) := ... := R(B) := nil			*/</span>
-OP_GETUPVAL,<span style=color:#75715e>/*	A B	R(A) := UpValue[B]				*/</span>
+<span style=color:#8b008b;font-weight:700>typedef</span> <span style=color:#8b008b;font-weight:700>enum</span> {
+<span style=color:#228b22>/*----------------------------------------------------------------------
+</span><span style=color:#228b22>name		args	description
+</span><span style=color:#228b22>------------------------------------------------------------------------*/</span>
+OP_MOVE,<span style=color:#228b22>/*	A B	R(A) := R(B)					*/</span>
+OP_LOADK,<span style=color:#228b22>/*	A Bx	R(A) := Kst(Bx)					*/</span>
+OP_LOADBOOL,<span style=color:#228b22>/*	A B C	R(A) := (Bool)B; if (C) pc++			*/</span>
+OP_LOADNIL,<span style=color:#228b22>/*	A B	R(A) := ... := R(B) := nil			*/</span>
+OP_GETUPVAL,<span style=color:#228b22>/*	A B	R(A) := UpValue[B]				*/</span>
 
-OP_GETGLOBAL,<span style=color:#75715e>/*	A Bx	R(A) := Gbl[Kst(Bx)]				*/</span>
-OP_GETTABLE,<span style=color:#75715e>/*	A B C	R(A) := R(B)[RK(C)]				*/</span>
+OP_GETGLOBAL,<span style=color:#228b22>/*	A Bx	R(A) := Gbl[Kst(Bx)]				*/</span>
+OP_GETTABLE,<span style=color:#228b22>/*	A B C	R(A) := R(B)[RK(C)]				*/</span>
 
-OP_SETGLOBAL,<span style=color:#75715e>/*	A Bx	Gbl[Kst(Bx)] := R(A)				*/</span>
-OP_SETUPVAL,<span style=color:#75715e>/*	A B	UpValue[B] := R(A)				*/</span>
-OP_SETTABLE,<span style=color:#75715e>/*	A B C	R(A)[RK(B)] := RK(C)				*/</span>
+OP_SETGLOBAL,<span style=color:#228b22>/*	A Bx	Gbl[Kst(Bx)] := R(A)				*/</span>
+OP_SETUPVAL,<span style=color:#228b22>/*	A B	UpValue[B] := R(A)				*/</span>
+OP_SETTABLE,<span style=color:#228b22>/*	A B C	R(A)[RK(B)] := RK(C)				*/</span>
 
-OP_NEWTABLE,<span style=color:#75715e>/*	A B C	R(A) := {} (size = B,C)				*/</span>
+OP_NEWTABLE,<span style=color:#228b22>/*	A B C	R(A) := {} (size = B,C)				*/</span>
 
-OP_SELF,<span style=color:#75715e>/*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/</span>
+OP_SELF,<span style=color:#228b22>/*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/</span>
 
-OP_ADD,<span style=color:#75715e>/*	A B C	R(A) := RK(B) + RK(C)				*/</span>
-OP_SUB,<span style=color:#75715e>/*	A B C	R(A) := RK(B) - RK(C)				*/</span>
-OP_MUL,<span style=color:#75715e>/*	A B C	R(A) := RK(B) * RK(C)				*/</span>
-OP_DIV,<span style=color:#75715e>/*	A B C	R(A) := RK(B) / RK(C)				*/</span>
-OP_MOD,<span style=color:#75715e>/*	A B C	R(A) := RK(B) % RK(C)				*/</span>
-OP_POW,<span style=color:#75715e>/*	A B C	R(A) := RK(B) ^ RK(C)				*/</span>
-OP_UNM,<span style=color:#75715e>/*	A B	R(A) := -R(B)					*/</span>
-OP_NOT,<span style=color:#75715e>/*	A B	R(A) := not R(B)				*/</span>
-OP_LEN,<span style=color:#75715e>/*	A B	R(A) := length of R(B)				*/</span>
+OP_ADD,<span style=color:#228b22>/*	A B C	R(A) := RK(B) + RK(C)				*/</span>
+OP_SUB,<span style=color:#228b22>/*	A B C	R(A) := RK(B) - RK(C)				*/</span>
+OP_MUL,<span style=color:#228b22>/*	A B C	R(A) := RK(B) * RK(C)				*/</span>
+OP_DIV,<span style=color:#228b22>/*	A B C	R(A) := RK(B) / RK(C)				*/</span>
+OP_MOD,<span style=color:#228b22>/*	A B C	R(A) := RK(B) % RK(C)				*/</span>
+OP_POW,<span style=color:#228b22>/*	A B C	R(A) := RK(B) ^ RK(C)				*/</span>
+OP_UNM,<span style=color:#228b22>/*	A B	R(A) := -R(B)					*/</span>
+OP_NOT,<span style=color:#228b22>/*	A B	R(A) := not R(B)				*/</span>
+OP_LEN,<span style=color:#228b22>/*	A B	R(A) := length of R(B)				*/</span>
 
-OP_CONCAT,<span style=color:#75715e>/*	A B C	R(A) := R(B).. ... ..R(C)			*/</span>
+OP_CONCAT,<span style=color:#228b22>/*	A B C	R(A) := R(B).. ... ..R(C)			*/</span>
 
-OP_JMP,<span style=color:#75715e>/*	sBx	pc+=sBx					*/</span>
+OP_JMP,<span style=color:#228b22>/*	sBx	pc+=sBx					*/</span>
 
-OP_EQ,<span style=color:#75715e>/*	A B C	if ((RK(B) == RK(C)) ~= A) then pc++		*/</span>
-OP_LT,<span style=color:#75715e>/*	A B C	if ((RK(B) &lt;  RK(C)) ~= A) then pc++  		*/</span>
-OP_LE,<span style=color:#75715e>/*	A B C	if ((RK(B) &lt;= RK(C)) ~= A) then pc++  		*/</span>
+OP_EQ,<span style=color:#228b22>/*	A B C	if ((RK(B) == RK(C)) ~= A) then pc++		*/</span>
+OP_LT,<span style=color:#228b22>/*	A B C	if ((RK(B) &lt;  RK(C)) ~= A) then pc++  		*/</span>
+OP_LE,<span style=color:#228b22>/*	A B C	if ((RK(B) &lt;= RK(C)) ~= A) then pc++  		*/</span>
 
-OP_TEST,<span style=color:#75715e>/*	A C	if not (R(A) &lt;=&gt; C) then pc++			*/</span>
-OP_TESTSET,<span style=color:#75715e>/*	A B C	if (R(B) &lt;=&gt; C) then R(A) := R(B) else pc++	*/</span>
+OP_TEST,<span style=color:#228b22>/*	A C	if not (R(A) &lt;=&gt; C) then pc++			*/</span>
+OP_TESTSET,<span style=color:#228b22>/*	A B C	if (R(B) &lt;=&gt; C) then R(A) := R(B) else pc++	*/</span>
 
-OP_CALL,<span style=color:#75715e>/*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */</span>
-OP_TAILCALL,<span style=color:#75715e>/*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/</span>
-OP_RETURN,<span style=color:#75715e>/*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/</span>
+OP_CALL,<span style=color:#228b22>/*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */</span>
+OP_TAILCALL,<span style=color:#228b22>/*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/</span>
+OP_RETURN,<span style=color:#228b22>/*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/</span>
 
-OP_FORLOOP,<span style=color:#75715e>/*	A sBx	R(A)+=R(A+2);
-</span><span style=color:#75715e>			if R(A) &lt;?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/</span>
-OP_FORPREP,<span style=color:#75715e>/*	A sBx	R(A)-=R(A+2); pc+=sBx				*/</span>
+OP_FORLOOP,<span style=color:#228b22>/*	A sBx	R(A)+=R(A+2);
+</span><span style=color:#228b22>			if R(A) &lt;?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/</span>
+OP_FORPREP,<span style=color:#228b22>/*	A sBx	R(A)-=R(A+2); pc+=sBx				*/</span>
 
-OP_TFORLOOP,<span style=color:#75715e>/*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
-</span><span style=color:#75715e>			if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++	*/</span>
-OP_SETLIST,<span style=color:#75715e>/*	A B C	R(A)[(C-1)*FPF+i] := R(A+i), 1 &lt;= i &lt;= B	*/</span>
+OP_TFORLOOP,<span style=color:#228b22>/*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
+</span><span style=color:#228b22>			if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++	*/</span>
+OP_SETLIST,<span style=color:#228b22>/*	A B C	R(A)[(C-1)*FPF+i] := R(A+i), 1 &lt;= i &lt;= B	*/</span>
 
-OP_CLOSE,<span style=color:#75715e>/*	A 	close all variables in the stack up to (&gt;=) R(A)*/</span>
-OP_CLOSURE,<span style=color:#75715e>/*	A Bx	R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))	*/</span>
+OP_CLOSE,<span style=color:#228b22>/*	A 	close all variables in the stack up to (&gt;=) R(A)*/</span>
+OP_CLOSURE,<span style=color:#228b22>/*	A Bx	R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))	*/</span>
 
-OP_VARARG<span style=color:#75715e>/*	A B	R(A), R(A+1), ..., R(A+B-1) = vararg		*/</span>
+OP_VARARG<span style=color:#228b22>/*	A B	R(A), R(A+1), ..., R(A+B-1) = vararg		*/</span>
 } OpCode;
 
 
-<span style=color:#75715e>#define NUM_OPCODES	(cast(int, OP_VARARG) + 1)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 5</span>:
+<span style=color:#1e889b>#define NUM_OPCODES	(cast(int, OP_VARARG) + 1)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 5</span>:
 lopcodes.h</div><p>注释描述了相应类型的指令所接受的参数和功能。</p><h2 id=model>model
 <a class=anchor href=#model>#</a></h2><p>想要了解指令具体的功能，就需要提前对 vm 的执行模型有一些了解。</p><figure><img src=opcode-model.png></figure><p>vm 为编程语言提供了更大的灵活性，原因就在于这个虚拟的机器内部可以自由构造，而不用面对一成不变的 x86 架构。</p><p>不管 vm 如何设计，目的都是执行 opcode，实现其描述的语义。
 lua 实现的 vm 主要由图中的几个部分构成。</p><h3 id=code-and-pc>Code & pc
@@ -211,7 +211,7 @@ lua 实现的 vm 主要由图中的几个部分构成。</p><h3 id=code-and-pc>C
 <a class=anchor href=#gbl>#</a></h3><p>Gbl 是全局表，以 table 结构来实现，对应 lua 语言中“全局”的概念，比如全局变量，就存储在这里。</p><h3 id=upvalue>UpValue
 <a class=anchor href=#upvalue>#</a></h3><p>记录闭包引用的上值，之后再详细解释。</p><h2 id=meaning>meaning
 <a class=anchor href=#meaning>#</a></h2><p>对应 vm 模型的粗略了解，下面来看指令后的功能描述表达了什么含义。</p><p><code>R(A)</code> 表示索引为 A 的寄存器，因为寄存器存储在栈中，所以 <code>R(A)</code> 直接索引栈中的空间。</p><p>寄存器是可读写的，如果出现在赋值左边，表示寄存器的位置；出现在赋值右边，表示使用相应位置的值。</p><figure><img src=opcode-model-r.png></figure><p><code>Kst(Bx)</code> 表示索引为 Bx 的常量，从 kst 表中取值。</p><p>常量表在执行时是只读的。</p><figure><img src=opcode-model-kst.png></figure><p><code>RK(B)</code> 根据 B 的大小，用于索引寄存器/常量，只用于只读。</p><figure><img src=opcode-model-rk.png></figure><p>这里和之前参数空间的长度安排巧妙地联系在一起。</p><p>A B C 三个参数，长度分别为 8 9 9 bits。
-在 opcode 的整体设计中，没有 RK(A)，只有 RK(B) RK(C)。</p><p>所以使用 B C 中比 A 多出的 1 个高位 bit，用于辨别 RK 表示的是 R 还是 K。</p><table><thead><tr><th>R/K</th><th>bits</th><th>range</th></tr></thead><tbody><tr><td>R</td><td>0&mldr;&mldr;..</td><td>0 -> 255</td></tr><tr><td>K</td><td>1&mldr;&mldr;..</td><td>256 -> 511</td></tr></tbody></table><p>这样，相应的宏也就不难理解。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">114
+在 opcode 的整体设计中，没有 RK(A)，只有 RK(B) RK(C)。</p><p>所以使用 B C 中比 A 多出的 1 个高位 bit，用于辨别 RK 表示的是 R 还是 K。</p><table><thead><tr><th>R/K</th><th>bits</th><th>range</th></tr></thead><tbody><tr><td>R</td><td>0&mldr;&mldr;..</td><td>0 -> 255</td></tr><tr><td>K</td><td>1&mldr;&mldr;..</td><td>256 -> 511</td></tr></tbody></table><p>这样，相应的宏也就不难理解。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">114
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">115
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">116
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">117
@@ -228,38 +228,38 @@ lua 实现的 vm 主要由图中的几个部分构成。</p><h3 id=code-and-pc>C
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">128
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">129
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">130
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
-</span><span style=color:#75715e>** Macros to operate RK indices
-</span><span style=color:#75715e>*/</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#228b22>/*
+</span><span style=color:#228b22>** Macros to operate RK indices
+</span><span style=color:#228b22>*/</span>
 
-<span style=color:#75715e>/* this bit 1 means constant (0 means register) */</span>
-<span style=color:#75715e>#define BITRK		(1 &lt;&lt; (SIZE_B - 1))
-</span><span style=color:#75715e></span>
-<span style=color:#75715e>/* test whether value is a constant */</span>
-<span style=color:#75715e>#define ISK(x)		((x) &amp; BITRK)
-</span><span style=color:#75715e></span>
-<span style=color:#75715e>/* gets the index of the constant */</span>
-<span style=color:#75715e>#define INDEXK(r)	((int)(r) &amp; ~BITRK)
-</span><span style=color:#75715e></span>
-<span style=color:#75715e>#define MAXINDEXRK	(BITRK - 1)
-</span><span style=color:#75715e></span>
-<span style=color:#75715e>/* code a constant index as a RK value */</span>
-<span style=color:#75715e>#define RKASK(x)	((x) | BITRK)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 6</span>:
+<span style=color:#228b22>/* this bit 1 means constant (0 means register) */</span>
+<span style=color:#1e889b>#define BITRK		(1 &lt;&lt; (SIZE_B - 1))
+</span><span style=color:#1e889b></span>
+<span style=color:#228b22>/* test whether value is a constant */</span>
+<span style=color:#1e889b>#define ISK(x)		((x) &amp; BITRK)
+</span><span style=color:#1e889b></span>
+<span style=color:#228b22>/* gets the index of the constant */</span>
+<span style=color:#1e889b>#define INDEXK(r)	((int)(r) &amp; ~BITRK)
+</span><span style=color:#1e889b></span>
+<span style=color:#1e889b>#define MAXINDEXRK	(BITRK - 1)
+</span><span style=color:#1e889b></span>
+<span style=color:#228b22>/* code a constant index as a RK value */</span>
+<span style=color:#1e889b>#define RKASK(x)	((x) | BITRK)</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 6</span>:
 lopcodes.h</div><p><code>Gbl</code> 是全局表，Stack 和 Kst 都以数组来实现，所以只需要整数索引，而 Gbl 是真正的表，
 用 table 来实现，这意味着索引可以是除 nil 外的任意值。
 所以在索引使用 Gbl 时，通常使用间接的方式。</p><figure><img src=opcode-model-gbl.png></figure><p><code>UpValue</code> 表和 Kst 类似，以数组表示，用整数索引，但是可读写。</p><figure><img src=opcode-model-upval.png></figure><p>有了上面符号的理解，读者应该能读懂大部分指令所表达的功能。</p><p>本质上，vm 的运行过程就是不断的执行指令，操作不同区域的数据的过程。</p><p>下面列几个简单示例。</p><h3 id=move>move
-<a class=anchor href=#move>#</a></h3><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">154
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>OP_MOVE,<span style=color:#75715e>/*	A B	R(A) := R(B)					*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
+<a class=anchor href=#move>#</a></h3><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">154
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>OP_MOVE,<span style=color:#228b22>/*	A B	R(A) := R(B)					*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 7</span>:
 lopcodes.h</div><p>move 很容易理解，直接进行寄存器间的赋值。</p><figure><img src=opcode-model-move.png></figure><h3 id=getglobal>getglobal
-<a class=anchor href=#getglobal>#</a></h3><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">160
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>OP_GETGLOBAL,<span style=color:#75715e>/*	A Bx	R(A) := Gbl[Kst(Bx)]				*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 8</span>:
+<a class=anchor href=#getglobal>#</a></h3><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">160
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>OP_GETGLOBAL,<span style=color:#228b22>/*	A Bx	R(A) := Gbl[Kst(Bx)]				*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 8</span>:
 lopcodes.h</div><p>Gbl 因为不使用整数索引，所以在引用其中元素时，需要 Kst 作间接的引用。</p><figure><img src=opcode-model-getglobal.png></figure><h3 id=add>add
-<a class=anchor href=#add>#</a></h3><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">171
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>OP_ADD,<span style=color:#75715e>/*	A B C	R(A) := RK(B) + RK(C)				*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 9</span>:
+<a class=anchor href=#add>#</a></h3><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">171
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c>OP_ADD,<span style=color:#228b22>/*	A B C	R(A) := RK(B) + RK(C)				*/</span></code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 9</span>:
 lopcodes.h</div><p>add 是二元运算，其中使用 RK 来引用。</p><figure><img src=opcode-model-add.png></figure><h3 id=more>more
 <a class=anchor href=#more>#</a></h3><p>ChunkSpy 的作者对于 opcode 有更深刻的理解，在其发布 ChunkSpy 程序的时候，也附带了描述 opcode 的文档<sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>，
 推荐读者详细阅读。</p><h2 id=meta>meta
-<a class=anchor href=#meta>#</a></h2><p>opcode 模块除了定义指令的类型和格式，同时也记录了指令的其它信息，用于辅助代码生成。</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 59
+<a class=anchor href=#meta>#</a></h2><p>opcode 模块除了定义指令的类型和格式，同时也记录了指令的其它信息，用于辅助代码生成。</p><div class=highlight><div style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 59
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 60
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 61
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 62
@@ -302,70 +302,70 @@ lopcodes.h</div><p>add 是二元运算，其中使用 RK 来引用。</p><figure
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 99
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">100
 </span><span style="margin-right:.4em;padding:0 .4em;color:#7f7f7f">101
-</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#75715e>#define opmode(t,a,b,c,m) (((t)&lt;&lt;7) | ((a)&lt;&lt;6) | ((b)&lt;&lt;4) | ((c)&lt;&lt;2) | (m))
-</span><span style=color:#75715e></span>
-<span style=color:#66d9ef>const</span> lu_byte luaP_opmodes[NUM_OPCODES] <span style=color:#f92672>=</span> {
-<span style=color:#75715e>/*       T  A    B       C     mode		   opcode	*/</span>
-  opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgN, iABC) 		<span style=color:#75715e>/* OP_MOVE */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgN, iABx)		<span style=color:#75715e>/* OP_LOADK */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#75715e>/* OP_LOADBOOL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#75715e>/* OP_LOADNIL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgU, OpArgN, iABC)		<span style=color:#75715e>/* OP_GETUPVAL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgN, iABx)		<span style=color:#75715e>/* OP_GETGLOBAL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgK, iABC)		<span style=color:#75715e>/* OP_GETTABLE */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, OpArgK, OpArgN, iABx)		<span style=color:#75715e>/* OP_SETGLOBAL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, OpArgU, OpArgN, iABC)		<span style=color:#75715e>/* OP_SETUPVAL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_SETTABLE */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#75715e>/* OP_NEWTABLE */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgK, iABC)		<span style=color:#75715e>/* OP_SELF */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_ADD */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_SUB */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_MUL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_DIV */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_MOD */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_POW */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#75715e>/* OP_UNM */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#75715e>/* OP_NOT */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#75715e>/* OP_LEN */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgR, iABC)		<span style=color:#75715e>/* OP_CONCAT */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, OpArgR, OpArgN, iAsBx)		<span style=color:#75715e>/* OP_JMP */</span>
- ,opmode(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_EQ */</span>
- ,opmode(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_LT */</span>
- ,opmode(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#75715e>/* OP_LE */</span>
- ,opmode(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgU, iABC)		<span style=color:#75715e>/* OP_TEST */</span>
- ,opmode(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgU, iABC)		<span style=color:#75715e>/* OP_TESTSET */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#75715e>/* OP_CALL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#75715e>/* OP_TAILCALL */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, OpArgU, OpArgN, iABC)		<span style=color:#75715e>/* OP_RETURN */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgN, iAsBx)		<span style=color:#75715e>/* OP_FORLOOP */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgR, OpArgN, iAsBx)		<span style=color:#75715e>/* OP_FORPREP */</span>
- ,opmode(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>, OpArgN, OpArgU, iABC)		<span style=color:#75715e>/* OP_TFORLOOP */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, OpArgU, OpArgU, iABC)		<span style=color:#75715e>/* OP_SETLIST */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, OpArgN, OpArgN, iABC)		<span style=color:#75715e>/* OP_CLOSE */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgU, OpArgN, iABx)		<span style=color:#75715e>/* OP_CLOSURE */</span>
- ,opmode(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>, OpArgU, OpArgN, iABC)		<span style=color:#75715e>/* OP_VARARG */</span>
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C data-lang=C><span style=color:#1e889b>#define opmode(t,a,b,c,m) (((t)&lt;&lt;7) | ((a)&lt;&lt;6) | ((b)&lt;&lt;4) | ((c)&lt;&lt;2) | (m))
+</span><span style=color:#1e889b></span>
+<span style=color:#8b008b;font-weight:700>const</span> lu_byte luaP_opmodes[NUM_OPCODES] = {
+<span style=color:#228b22>/*       T  A    B       C     mode		   opcode	*/</span>
+  opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgN, iABC) 		<span style=color:#228b22>/* OP_MOVE */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgN, iABx)		<span style=color:#228b22>/* OP_LOADK */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#228b22>/* OP_LOADBOOL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#228b22>/* OP_LOADNIL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgU, OpArgN, iABC)		<span style=color:#228b22>/* OP_GETUPVAL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgN, iABx)		<span style=color:#228b22>/* OP_GETGLOBAL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgK, iABC)		<span style=color:#228b22>/* OP_GETTABLE */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>0</span>, OpArgK, OpArgN, iABx)		<span style=color:#228b22>/* OP_SETGLOBAL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>0</span>, OpArgU, OpArgN, iABC)		<span style=color:#228b22>/* OP_SETUPVAL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_SETTABLE */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#228b22>/* OP_NEWTABLE */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgK, iABC)		<span style=color:#228b22>/* OP_SELF */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_ADD */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_SUB */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_MUL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_DIV */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_MOD */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_POW */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#228b22>/* OP_UNM */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#228b22>/* OP_NOT */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgN, iABC)		<span style=color:#228b22>/* OP_LEN */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgR, iABC)		<span style=color:#228b22>/* OP_CONCAT */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>0</span>, OpArgR, OpArgN, iAsBx)		<span style=color:#228b22>/* OP_JMP */</span>
+ ,opmode(<span style=color:#b452cd>1</span>, <span style=color:#b452cd>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_EQ */</span>
+ ,opmode(<span style=color:#b452cd>1</span>, <span style=color:#b452cd>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_LT */</span>
+ ,opmode(<span style=color:#b452cd>1</span>, <span style=color:#b452cd>0</span>, OpArgK, OpArgK, iABC)		<span style=color:#228b22>/* OP_LE */</span>
+ ,opmode(<span style=color:#b452cd>1</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgU, iABC)		<span style=color:#228b22>/* OP_TEST */</span>
+ ,opmode(<span style=color:#b452cd>1</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgU, iABC)		<span style=color:#228b22>/* OP_TESTSET */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#228b22>/* OP_CALL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgU, OpArgU, iABC)		<span style=color:#228b22>/* OP_TAILCALL */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>0</span>, OpArgU, OpArgN, iABC)		<span style=color:#228b22>/* OP_RETURN */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgN, iAsBx)		<span style=color:#228b22>/* OP_FORLOOP */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgR, OpArgN, iAsBx)		<span style=color:#228b22>/* OP_FORPREP */</span>
+ ,opmode(<span style=color:#b452cd>1</span>, <span style=color:#b452cd>0</span>, OpArgN, OpArgU, iABC)		<span style=color:#228b22>/* OP_TFORLOOP */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>0</span>, OpArgU, OpArgU, iABC)		<span style=color:#228b22>/* OP_SETLIST */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>0</span>, OpArgN, OpArgN, iABC)		<span style=color:#228b22>/* OP_CLOSE */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgU, OpArgN, iABx)		<span style=color:#228b22>/* OP_CLOSURE */</span>
+ ,opmode(<span style=color:#b452cd>0</span>, <span style=color:#b452cd>1</span>, OpArgU, OpArgN, iABC)		<span style=color:#228b22>/* OP_VARARG */</span>
 };</code></pre></td></tr></table></div></div><div class=src-block-caption><span class=src-block-number>Code Snippet 10</span>:
-lopcodes.c</div><p>这些信息用 1 byte 8 bits 来记录，其中</p><ul><li>T，表示指令是否有 test 操作</li><li>A，表示是否修改了 R(A)</li><li>mode，表示指令属于 iABC/iABx/iAsBx 的哪一种</li><li>B C，表示 B C 参数的使用方式<ul><li>OpArgN，未使用</li><li>OpArgU，使用</li><li>OpArgR，作为寄存器索引/跳转偏移量</li><li>OpArgK，作为常量索引/RK索引</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>/*
-</span><span style=color:#75715e>** masks for instruction properties. The format is:
-</span><span style=color:#75715e>** bits 0-1: op mode
-</span><span style=color:#75715e>** bits 2-3: C arg mode
-</span><span style=color:#75715e>** bits 4-5: B arg mode
-</span><span style=color:#75715e>** bit 6: instruction set register A
-</span><span style=color:#75715e>** bit 7: operator is a test
-</span><span style=color:#75715e>*/</span>
+lopcodes.c</div><p>这些信息用 1 byte 8 bits 来记录，其中</p><ul><li>T，表示指令是否有 test 操作</li><li>A，表示是否修改了 R(A)</li><li>mode，表示指令属于 iABC/iABx/iAsBx 的哪一种</li><li>B C，表示 B C 参数的使用方式<ul><li>OpArgN，未使用</li><li>OpArgU，使用</li><li>OpArgR，作为寄存器索引/跳转偏移量</li><li>OpArgK，作为常量索引/RK索引</li></ul></li></ul><div class=highlight><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#228b22>/*
+</span><span style=color:#228b22>** masks for instruction properties. The format is:
+</span><span style=color:#228b22>** bits 0-1: op mode
+</span><span style=color:#228b22>** bits 2-3: C arg mode
+</span><span style=color:#228b22>** bits 4-5: B arg mode
+</span><span style=color:#228b22>** bit 6: instruction set register A
+</span><span style=color:#228b22>** bit 7: operator is a test
+</span><span style=color:#228b22>*/</span>
 
-<span style=color:#66d9ef>enum</span> OpArgMask {
-  OpArgN,  <span style=color:#75715e>/* argument is not used */</span>
-  OpArgU,  <span style=color:#75715e>/* argument is used */</span>
-  OpArgR,  <span style=color:#75715e>/* argument is a register or a jump offset */</span>
-  OpArgK   <span style=color:#75715e>/* argument is a constant or register/constant */</span>
+<span style=color:#8b008b;font-weight:700>enum</span> OpArgMask {
+  OpArgN,  <span style=color:#228b22>/* argument is not used */</span>
+  OpArgU,  <span style=color:#228b22>/* argument is used */</span>
+  OpArgR,  <span style=color:#228b22>/* argument is a register or a jump offset */</span>
+  OpArgK   <span style=color:#228b22>/* argument is a constant or register/constant */</span>
 };
 </code></pre></div><div class=src-block-caption><span class=src-block-number>Code Snippet 11</span>:
-lopcodes.h</div><p>相应地，相关的宏就不难理解。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#75715e>#define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] &amp; 3))
-</span><span style=color:#75715e>#define getBMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] &gt;&gt; 4) &amp; 3))
-</span><span style=color:#75715e>#define getCMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] &gt;&gt; 2) &amp; 3))
-</span><span style=color:#75715e>#define testAMode(m)	(luaP_opmodes[m] &amp; (1 &lt;&lt; 6))
-</span><span style=color:#75715e>#define testTMode(m)	(luaP_opmodes[m] &amp; (1 &lt;&lt; 7))
+lopcodes.h</div><p>相应地，相关的宏就不难理解。</p><div class=highlight><pre style=background-color:#eed;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c data-lang=c><span style=color:#1e889b>#define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] &amp; 3))
+</span><span style=color:#1e889b>#define getBMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] &gt;&gt; 4) &amp; 3))
+</span><span style=color:#1e889b>#define getCMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] &gt;&gt; 2) &amp; 3))
+</span><span style=color:#1e889b>#define testAMode(m)	(luaP_opmodes[m] &amp; (1 &lt;&lt; 6))
+</span><span style=color:#1e889b>#define testTMode(m)	(luaP_opmodes[m] &amp; (1 &lt;&lt; 7))
 </span></code></pre></div><div class=src-block-caption><span class=src-block-number>Code Snippet 12</span>:
 lopcodes.h</div><h2 id=practice>practice
 <a class=anchor href=#practice>#</a></h2><table><thead><tr><th>文件</th><th>建议</th></tr></thead><tbody><tr><td>lopcodes.h</td><td>仔细阅读</td></tr><tr><td>lopcodes.c</td><td>仔细阅读</td></tr></tbody></table><section class=footnotes role=doc-endnotes><hr><ol><li id=fn:1 role=doc-endnote><p>: &lt;a no frills introduction to lua 5.1 vm instructions.pdf> <a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li></ol></section></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div><a class="flex align-center" href=https://github.com/DreamAndDead/lua-5.1-source-guide/commit/8c359ebae66c3a96c4a0c7ed6ba49ad52483055a title="最后修改者 DreamAndDead | February 23, 2021" target=_blank rel=noopener><img src=/lua-5.1-source-guide/svg/calendar.svg class=book-icon alt=Calendar>
