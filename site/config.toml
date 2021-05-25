@@ -14,6 +14,16 @@ defaultContentLanguage = 'zh'
   unsafe = true
 [markup.tableOfContents]
   startLevel = 1
+[markup.highlight]
+    codeFences = true
+    guessSyntax = false
+    hl_Lines = ""
+    lineNoStart = 1
+    lineNos = false
+    lineNumbersInTable = true
+    noClasses = true
+    style = "perldoc"
+    tabWidth = 4
 
 # Multi-lingual mode config
 # There are different options to translate files

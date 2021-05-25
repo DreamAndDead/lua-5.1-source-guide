@@ -1,4 +1,4 @@
-#+SETUPFILE: setup.org
+#+SETUPFILE: ../setup.org
 
 #+TITLE: todo
 #+DATE: <2021-01-22 五 10:52>
@@ -12,14 +12,9 @@
 gdb script helper.py 的功能，未介绍
 
 
-缺少整体的阅读版面设计
-
-
 源代码引用，文件名部分依然是 listing n 格式
 
 
-
-单独的 publish.el 配置，不依赖 .emacs.d
 依赖的其它图片工具
 
 
@@ -32,3 +27,6 @@ userdata 未讲解
 weaktable newproxy 未讲解
 
 
+** how ~RE = NFA = DFA~
+
+** how scanner generator works (table driven / if else driven)

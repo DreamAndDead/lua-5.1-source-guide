@@ -5,32 +5,6 @@
 #+title: overview
 #+date: <2020-12-21 一 10:40>
 
-* goal
-
-这是一本关于 lua 5.1 源代码的小书。
-主要探索 lua 源代码，从中研究 lua 语言的内部实现。
-
-起因是出于好奇和乐趣，同时希望对其它 source reader 有所启发。
-
-
-lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚还是要花费不少篇幅。
-而且我也不自信自己的文字能力能将其含义描述清楚。
-
-所以在本书中，
-- 根据 2/8 原则，关注重点部分
-- 一图胜千言，尽量使用图解
-- 其余相关源代码，作为读者的练习
-
-
-每一本书都有适合的读者，本书也是如此。
-
-希望读者你
-- 使用过 lua 语言，了解 lua
-- 了解 Linux 基础使用
-- 熟悉 C 语言
-
-因为本书就是建立在相应的前提下书写的。
-
 * project
 
 ** file structure
@@ -156,7 +130,6 @@ diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9
 在进行本书编写过程中，借鉴了其中的思想，使用 gdb 提供的 python api，
 编写了 =helper.py= 来辅助显示数据结构。
 
-
 ** usage
 
  在分析代码的过程，经常使用一些分析过程，全部整理在 =Makefile= 中。
@@ -214,7 +187,6 @@ diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9
 
  使用 ChunkSpy 分析文件
 
-
 *** debug
 
  #+begin_example
@@ -236,7 +208,6 @@ diff -ur /home/manjaro/temp/ChunkSpy-0.9.8/5.1/ChunkSpy.lua ../tool/ChunkSpy-0.9
  #+end_example
 
  在本地开启 [[http://localhost:8000][http server]]，阅读生成的 html 文件
-
 
 * big picture
 

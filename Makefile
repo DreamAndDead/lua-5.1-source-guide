@@ -35,11 +35,9 @@ lex:
 	gdb -batch -x lex.gdb --args ./lua-5.1.5/src/luac $(source)
 	rm luac.out
 
-publish:
-	emacs -u "$(id -un)" --batch --eval '(load user-init-file)' --load publish.el --funcall org-publish-all
-
-server:
-	python -m http.server -d docs 8000
+serve:
+	xdg-open http://localhost:1313/lua-5.1-source-guide/
+	(cd site; hugo server -D; cd ..)
 
 draw:
 	asy -f pdf -pdfviewer="okular" -batchView -tex xelatex

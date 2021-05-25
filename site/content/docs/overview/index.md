@@ -2,36 +2,9 @@
 title: "overview"
 author: ["DreamAndDead"]
 date: 2020-12-21T10:40:00+08:00
-lastmod: 2021-02-23T10:50:45+08:00
+lastmod: 2021-05-25T21:50:41+08:00
 draft: false
 ---
-
-## goal {#goal}
-
-这是一本关于 lua 5.1 源代码的小书。
-主要探索 lua 源代码，从中研究 lua 语言的内部实现。
-
-起因是出于好奇和乐趣，同时希望对其它 source reader 有所启发。
-
-lua 本身虽然只有几万行代码，但是将其所有细节都描述清楚还是要花费不少篇幅。
-而且我也不自信自己的文字能力能将其含义描述清楚。
-
-所以在本书中，
-
--   根据 2/8 原则，关注重点部分
--   一图胜千言，尽量使用图解
--   其余相关源代码，作为读者的练习
-
-每一本书都有适合的读者，本书也是如此。
-
-希望读者你
-
--   使用过 lua 语言，了解 lua
--   了解 Linux 基础使用
--   熟悉 C 语言
-
-因为本书就是建立在相应的前提下书写的。
-
 
 ## project {#project}
 
@@ -371,14 +344,6 @@ lua 源代码 make 之后，生成两个可执行文件
 -   VM 常驻内存，使用 REPL 的方式，不断输入 lua code，执行 compile + executed 的解释过程
 
 这即是上文中两个程序分别称为编译器 和 解释器 的命名来源，以后的行文中也使用这种约定。
-
-
-### <span class="org-todo todo TODO">TODO</span> a little tour {#a-little-tour}
-
-chain all subject
-
--   big picture of internal
--   talk about lua state and global state, state scope
 
 
 ## practice {#practice}
